@@ -1,0 +1,46 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  darkMode: "class",
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        "surface": "#ffffff",
+        "surface-dim": "#fcfbfa",
+        "surface-bright": "#ffffff",
+        "surface-container-lowest": "#ffffff",
+        "surface-container-low": "#faf9f8",
+        "surface-container": "#f3f2f1",
+        "surface-container-high": "#edebe9",
+        "surface-container-highest": "#e1dfdd",
+        "on-surface": "#201f1e",
+        "on-surface-variant": "#484644",
+        "primary": "#185abd",
+        "primary-container": "#cfe1fd",
+        "primary-fixed": "#e8f0fe",
+        "primary-fixed-dim": "#185abd",
+        "on-primary": "#ffffff",
+        "on-primary-container": "#0c3b80",
+        "secondary": "#2b579a",
+        "secondary-container": "#d9e7ff",
+        "on-secondary": "#ffffff",
+        "tertiary": "#6f4e37",
+        "tertiary-container": "#f5ede6",
+        "outline": "#605e5c",
+        "outline-variant": "#d2d0ce",
+        "error": "#d13438",
+        "error-container": "#fde7e9",
+        "on-error": "#ffffff",
+      },
+      fontFamily: {
+        "display": ["'Hanken Grotesk'", "sans-serif"],
+        "body": ["'Hanken Grotesk'", "sans-serif"],
+        "mono": ["'JetBrains Mono'", "monospace"],
+      },
+    },
+  },
+  plugins: [],
+};

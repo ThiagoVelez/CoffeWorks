@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    margin: 0;
+    padding: 0;
+    background-color: #faf7f2;
+    color: #2c1b12;
+    font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+    overflow-x: hidden;
+  }
+
+  code, kbd, pre {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+/* Scrollbar estilizado en tonos crema y café suave */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #faf7f2;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d7ccc8;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1887f;
+}
+
+/* Región de arrastre para ventana de escritorio Tauri */
+[data-tauri-drag-region] {
+  -webkit-app-region: drag;
+}
+
+button, input, select, a {
+  -webkit-app-region: no-drag;
+}

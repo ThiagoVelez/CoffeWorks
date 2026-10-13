@@ -1,0 +1,20 @@
+[
+  {
+    "id": "cfs_1791905623673",
+    "name": "Libro1.cfs",
+    "app_id": "coffecalc",
+    "category": "Finanzas",
+    "last_modified": "Hace unos instantes",
+    "is_pinned": false,
+    "path": "./vault/Libro1.cfs"
+  },
+  {
+    "id": "doc_1791900672993",
+    "name": "Nuevo Documento.cfd",
+    "app_id": "coffedoc",
+    "category": "Producto",
+    "last_modified": "Editado hace un momento",
+    "is_pinned": false,
+    "path": "./vault/Nuevo Documento.cfd"
+  }
+]

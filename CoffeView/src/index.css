@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    user-select: none;
+    -webkit-user-select: none;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+/* Estilos de cinta Ribbon estilo Microsoft PowerPoint */
+.ribbon-tab-active {
+  color: #c43e1c;
+  border-bottom: 2px solid #c43e1c;
+  font-weight: 600;
+}
+
+.ribbon-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 11px;
+  color: #323130;
+  transition: all 0.15s ease;
+}
+
+.ribbon-btn:hover {
+  background-color: #f3f2f1;
+}
+
+.ribbon-btn:active {
+  background-color: #edebe9;
+}
+
+/* Lienzo de Diapositiva 16:9 con sombra y bordes */
+.slide-canvas-shadow {
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+/* Tiradores de redimensión y selección de elementos */
+.element-handle {
+  width: 8px;
+  height: 8px;
+  background-color: #ffffff;
+  border: 1.5px solid #c43e1c;
+  border-radius: 1px;
+  position: absolute;
+}

@@ -1,0 +1,414 @@
+<!DOCTYPE html><html class="dark" lang="es"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_dashboard" name="shell-type"><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"secondary":"#ffb68c","on-surface":"#eae0dd","secondary-fixed-dim":"#ffb68c","primary-container":"#e08e45","error-container":"#93000a","tertiary-fixed-dim":"#ebbf88","surface-variant":"#393431","surface-dim":"#161311","on-tertiary-fixed-variant":"#5f4116","on-tertiary":"#452b02","secondary-container":"#964400","on-primary-container":"#582d00","on-error":"#690005","primary-fixed-dim":"#ffb77d","tertiary-fixed":"#ffddb6","inverse-on-surface":"#342f2d","outline":"#a18d7f","tertiary":"#ebbf88","surface-bright":"#3d3836","on-secondary-fixed":"#321200","on-tertiary-fixed":"#2a1800","on-tertiary-container":"#4e3207","on-primary-fixed-variant":"#6e3900","outline-variant":"#534438","on-secondary-container":"#ffcaac","error":"#ffb4ab","background":"#161311","secondary-fixed":"#ffdbc9","on-surface-variant":"#d9c2b3","surface-container-lowest":"#110d0b","inverse-surface":"#eae0dd","on-primary-fixed":"#2f1500","on-secondary-fixed-variant":"#753400","primary-fixed":"#ffdcc3","surface-container-highest":"#393431","on-error-container":"#ffdad6","on-primary":"#4d2600","on-background":"#eae0dd","on-secondary":"#532200","tertiary-container":"#c39a67","inverse-primary":"#904d03","primary":"#ffb77d","surface-container-high":"#2e2927","surface-container":"#231f1d","surface-container-low":"#1f1b19","surface":"#161311","surface-tint":"#ffb77d"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"margin":"1.5rem","space-sm":"0.5rem","gutter-sm":"0.75rem","space-xl":"2rem","space-lg":"1.25rem","gutter":"1rem","gutter-lg":"1.5rem","space-xs":"0.25rem","space-md":"0.75rem","margin-compact":"1rem"},fontFamily:{"body-lg":["Hanken Grotesk"],"display-md":["Hanken Grotesk"],"display-lg":["Hanken Grotesk"],"headline-sm":["Hanken Grotesk"],"code-xs":["JetBrains Mono"],"body-sm":["Hanken Grotesk"],"headline-lg":["Hanken Grotesk"],"label-sm":["Hanken Grotesk"],"body-md":["Hanken Grotesk"],"code-sm":["JetBrains Mono"],"label-md":["Hanken Grotesk"]},fontSize:{"body-lg":["15px",{"lineHeight":"22px","letterSpacing":"0em","fontWeight":"400"}],"display-md":["28px",{"lineHeight":"36px","letterSpacing":"-0.015em","fontWeight":"700"}],"display-lg":["36px",{"lineHeight":"44px","letterSpacing":"-0.02em","fontWeight":"700"}],"headline-sm":["18px",{"lineHeight":"24px","letterSpacing":"-0.005em","fontWeight":"600"}],"code-xs":["10px",{"lineHeight":"12px","letterSpacing":"0.02em","fontWeight":"400"}],"body-sm":["12px",{"lineHeight":"16px","letterSpacing":"0.005em","fontWeight":"400"}],"headline-lg":["22px",{"lineHeight":"28px","letterSpacing":"-0.01em","fontWeight":"600"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.02em","fontWeight":"500"}],"body-md":["13px",{"lineHeight":"18px","letterSpacing":"0em","fontWeight":"400"}],"code-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.01em","fontWeight":"500"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.01em","fontWeight":"500"}]}}}}</script></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased select-none"><header class="fixed top-0 left-0 right-0 h-10 z-50 bg-surface-container-lowest/90 backdrop-blur-xl flex items-center justify-between px-space-md select-none"><div class="flex items-center gap-space-md"><img alt="CoffeWorks Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1U15N65420fvzo_on2VZ3eLJYdQC-_TbAkLpLtJRvGhiXQV9VVk9NRyNIRM3JIwpHeAKeVCPKWWk0i3Zp5Q4rZn5QVWEGxVBjDIavC24psTg4KOhmhI8QSZh9vuDwW7S3ex1LCYJ8bS8hwNtpaZ2d_pk90fvFq3iE-2bvzwshHtxJJRHrzeduQbGfSv6rxjTillV2dEh9g_rA6HmZ1lLTiszwplE0vvhUT_MIBjYgeSbx6yqHsAt9TqGA"><span class="font-headline-sm text-headline-sm text-primary tracking-tight font-bold">CoffeWorks</span><span class="font-code-xs text-code-xs px-space-xs py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-medium">v2.4 Pro</span></div><div class="flex-1 max-w-md mx-space-lg"><div class="flex items-center bg-surface-container-low px-space-sm py-1 rounded-xl gap-space-xs"><span class="material-symbols-outlined text-outline text-[16px]">search</span><input class="bg-transparent text-on-surface placeholder:text-outline text-body-sm font-body-sm focus:outline-none w-full" placeholder="Buscar apps, documentos o acciones (Ctrl + K)..." type="text"><span class="font-code-xs text-code-xs px-1.5 py-0.5 rounded bg-surface-container-high text-outline">⌘K</span></div></div><div class="flex items-center gap-space-md"><div class="flex items-center ml-space-sm"><button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors rounded" title="Minimizar" type="button"><span class="material-symbols-outlined text-[16px]">remove</span></button><button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors rounded" title="Maximizar" type="button"><span class="material-symbols-outlined text-[14px]">crop_square</span></button><button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:bg-error-container hover:text-on-error transition-colors rounded" title="Cerrar" type="button"><span class="material-symbols-outlined text-[16px]">close</span></button></div></div></header><aside class="fixed left-0 top-10 bottom-0 w-64 bg-surface-container-low z-40 flex flex-col justify-between py-space-md px-space-sm"><div class="flex flex-col gap-space-md"><div class="px-space-sm py-space-xs"><div class="flex items-center justify-between p-space-sm rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors cursor-pointer"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-primary text-[20px]">coffee</span><div class="flex flex-col"><span class="font-label-md text-label-md text-on-surface font-semibold">Tostaduría Principal</span><span class="font-code-xs text-code-xs text-outline">Equipo de Producción</span></div></div><span class="material-symbols-outlined text-outline text-[18px]">unfold_more</span></div></div><div class="px-space-sm"><span class="font-code-xs text-code-xs uppercase text-outline tracking-wider font-semibold">Suite de Trabajo</span></div><nav class="flex flex-col gap-1" data-active-classes="bg-primary-container text-on-primary-container font-semibold rounded-xl"><a aria-current="page" class="flex items-center gap-space-sm px-space-sm py-2 transition-colors bg-primary-container text-on-primary-container font-semibold rounded-xl" data-path="launcher" href="#"><span class="material-symbols-outlined text-[20px]">apps</span><span class="font-body-md text-body-md">Inicio / Launcher</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="mis-documentos" href="#"><span class="material-symbols-outlined text-[20px]">folder_open</span><span class="font-body-md text-body-md">Mis Documentos</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="plantillas" href="#"><span class="material-symbols-outlined text-[20px]">view_quilt</span><span class="font-body-md text-body-md">Plantillas</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="integraciones" href="#"><span class="material-symbols-outlined text-[20px]">hub</span><span class="font-body-md text-body-md">Integraciones</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="ajustes" href="#"><span class="material-symbols-outlined text-[20px]">settings</span><span class="font-body-md text-body-md">Ajustes</span></a></nav></div></aside><div class="pl-64"><main class="w-full pt-10 min-h-screen bg-surface"><div class="flex flex-col w-full p-space-md lg:p-space-lg gap-space-lg">
+<!-- Top Welcome & Daily Flow Banner -->
+<section class="relative overflow-hidden rounded-xl bg-surface-container-low p-space-lg shadow-xl">
+<div class="absolute -right-16 -top-16 w-80 h-80 rounded-full bg-gradient-to-br from-primary-container/15 via-tertiary/5 to-transparent blur-3xl pointer-events-none"></div>
+<div class="absolute -left-12 -bottom-12 w-64 h-64 rounded-full bg-gradient-to-tr from-secondary-container/20 to-transparent blur-2xl pointer-events-none"></div>
+<div class="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-space-lg">
+<div class="flex flex-col gap-space-xs max-w-2xl">
+<div class="flex items-center gap-space-sm flex-wrap">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container-high text-primary font-code-xs text-code-xs font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+            Modo Enfoque Activado
+          </span>
+<span class="font-code-xs text-code-xs text-outline">Jueves, 24 de Octubre</span>
+<span class="text-outline-variant font-code-xs text-code-xs">•</span>
+<span class="font-code-xs text-code-xs text-tertiary">3 proyectos activos</span>
+</div>
+<h1 class="font-display-md text-display-md text-on-surface tracking-tight mt-1">
+          Buenos días, listo para crear
+        </h1>
+<p class="font-body-md text-body-md text-on-surface-variant">
+          Tu suite ofimática local y conectada lista para despachar. Tienes 4 documentos sincronizados y listos para trabajar sin conexión.
+        </p>
+<div class="flex items-center gap-space-sm mt-2 text-outline font-code-xs text-code-xs">
+<span class="material-symbols-outlined text-[16px] text-primary">keyboard_command_key</span>
+<span class="">Pulsa <kbd class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface font-code-xs">Ctrl + K</kbd> en cualquier momento para buscar aplicaciones, hojas o comandos rápidos</span>
+</div>
+</div>
+<!-- Quick Action Cluster -->
+<div class="flex items-center gap-space-sm shrink-0">
+<div class="relative" id="new-doc-dropdown-wrapper">
+<button class="flex items-center gap-space-sm bg-primary-container text-on-primary-container px-space-md py-2.5 rounded-xl font-label-md text-label-md font-bold shadow-md hover:bg-primary transition-all active:scale-95" id="btn-new-doc" type="button">
+<span class="material-symbols-outlined text-[20px]">add_circle</span>
+<span class="">+ Nuevo Documento Rápido</span>
+<span class="material-symbols-outlined text-[18px]">expand_more</span>
+</button>
+<!-- Dropdown menu -->
+<div class="hidden absolute right-0 mt-2 w-56 rounded-xl bg-surface-container-high p-1.5 shadow-2xl z-30" id="new-doc-menu">
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-on-surface hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined text-primary text-[18px]">description</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-semibold">CoffeDoc</span>
+<span class="font-code-xs text-code-xs text-outline">Documento en blanco</span>
+</div>
+</a>
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-on-surface hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined text-tertiary text-[18px]">table_chart</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-semibold">CoffeSheet</span>
+<span class="font-code-xs text-code-xs text-outline">Hoja de cálculo</span>
+</div>
+</a>
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-on-surface hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined text-secondary text-[18px]">slideshow</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-semibold">CoffeSlides</span>
+<span class="font-code-xs text-code-xs text-outline">Lienzo diapositivas</span>
+</div>
+</a>
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-on-surface hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined text-primary-fixed-dim text-[18px]">edit_note</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-semibold">CoffeNotes</span>
+<span class="font-code-xs text-code-xs text-outline">Nota rápida instantánea</span>
+</div>
+</a>
+</div>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-xl bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors" title="Sincronizar ahora" type="button">
+<span class="material-symbols-outlined text-[20px]">sync</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Suite CoffeWorks Applications Grid -->
+<section class="flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<img alt="CoffeWorks Logo" class="w-5 h-5 object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1U15N65420fvzo_on2VZ3eLJYdQC-_TbAkLpLtJRvGhiXQV9VVk9NRyNIRM3JIwpHeAKeVCPKWWk0i3Zp5Q4rZn5QVWEGxVBjDIavC24psTg4KOhmhI8QSZh9vuDwW7S3ex1LCYJ8bS8hwNtpaZ2d_pk90fvFq3iE-2bvzwshHtxJJRHrzeduQbGfSv6rxjTillV2dEh9g_rA6HmZ1lLTiszwplE0vvhUT_MIBjYgeSbx6yqHsAt9TqGA">
+<h2 class="font-headline-lg text-headline-lg text-on-surface font-semibold tracking-tight">Suite CoffeWorks</h2>
+<span class="font-code-xs text-code-xs px-2 py-0.5 rounded-full bg-surface-container-high text-outline">6 Aplicaciones Nucleares</span>
+</div>
+<a class="font-label-sm text-label-sm text-primary hover:text-primary-fixed-dim flex items-center gap-1" href="#">
+<span class="">Gestionar paquetes locales</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-space-md">
+<!-- 1. CoffeDoc -->
+<div class="group relative flex flex-col justify-between p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container transition-all shadow-md hover:-translate-y-0.5">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between">
+<div class="w-12 h-12 rounded-xl bg-primary-container/20 text-primary flex items-center justify-center shadow-inner">
+<span class="material-symbols-outlined text-[26px]">article</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="font-code-xs text-code-xs px-2 py-0.5 rounded bg-surface-container-high text-primary font-medium">Disponible v1.4</span>
+</div>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-bold group-hover:text-primary transition-colors">CoffeDoc</h3>
+<p class="font-label-sm text-label-sm text-outline mt-0.5">Procesador de textos colaborativo &amp; Markdown enriquecido</p>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">
+            Documentos ágiles, redacción con IA contextual y plantillas ejecutivas preparadas para impresión y web.
+          </p>
+</div>
+<div class="flex items-center justify-between mt-space-md pt-space-sm bg-surface-container-lowest/50 -mx-space-md -mb-space-md px-space-md pb-space-md rounded-b-xl"><div class="flex items-center gap-1.5 text-outline font-code-xs text-code-xs"><span class="w-2 h-2 rounded-full bg-primary"></span><span class="">Instalada (184 MB)</span></div><div class="flex items-center gap-2"><button class="p-1.5 rounded-lg text-outline hover:text-error hover:bg-surface-container-high transition-colors flex items-center gap-1 font-label-sm text-label-sm" title="Desinstalar CoffeDoc" type="button"><span class="material-symbols-outlined text-[16px]">delete</span><span class="hidden sm:inline">Desinstalar</span></button><button class="bg-primary text-on-primary font-label-sm text-label-sm font-semibold px-3 py-1.5 rounded-lg shadow-sm hover:bg-primary-fixed-dim transition-all active:scale-95 flex items-center gap-1" type="button"><span class="">Abrir App</span><span class="material-symbols-outlined text-[14px]">launch</span></button></div></div>
+</div>
+<!-- 2. CoffeSheet -->
+<div class="group relative flex flex-col justify-between p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container transition-all shadow-md hover:-translate-y-0.5">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between">
+<div class="w-12 h-12 rounded-xl bg-tertiary-container/25 text-tertiary flex items-center justify-center shadow-inner">
+<span class="material-symbols-outlined text-[26px]">grid_on</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="font-code-xs text-code-xs px-2 py-0.5 rounded bg-surface-container-high text-tertiary font-medium">Disponible v1.2</span>
+</div>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-bold group-hover:text-tertiary transition-colors">CoffeSheet</h3>
+<p class="font-label-sm text-label-sm text-outline mt-0.5">Hojas de cálculo potentes &amp; visualización financiera</p>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">
+            Fórmulas inteligentes en tiempo real, pivotes interactivos y modelado de datos de alta velocidad en memoria.
+          </p>
+</div>
+<div class="flex items-center justify-between mt-space-md pt-space-sm bg-surface-container-lowest/50 -mx-space-md -mb-space-md px-space-md pb-space-md rounded-b-xl"><div class="flex items-center gap-1.5 text-outline font-code-xs text-code-xs"><span class="w-2 h-2 rounded-full bg-tertiary"></span><span class="">Instalada (240 MB)</span></div><div class="flex items-center gap-2"><button class="p-1.5 rounded-lg text-outline hover:text-error hover:bg-surface-container-high transition-colors flex items-center gap-1 font-label-sm text-label-sm" title="Desinstalar CoffeSheet" type="button"><span class="material-symbols-outlined text-[16px]">delete</span><span class="hidden sm:inline">Desinstalar</span></button><button class="bg-surface-container-high text-on-surface hover:bg-primary hover:text-on-primary font-label-sm text-label-sm font-semibold px-3 py-1.5 rounded-lg shadow-sm transition-all active:scale-95 flex items-center gap-1" type="button"><span class="">Abrir App</span><span class="material-symbols-outlined text-[14px]">launch</span></button></div></div>
+</div>
+<!-- 3. CoffeSlides -->
+<div class="group relative flex flex-col justify-between p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container transition-all shadow-md hover:-translate-y-0.5">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between">
+<div class="w-12 h-12 rounded-xl bg-secondary-container/30 text-secondary flex items-center justify-center shadow-inner">
+<span class="material-symbols-outlined text-[26px]">co_present</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="font-code-xs text-code-xs px-2 py-0.5 rounded bg-surface-container-high text-outline font-medium">No instalada • v1.0</span>
+</div>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-bold group-hover:text-secondary transition-colors">CoffeSlides</h3>
+<p class="font-label-sm text-label-sm text-outline mt-0.5">Presentaciones y pitches dinámicos de alto impacto</p>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">
+            Diapositivas cinemáticas, exportación interactiva 4K y diseño asistido por paletas tonales automáticas.
+          </p>
+</div>
+<div class="flex items-center justify-between mt-space-md pt-space-sm bg-surface-container-lowest/50 -mx-space-md -mb-space-md px-space-md pb-space-md rounded-b-xl"><div class="flex items-center gap-1.5 text-outline font-code-xs text-code-xs"><span class="material-symbols-outlined text-[15px] text-outline">cloud_download</span><span class="">Descarga: 310 MB</span></div><div class="flex items-center gap-2"><button class="bg-primary-container text-on-primary-container hover:bg-primary hover:text-on-primary font-label-sm text-label-sm font-semibold px-3.5 py-1.5 rounded-lg shadow-sm transition-all active:scale-95 flex items-center gap-1.5" type="button"><span class="material-symbols-outlined text-[16px]">download</span><span class="">Instalar</span></button></div></div>
+</div>
+<!-- 4. CoffeNotes -->
+<div class="group relative flex flex-col justify-between p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container transition-all shadow-md hover:-translate-y-0.5">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between">
+<div class="w-12 h-12 rounded-xl bg-tertiary-fixed-dim/20 text-tertiary-fixed-dim flex items-center justify-center shadow-inner">
+<span class="material-symbols-outlined text-[26px]">sticky_note_2</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="font-code-xs text-code-xs px-2 py-0.5 rounded bg-surface-container-high text-tertiary font-medium">Disponible v2.0</span>
+</div>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-bold group-hover:text-tertiary transition-colors">CoffeNotes</h3>
+<p class="font-label-sm text-label-sm text-outline mt-0.5">Notas rápidas, lienzo infinito y captura de ideas</p>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">
+            Captura al vuelo con atajo global, sincronización local P2P y resumen inteligente de reuniones.
+          </p>
+</div>
+<div class="flex items-center justify-between mt-space-md pt-space-sm bg-surface-container-lowest/50 -mx-space-md -mb-space-md px-space-md pb-space-md rounded-b-xl"><div class="flex items-center gap-1.5 text-outline font-code-xs text-code-xs"><span class="w-2 h-2 rounded-full bg-tertiary"></span><span class="">Instalada (95 MB)</span></div><div class="flex items-center gap-2"><button class="p-1.5 rounded-lg text-outline hover:text-error hover:bg-surface-container-high transition-colors flex items-center gap-1 font-label-sm text-label-sm" title="Desinstalar CoffeNotes" type="button"><span class="material-symbols-outlined text-[16px]">delete</span><span class="hidden sm:inline">Desinstalar</span></button><button class="bg-surface-container-high text-on-surface hover:bg-primary hover:text-on-primary font-label-sm text-label-sm font-semibold px-3 py-1.5 rounded-lg shadow-sm transition-all active:scale-95 flex items-center gap-1" type="button"><span class="">Abrir App</span><span class="material-symbols-outlined text-[14px]">launch</span></button></div></div>
+</div>
+<!-- 5. CoffeFlow -->
+<div class="group relative flex flex-col justify-between p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container transition-all shadow-md hover:-translate-y-0.5">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between">
+<div class="w-12 h-12 rounded-xl bg-surface-container-highest text-secondary-fixed flex items-center justify-center shadow-inner">
+<span class="material-symbols-outlined text-[26px]">account_tree</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="font-code-xs text-code-xs px-2 py-0.5 rounded bg-secondary-container/50 text-secondary-fixed font-bold">Beta Pro</span>
+</div>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-bold group-hover:text-primary transition-colors">CoffeFlow</h3>
+<p class="font-label-sm text-label-sm text-outline mt-0.5">Gestión de proyectos, tableros Kanban &amp; diagramas</p>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">
+            Flujos de trabajo ágiles, cronogramas Gantt visuales y sincronización directa con repositorios de tareas.
+          </p>
+</div>
+<div class="flex items-center justify-between mt-space-md pt-space-sm bg-surface-container-lowest/50 -mx-space-md -mb-space-md px-space-md pb-space-md rounded-b-xl"><div class="flex items-center gap-1.5 text-outline font-code-xs text-code-xs"><span class="material-symbols-outlined text-[15px] text-outline">cloud_download</span><span class="">Descarga: 145 MB</span></div><div class="flex items-center gap-2"><button class="bg-primary-container text-on-primary-container hover:bg-primary hover:text-on-primary font-label-sm text-label-sm font-semibold px-3.5 py-1.5 rounded-lg shadow-sm transition-all active:scale-95 flex items-center gap-1.5" type="button"><span class="material-symbols-outlined text-[16px]">download</span><span class="">Instalar Beta</span></button></div></div>
+</div>
+<!-- 6. CoffeMail & Meet -->
+<div class="group relative flex flex-col justify-between p-space-md rounded-xl bg-surface-container-low/60 hover:bg-surface-container-low transition-all shadow-md opacity-90">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start justify-between">
+<div class="w-12 h-12 rounded-xl bg-surface-container text-outline flex items-center justify-center shadow-inner">
+<span class="material-symbols-outlined text-[26px]">mark_email_read</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="font-code-xs text-code-xs px-2 py-0.5 rounded bg-surface-container-high text-outline font-medium">Próximamente</span>
+</div>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-bold">CoffeMail &amp; Meet</h3>
+<p class="font-label-sm text-label-sm text-outline mt-0.5">Centro unificado de comunicación y calendarios</p>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">
+            Bandeja unificada con triaje por IA, cifrado local de buzones y llamadas peer-to-peer sin retraso.
+          </p>
+</div>
+<div class="flex items-center justify-between mt-space-md pt-space-sm bg-surface-container-lowest/30 -mx-space-md -mb-space-md px-space-md pb-space-md rounded-b-xl"><div class="flex items-center gap-1.5 text-outline font-code-xs text-code-xs"><span class="material-symbols-outlined text-[15px] text-outline">schedule</span><span class="">Lanzamiento Q4</span></div><div class="flex items-center gap-2"><button class="bg-surface-container-high text-outline hover:text-on-surface font-label-sm text-label-sm font-medium px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5" type="button"><span class="material-symbols-outlined text-[16px]">bookmark_add</span><span class="">Pre-instalar</span></button></div></div>
+</div>
+</div>
+</section>
+<!-- Split Section: Recent Documents + Productivity Widgets -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
+<!-- Left Column (8 cols): Recent Documents & Workspaces -->
+<section class="flex flex-col gap-space-md bg-surface-container-low p-space-md rounded-xl shadow-lg lg:col-span-12">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm pb-space-xs">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[20px]">history</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface font-bold">Documentos Recientes &amp; Espacios</h2>
+</div>
+<!-- Filter Chips -->
+<div class="flex items-center gap-1 bg-surface-container p-1 rounded-lg overflow-x-auto">
+<button class="filter-btn active px-2.5 py-1 rounded font-label-sm text-label-sm bg-primary-container text-on-primary-container font-semibold transition-all" type="button">Todos</button>
+<button class="filter-btn px-2.5 py-1 rounded font-label-sm text-label-sm text-outline hover:text-on-surface hover:bg-surface-container-high transition-all" type="button">Documentos</button>
+<button class="filter-btn px-2.5 py-1 rounded font-label-sm text-label-sm text-outline hover:text-on-surface hover:bg-surface-container-high transition-all" type="button">Hojas de Cálculo</button>
+<button class="filter-btn px-2.5 py-1 rounded font-label-sm text-label-sm text-outline hover:text-on-surface hover:bg-surface-container-high transition-all" type="button">Presentaciones</button>
+<button class="filter-btn px-2.5 py-1 rounded font-label-sm text-label-sm text-outline hover:text-on-surface hover:bg-surface-container-high transition-all" type="button">Fijados</button>
+</div>
+</div>
+<!-- Recent Files List -->
+<div class="flex flex-col gap-1.5" id="recent-docs-container">
+<!-- Row 1: CoffeSheet -->
+<div class="doc-row group flex items-center justify-between p-space-sm rounded-lg bg-surface-container/60 hover:bg-surface-container transition-all cursor-pointer">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="w-9 h-9 rounded-lg bg-tertiary-container/30 text-tertiary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[20px]">table_chart</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2">
+<span class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-primary transition-colors truncate">Q3 Estrategia Financiera 2025.cfs</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-high font-code-xs text-code-xs text-tertiary">Finanzas</span>
+</div>
+<span class="font-body-sm text-body-sm text-outline">CoffeSheet • Editado hace 12 min por ti</span>
+</div>
+</div>
+<div class="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity shrink-0">
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-primary transition-colors" title="Abrir en CoffeSheet" type="button">
+<span class="material-symbols-outlined text-[18px]">open_in_new</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Compartir" type="button">
+<span class="material-symbols-outlined text-[18px]">share</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-tertiary transition-colors" title="Fijar" type="button">
+<span class="material-symbols-outlined text-[18px]">push_pin</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Más opciones" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Row 2: CoffeDoc -->
+<div class="doc-row group flex items-center justify-between p-space-sm rounded-lg bg-surface-container/60 hover:bg-surface-container transition-all cursor-pointer">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="w-9 h-9 rounded-lg bg-primary-container/20 text-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[20px]">description</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2">
+<span class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-primary transition-colors truncate">Especificación del Launcher v1.0.cfd</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-high font-code-xs text-code-xs text-primary">Producto</span>
+</div>
+<span class="font-body-sm text-body-sm text-outline">CoffeDoc • Editado hace 1 hora por ti</span>
+</div>
+</div>
+<div class="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity shrink-0">
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-primary transition-colors" title="Abrir en CoffeDoc" type="button">
+<span class="material-symbols-outlined text-[18px]">open_in_new</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Compartir" type="button">
+<span class="material-symbols-outlined text-[18px]">share</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-tertiary transition-colors" title="Fijar" type="button">
+<span class="material-symbols-outlined text-[18px]">push_pin</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Más opciones" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Row 3: CoffeSlides -->
+<div class="doc-row group flex items-center justify-between p-space-sm rounded-lg bg-surface-container/60 hover:bg-surface-container transition-all cursor-pointer">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="w-9 h-9 rounded-lg bg-secondary-container/30 text-secondary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[20px]">slideshow</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2">
+<span class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-primary transition-colors truncate">Pitch Deck para Inversores - CoffeWorks.csl</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-high font-code-xs text-code-xs text-secondary">Presentación</span>
+</div>
+<span class="font-body-sm text-body-sm text-outline">CoffeSlides • Editado ayer por ti</span>
+</div>
+</div>
+<div class="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity shrink-0">
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-primary transition-colors" title="Abrir en CoffeSlides" type="button">
+<span class="material-symbols-outlined text-[18px]">open_in_new</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Compartir" type="button">
+<span class="material-symbols-outlined text-[18px]">share</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-tertiary transition-colors" title="Fijar" type="button">
+<span class="material-symbols-outlined text-[18px]">push_pin</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Más opciones" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Row 4: CoffeNotes -->
+<div class="doc-row group flex items-center justify-between p-space-sm rounded-lg bg-surface-container/60 hover:bg-surface-container transition-all cursor-pointer">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="w-9 h-9 rounded-lg bg-tertiary-fixed-dim/20 text-tertiary-fixed-dim flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[20px]">sticky_note_2</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2">
+<span class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-primary transition-colors truncate">Ideas de Branding y Naming Suite.cfn</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-high font-code-xs text-code-xs text-primary-fixed-dim">Creativo</span>
+</div>
+<span class="font-body-sm text-body-sm text-outline">CoffeNotes • Editado hace 3 días por ti</span>
+</div>
+</div>
+<div class="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity shrink-0">
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-primary transition-colors" title="Abrir en CoffeNotes" type="button">
+<span class="material-symbols-outlined text-[18px]">open_in_new</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Compartir" type="button">
+<span class="material-symbols-outlined text-[18px]">share</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-tertiary transition-colors" title="Fijar" type="button">
+<span class="material-symbols-outlined text-[18px]">push_pin</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="Más opciones" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Footer Bar inside Recents -->
+<div class="flex items-center justify-between pt-space-xs text-outline font-body-sm text-body-sm">
+<span class="">Mostrando 4 archivos de 38 en tu bóveda local</span>
+<a class="text-primary hover:underline font-label-sm text-label-sm font-semibold flex items-center gap-1" href="#">
+<span class="">Ver carpeta de trabajo completa</span>
+<span class="material-symbols-outlined text-[14px]">arrow_right_alt</span>
+</a>
+</div>
+</section>
+<!-- Right Column (4 cols): Productivity Widgets & CoffeAI Assistant -->
+
+</div>
+<!-- Micro-interactions Script -->
+<script>
+    (function() {
+      // Toggle new doc dropdown
+      const newDocBtn = document.getElementById('btn-new-doc');
+      const newDocMenu = document.getElementById('new-doc-menu');
+      
+      if (newDocBtn && newDocMenu) {
+        newDocBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          newDocMenu.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', () => {
+          if (!newDocMenu.classList.contains('hidden')) {
+            newDocMenu.classList.add('hidden');
+          }
+        });
+      }
+
+      // Filter chips toggle
+      const filterBtns = document.querySelectorAll('.filter-btn');
+      filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          filterBtns.forEach(b => {
+            b.classList.remove('bg-primary-container', 'text-on-primary-container', 'font-semibold');
+            b.classList.add('text-outline');
+          });
+          btn.classList.remove('text-outline');
+          btn.classList.add('bg-primary-container', 'text-on-primary-container', 'font-semibold');
+        });
+      });
+
+      // Quick prompt suggestion fill
+      const promptInput = document.getElementById('ai-prompt-input');
+      const promptChips = document.querySelectorAll('.prompt-chip');
+      promptChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+          if (promptInput) {
+            promptInput.value = chip.textContent.trim().replace(/^[^a-zA-ZáéíóúÁÉÍÓÚ]+/, '');
+            promptInput.focus();
+          }
+        });
+      });
+    })();
+  </script>
+</div></main></div>
+
+</body></html>

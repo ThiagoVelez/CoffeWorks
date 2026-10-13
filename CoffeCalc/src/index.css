@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    margin: 0;
+    padding: 0;
+    background-color: #ffffff;
+    color: #201f1e;
+    font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  code, kbd, pre {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+/* Scrollbars discretos estilo Excel */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f8f9fa;
+  border-left: 1px solid #e1dfdd;
+  border-top: 1px solid #e1dfdd;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c8c6c4;
+  border: 2px solid #f8f9fa;
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8a8886;
+}
+
+/* Borde de la celda activa estilo Excel con tirador de esquina */
+.excel-cell-active {
+  outline: 2px solid #107c41 !important;
+  outline-offset: -1px;
+  z-index: 20;
+}
+
+/* Tirador de autollenado (fill handle) de Excel en la esquina inferior derecha */
+.excel-fill-handle {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 7px;
+  height: 7px;
+  background-color: #107c41;
+  border: 1px solid #ffffff;
+  cursor: crosshair;
+  z-index: 25;
+}
+
+/* Rango de selección */
+.excel-cell-selected {
+  background-color: rgba(16, 124, 65, 0.08) !important;
+}
+
+/* Animación de guardado */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 1.8s infinite ease-in-out;
+}

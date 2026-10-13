@@ -1,0 +1,251 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    margin: 0;
+    padding: 0;
+    background-color: #161311;
+    color: #eae0dd;
+    font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+    overflow: hidden;
+  }
+
+  code, kbd, pre {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+/* Región de arrastre para ventana Tauri */
+[data-tauri-drag-region] {
+  -webkit-app-region: drag;
+}
+
+button, input, select, [contenteditable="true"] {
+  -webkit-app-region: no-drag;
+}
+
+/* Scrollbar sutil */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #393431;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #534438;
+}
+
+/* Estilos de edición para modo oscuro */
+.coffedoc-dark {
+  color: #eae0dd;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.coffedoc-dark h1 {
+  font-size: 2.25rem;
+  line-height: 2.5rem;
+  font-weight: 700;
+  color: #ffb77d;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.02em;
+}
+
+.coffedoc-dark h2 {
+  font-size: 1.6rem;
+  line-height: 2rem;
+  font-weight: 600;
+  color: #ebbf88;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.01em;
+}
+
+.coffedoc-dark h3 {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  font-weight: 600;
+  color: #ffb68c;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.coffedoc-dark p {
+  font-size: 1rem;
+  line-height: 1.75;
+  margin-bottom: 1rem;
+  color: #d9c2b3;
+}
+
+.coffedoc-dark blockquote {
+  border-left: 3px solid #e08e45;
+  padding-left: 1rem;
+  margin: 1.25rem 0;
+  font-style: italic;
+  color: #ebbf88;
+  background: rgba(224, 142, 69, 0.08);
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-radius: 0 0.375rem 0.375rem 0;
+}
+
+.coffedoc-dark pre {
+  background: #110d0b;
+  color: #ffb77d;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+  border: 1px solid #393431;
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+
+.coffedoc-dark code {
+  background: #2e2927;
+  color: #ffb77d;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.25rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85em;
+}
+
+.coffedoc-dark hr {
+  border: none;
+  border-top: 1px solid #393431;
+  margin: 1.5rem 0;
+}
+
+.coffedoc-dark table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.25rem 0;
+}
+
+.coffedoc-dark th, .coffedoc-dark td {
+  border: 1px solid #393431;
+  padding: 0.6rem 0.8rem;
+  text-align: left;
+}
+
+.coffedoc-dark th {
+  background: #231f1d;
+  color: #ffb77d;
+  font-weight: 600;
+}
+
+/* Estilos de edición para modo papel blanco */
+.coffedoc-light {
+  color: #1e1e1e;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.coffedoc-light h1 {
+  font-size: 2.25rem;
+  line-height: 2.5rem;
+  font-weight: 700;
+  color: #111;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.02em;
+}
+
+.coffedoc-light h2 {
+  font-size: 1.6rem;
+  line-height: 2rem;
+  font-weight: 600;
+  color: #2b2b2b;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.coffedoc-light h3 {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  font-weight: 600;
+  color: #444;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.coffedoc-light p {
+  font-size: 1rem;
+  line-height: 1.75;
+  margin-bottom: 1rem;
+  color: #2e2e2e;
+}
+
+.coffedoc-light blockquote {
+  border-left: 3px solid #e08e45;
+  padding-left: 1rem;
+  margin: 1.25rem 0;
+  font-style: italic;
+  color: #665241;
+  background: rgba(224, 142, 69, 0.06);
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-radius: 0 0.375rem 0.375rem 0;
+}
+
+.coffedoc-light pre {
+  background: #f5f3f0;
+  color: #111;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+  border: 1px solid #ddd;
+  margin: 1rem 0;
+}
+
+.coffedoc-light table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.25rem 0;
+}
+
+.coffedoc-light th, .coffedoc-light td {
+  border: 1px solid #ddd;
+  padding: 0.6rem 0.8rem;
+  text-align: left;
+}
+
+.coffedoc-light th {
+  background: #f7f5f2;
+  font-weight: 600;
+}
+
+/* Reglas de impresión / Exportar a PDF */
+@media print {
+  header, .sticky, aside, footer {
+    display: none !important;
+  }
+
+  body, html {
+    background: white !important;
+    color: black !important;
+    overflow: visible !important;
+  }
+
+  .w-\[794px\] {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+}

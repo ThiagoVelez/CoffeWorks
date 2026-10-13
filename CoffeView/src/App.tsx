@@ -1,0 +1,448 @@
+import React, { useState, useEffect, useCallback } from "react";
+import { TitleBar } from "./components/TitleBar";
+import { PowerPointRibbon } from "./components/PowerPointRibbon";
+import { SlideThumbnails } from "./components/SlideThumbnails";
+import { SlideCanvas } from "./components/SlideCanvas";
+import { SpeakerNotes } from "./components/SpeakerNotes";
+import { PresentationMode } from "./components/PresentationMode";
+import { ExportModal } from "./components/ExportModal";
+import {
+  presentationVault,
+  SLIDE_THEMES,
+  createSlideForLayout,
+} from "./services/presentationVault";
+import type {
+  PresentationMetadata,
+  Slide,
+  SlideTheme,
+  PowerPointRibbonTab,
+  SlideLayout,
+  SlideTransition,
+  SlideElement,
+  ShapeType,
+} from "./types";
+
+export const App: React.FC = () => {
+  const [metadata, setMetadata] = useState<PresentationMetadata>({
+    id: "pres_1",
+    title: "Presentación1",
+    author: "Usuario CoffeWorks",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    themeId: "theme_espresso",
+  });
+
+  const [slides, setSlides] = useState<Slide[]>([]);
+  const [activeSlideId, setActiveSlideId] = useState<string>("slide_1");
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<PowerPointRibbonTab>("inicio");
+  const [showNotes, setShowNotes] = useState<boolean>(true);
+  const [isPresentationMode, setIsPresentationMode] = useState<boolean>(false);
+  const [exportModalOpen, setExportModalOpen] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+
+  // Historial para Deshacer / Rehacer
+  const [history, setHistory] = useState<Slide[][]>([]);
+  const [historyIndex, setHistoryIndex] = useState<number>(-1);
+
+  // Carga inicial
+  useEffect(() => {
+    const loaded = presentationVault.loadPresentation();
+    setMetadata(loaded.metadata);
+    setSlides(loaded.slides);
+    setActiveSlideId(loaded.activeSlideId);
+    setHistory([loaded.slides]);
+    setHistoryIndex(0);
+  }, []);
+
+  const currentTheme =
+    SLIDE_THEMES.find((th) => th.id === metadata.themeId) || SLIDE_THEMES[0];
+
+  const activeSlide =
+    slides.find((s) => s.id === activeSlideId) || slides[0] || {
+      id: "slide_1",
+      slideNumber: 1,
+      layout: "title",
+      transition: "fade",
+      notes: "",
+      elements: [],
+    };
+
+  // Guardar y sincronizar
+  const updateSlides = useCallback(
+    (nextSlides: Slide[]) => {
+      setSlides(nextSlides);
+      presentationVault.savePresentation(metadata, nextSlides, activeSlideId);
+
+      // Registrar en historial
+      setHistory((prev) => {
+        const trimmed = prev.slice(0, historyIndex + 1);
+        return [...trimmed, nextSlides];
+      });
+      setHistoryIndex((prev) => prev + 1);
+    },
+    [metadata, activeSlideId, historyIndex]
+  );
+
+  const handleManualSave = () => {
+    setIsSaving(true);
+    presentationVault.savePresentation(metadata, slides, activeSlideId);
+    setTimeout(() => setIsSaving(false), 600);
+  };
+
+  // Deshacer / Rehacer
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      const prevSlides = history[historyIndex - 1];
+      setHistoryIndex((prev) => prev - 1);
+      setSlides(prevSlides);
+    }
+  };
+
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1) {
+      const nextSlides = history[historyIndex + 1];
+      setHistoryIndex((prev) => prev + 1);
+      setSlides(nextSlides);
+    }
+  };
+
+  // Atajo de teclado global: F5 para presentar, Escape para salir, Ctrl+S
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "F5") {
+        e.preventDefault();
+        setIsPresentationMode(true);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        handleManualSave();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        if (e.shiftKey) handleRedo();
+        else handleUndo();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") {
+        e.preventDefault();
+        handleRedo();
+      } else if (
+        (e.key === "Delete" || e.key === "Backspace") &&
+        selectedElementId &&
+        !isPresentationMode
+      ) {
+        const target = e.target as HTMLElement | null;
+        const isEditingText =
+          target &&
+          (target.tagName === "INPUT" ||
+            target.tagName === "TEXTAREA" ||
+            target.isContentEditable);
+        if (!isEditingText) {
+          e.preventDefault();
+          handleDeleteElement();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedElementId, isPresentationMode, historyIndex, history]);
+
+  // Gestión de diapositivas
+  const handleAddSlide = (layout: SlideLayout = "title-content") => {
+    const newSlide = createSlideForLayout(layout, slides.length + 1);
+    const updated = [...slides, newSlide].map((s, idx) => ({
+      ...s,
+      slideNumber: idx + 1,
+    }));
+    updateSlides(updated);
+    setActiveSlideId(newSlide.id);
+    setSelectedElementId(null);
+  };
+
+  const handleDuplicateSlide = (id: string = activeSlideId) => {
+    const target = slides.find((s) => s.id === id);
+    if (!target) return;
+
+    const duplicated: Slide = {
+      ...target,
+      id: `slide_${Date.now()}`,
+      elements: target.elements.map((el) => ({
+        ...el,
+        id: `el_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      })),
+    };
+
+    const targetIdx = slides.findIndex((s) => s.id === id);
+    const updated = [
+      ...slides.slice(0, targetIdx + 1),
+      duplicated,
+      ...slides.slice(targetIdx + 1),
+    ].map((s, idx) => ({ ...s, slideNumber: idx + 1 }));
+
+    updateSlides(updated);
+    setActiveSlideId(duplicated.id);
+  };
+
+  const handleDeleteSlide = (id: string = activeSlideId) => {
+    if (slides.length <= 1) return;
+    const filtered = slides
+      .filter((s) => s.id !== id)
+      .map((s, idx) => ({ ...s, slideNumber: idx + 1 }));
+    updateSlides(filtered);
+    setActiveSlideId(filtered[0]?.id || "slide_1");
+    setSelectedElementId(null);
+  };
+
+  const handleMoveSlide = (index: number, direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= slides.length) return;
+
+    const nextSlides = [...slides];
+    const temp = nextSlides[index];
+    nextSlides[index] = nextSlides[targetIndex];
+    nextSlides[targetIndex] = temp;
+
+    const renumbered = nextSlides.map((s, idx) => ({ ...s, slideNumber: idx + 1 }));
+    updateSlides(renumbered);
+  };
+
+  // Modificación de elementos dentro de la diapositiva activa
+  const handleUpdateElement = (id: string, updates: Partial<SlideElement>) => {
+    const updatedSlides = slides.map((s) => {
+      if (s.id !== activeSlideId) return s;
+      return {
+        ...s,
+        elements: s.elements.map((el) => (el.id === id ? { ...el, ...updates } : el)),
+      };
+    });
+    updateSlides(updatedSlides);
+  };
+
+  const handleDeleteElement = () => {
+    if (!selectedElementId) return;
+    const updatedSlides = slides.map((s) => {
+      if (s.id !== activeSlideId) return s;
+      return {
+        ...s,
+        elements: s.elements.filter((el) => el.id !== selectedElementId),
+      };
+    });
+    updateSlides(updatedSlides);
+    setSelectedElementId(null);
+  };
+
+  const handleAddText = () => {
+    const newEl: SlideElement = {
+      id: `el_${Date.now()}`,
+      type: "text",
+      x: 25,
+      y: 40,
+      width: 50,
+      height: 20,
+      content: "Cuadro de texto nuevo",
+      fontSize: 20,
+      fontWeight: "normal",
+      align: "center",
+      color: currentTheme.textColor,
+    };
+
+    const updatedSlides = slides.map((s) => {
+      if (s.id !== activeSlideId) return s;
+      return { ...s, elements: [...s.elements, newEl] };
+    });
+
+    updateSlides(updatedSlides);
+    setSelectedElementId(newEl.id);
+  };
+
+  const handleAddShape = (shape: ShapeType) => {
+    const newEl: SlideElement = {
+      id: `el_${Date.now()}`,
+      type: "shape",
+      shapeType: shape,
+      x: 35,
+      y: 35,
+      width: 30,
+      height: 25,
+      content: shape === "star" ? "★" : "",
+      align: "center",
+      bg: currentTheme.accentColor,
+      color: "#ffffff",
+    };
+
+    const updatedSlides = slides.map((s) => {
+      if (s.id !== activeSlideId) return s;
+      return { ...s, elements: [...s.elements, newEl] };
+    });
+
+    updateSlides(updatedSlides);
+    setSelectedElementId(newEl.id);
+  };
+
+  // Formato del elemento seleccionado
+  const modifySelectedElement = (updater: (prev: SlideElement) => SlideElement) => {
+    if (!selectedElementId) return;
+    const updatedSlides = slides.map((s) => {
+      if (s.id !== activeSlideId) return s;
+      return {
+        ...s,
+        elements: s.elements.map((el) =>
+          el.id === selectedElementId ? updater(el) : el
+        ),
+      };
+    });
+    updateSlides(updatedSlides);
+  };
+
+  const handleToggleBold = () => {
+    modifySelectedElement((el) => ({
+      ...el,
+      fontWeight: el.fontWeight === "bold" ? "normal" : "bold",
+    }));
+  };
+
+  const handleToggleItalic = () => {
+    modifySelectedElement((el) => ({
+      ...el,
+      fontStyle: el.fontStyle === "italic" ? "normal" : "italic",
+    }));
+  };
+
+  const handleToggleUnderline = () => {
+    modifySelectedElement((el) => ({
+      ...el,
+      underline: !el.underline,
+    }));
+  };
+
+  const handleSetAlign = (align: "left" | "center" | "right" | "justify") => {
+    modifySelectedElement((el) => ({ ...el, align }));
+  };
+
+  const handleSelectTheme = (theme: SlideTheme) => {
+    const updatedMeta = { ...metadata, themeId: theme.id };
+    setMetadata(updatedMeta);
+    presentationVault.savePresentation(updatedMeta, slides, activeSlideId);
+  };
+
+  const handleSelectTransition = (transition: SlideTransition) => {
+    const updatedSlides = slides.map((s) =>
+      s.id === activeSlideId ? { ...s, transition } : s
+    );
+    updateSlides(updatedSlides);
+  };
+
+  const handleChangeNotes = (notes: string) => {
+    const updatedSlides = slides.map((s) =>
+      s.id === activeSlideId ? { ...s, notes } : s
+    );
+    updateSlides(updatedSlides);
+  };
+
+  return (
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-white select-none">
+      {/* 1. Barra de título estilo PowerPoint */}
+      <TitleBar
+        title={metadata.title}
+        onTitleChange={(title) => {
+          const next = { ...metadata, title };
+          setMetadata(next);
+          presentationVault.savePresentation(next, slides, activeSlideId);
+        }}
+        onSave={handleManualSave}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onStartPresentation={() => setIsPresentationMode(true)}
+        onOpenExport={() => setExportModalOpen(true)}
+        isSaving={isSaving}
+      />
+
+      {/* 2. Cinta Ribbon completa de Microsoft PowerPoint */}
+      <PowerPointRibbon
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+        onNewPresentation={() => {
+          if (confirm("¿Crear una nueva presentación en blanco?")) {
+            localStorage.removeItem("coffeview_active_presentation");
+            window.location.reload();
+          }
+        }}
+        onSave={handleManualSave}
+        onOpenExport={() => setExportModalOpen(true)}
+        onStartPresentation={() => setIsPresentationMode(true)}
+        onAddSlide={handleAddSlide}
+        onDeleteSlide={() => handleDeleteSlide(activeSlideId)}
+        onDuplicateSlide={() => handleDuplicateSlide(activeSlideId)}
+        onAddText={handleAddText}
+        onAddShape={handleAddShape}
+        currentTheme={currentTheme}
+        onSelectTheme={handleSelectTheme}
+        currentTransition={activeSlide.transition}
+        onSelectTransition={handleSelectTransition}
+        selectedElementId={selectedElementId}
+        onToggleBold={handleToggleBold}
+        onToggleItalic={handleToggleItalic}
+        onToggleUnderline={handleToggleUnderline}
+        onSetAlign={handleSetAlign}
+        onDeleteElement={handleDeleteElement}
+        showNotes={showNotes}
+        onToggleNotes={() => setShowNotes(!showNotes)}
+      />
+
+      {/* 3. Área de trabajo principal */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Panel lateral de miniaturas */}
+        <SlideThumbnails
+          slides={slides}
+          activeSlideId={activeSlideId}
+          onSelectSlide={(id) => {
+            setActiveSlideId(id);
+            setSelectedElementId(null);
+          }}
+          onAddSlide={() => handleAddSlide("title-content")}
+          onDuplicateSlide={handleDuplicateSlide}
+          onDeleteSlide={handleDeleteSlide}
+          onMoveSlide={handleMoveSlide}
+          currentTheme={currentTheme}
+        />
+
+        {/* Lienzo central de diapositiva y notas */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <SlideCanvas
+            slide={activeSlide}
+            theme={currentTheme}
+            selectedElementId={selectedElementId}
+            onSelectElement={setSelectedElementId}
+            onUpdateElement={handleUpdateElement}
+          />
+
+          {/* Panel inferior de notas del orador */}
+          {showNotes && (
+            <SpeakerNotes
+              notes={activeSlide.notes || ""}
+              onChangeNotes={handleChangeNotes}
+              onClose={() => setShowNotes(false)}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Modo presentación a pantalla completa (F5) */}
+      {isPresentationMode && (
+        <PresentationMode
+          slides={slides}
+          initialSlideIndex={slides.findIndex((s) => s.id === activeSlideId)}
+          theme={currentTheme}
+          onExit={() => setIsPresentationMode(false)}
+        />
+      )}
+
+      {/* Modal de exportación */}
+      <ExportModal
+        isOpen={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        metadata={metadata}
+        slides={slides}
+        theme={currentTheme}
+      />
+    </div>
+  );
+};
