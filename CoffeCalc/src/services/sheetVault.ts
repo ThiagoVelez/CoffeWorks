@@ -1,7 +1,7 @@
 // Servicio de almacenamiento y persistencia para CoffeCalc (sincronizado con la suite CoffeWorks)
 import * as XLSX from "xlsx";
 import type { Sheet, WorkbookMetadata, CellData } from "../types";
-import { computeCellValue } from "./formulaEngine";
+import { computeCellValue, colIndexToName, parseCellKey } from "./formulaEngine";
 
 const STORAGE_KEY = "coffecalc_active_workbook";
 
@@ -173,72 +173,172 @@ export const sheetVault = {
     return rows.map((r) => r.join(",")).join("\n");
   },
 
-  // Exportar a archivo nativo .xlsx de Microsoft Excel
-  exportToXLSX(sheet: Sheet, filename: string): void {
+  // Exportar todas las hojas a archivo .xlsx nativo de Microsoft Excel
+  exportWorkbookToXLSX(sheets: Sheet[], filename: string): void {
     const wb = XLSX.utils.book_new();
-    const wsData: Record<string, unknown> = {};
 
-    // Mapear celdas al formato de SheetJS
-    const maxRow = 100;
-    const maxCol = 26;
-    for (let r = 1; r <= maxRow; r++) {
-      for (let c = 0; c < maxCol; c++) {
-        const colLetter = String.fromCharCode(65 + c);
-        const key = `${colLetter}${r}`;
-        const cell = sheet.data[key];
+    for (const sheet of sheets) {
+      const wsData: Record<string, unknown> = {};
+      let maxR = 1;
+      let maxC = 0;
+
+      for (const [key, cell] of Object.entries(sheet.data)) {
+        const parsed = parseCellKey(key);
+        if (parsed) {
+          if (parsed.row + 1 > maxR) maxR = parsed.row + 1;
+          if (parsed.col > maxC) maxC = parsed.col;
+        }
+
         if (cell && (cell.raw || cell.computed !== undefined)) {
           const val = cell.computed !== undefined ? cell.computed : cell.raw;
-          if (typeof val === "number") {
+          if (cell.raw && cell.raw.startsWith("=")) {
+            wsData[key] = {
+              t: typeof cell.computed === "number" ? "n" : "s",
+              f: cell.raw.substring(1),
+              v: cell.computed,
+            };
+          } else if (typeof val === "number") {
             wsData[key] = { t: "n", v: val };
-          } else if (cell.raw && cell.raw.startsWith("=")) {
-            wsData[key] = { t: "n", f: cell.raw.substring(1), v: cell.computed };
           } else {
             wsData[key] = { t: "s", v: String(val) };
           }
         }
       }
+
+      const endColName = colIndexToName(Math.max(25, maxC));
+      const endRowNum = Math.max(100, maxR);
+      wsData["!ref"] = `A1:${endColName}${endRowNum}`;
+      XLSX.utils.book_append_sheet(wb, wsData as unknown as XLSX.WorkSheet, sheet.name || "Hoja1");
     }
 
-    // Configurar rango de la hoja
-    wsData["!ref"] = "A1:Z100";
-    XLSX.utils.book_append_sheet(wb, wsData as unknown as XLSX.WorkSheet, sheet.name || "Hoja1");
     const safeName = filename.endsWith(".xlsx") ? filename : `${filename}.xlsx`;
     XLSX.writeFile(wb, safeName);
   },
 
-  // Importar desde archivo binario .xlsx, .xls o texto .csv
-  importSpreadsheetFile(arrayBuffer: ArrayBuffer, filename: string): Record<string, CellData> {
+  // Exportar a archivo nativo .xlsx (compatibilidad monohipótesis)
+  exportToXLSX(sheet: Sheet, filename: string): void {
+    this.exportWorkbookToXLSX([sheet], filename);
+  },
+
+  // Importar libro completo con todas sus hojas (multi-pestaña) desde .xlsx, .xls o binario
+  importFullWorkbook(
+    arrayBuffer: ArrayBuffer,
+    filename: string
+  ): { metadata: WorkbookMetadata; sheets: Sheet[]; activeSheetId: string } {
     const isBinary = filename.endsWith(".xlsx") || filename.endsWith(".xls");
     const wb = isBinary
-      ? XLSX.read(arrayBuffer, { type: "array" })
+      ? XLSX.read(arrayBuffer, {
+          type: "array",
+          cellDates: true,
+          cellFormula: true,
+          cellStyles: true,
+        })
       : XLSX.read(new Uint8Array(arrayBuffer), { type: "array" });
 
-    const firstSheetName = wb.SheetNames[0];
-    if (!firstSheetName) return {};
+    const baseTitle = filename.replace(/\.[^/.]+$/, "");
+    const metadata: WorkbookMetadata = {
+      id: `cfs_${Date.now()}`,
+      title: baseTitle || "Libro1",
+      author: "Usuario CoffeWorks",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
 
-    const ws = wb.Sheets[firstSheetName];
-    const data: Record<string, CellData> = {};
-
-    for (const key of Object.keys(ws)) {
-      if (key.startsWith("!")) continue;
-      const cellObj = ws[key];
-      if (!cellObj) continue;
-
-      const formula = cellObj.f ? `=${cellObj.f}` : undefined;
-      const val = cellObj.v;
-      const raw = formula || (val !== undefined && val !== null ? String(val) : "");
-
-      const isNum = typeof val === "number" || (!isNaN(Number(raw)) && !raw.startsWith("="));
-
-      data[key.toUpperCase()] = {
-        raw,
-        computed: val !== undefined ? val : raw,
-        align: isNum ? "right" : "left",
-        format: isNum ? "number" : "general",
-      };
+    if (!wb.SheetNames || wb.SheetNames.length === 0) {
+      return createDefaultWorkbook();
     }
 
-    return data;
+    const sheets: Sheet[] = wb.SheetNames.map((sheetName, index) => {
+      const ws = wb.Sheets[sheetName];
+      const data: Record<string, CellData> = {};
+      const colWidths: Record<string, number> = {};
+
+      if (ws) {
+        // Leer anchos de columnas personalizados si el archivo los especifica
+        if (Array.isArray(ws["!cols"])) {
+          ws["!cols"].forEach((col, idx) => {
+            if (col && (col.wpx || col.wch)) {
+              const colName = colIndexToName(idx);
+              const width = col.wpx
+                ? Math.round(col.wpx)
+                : Math.min(350, Math.max(70, Math.round((col.wch || 10) * 8 + 15)));
+              colWidths[colName] = width;
+            }
+          });
+        }
+
+        // Leer todas las celdas de la hoja
+        for (const key of Object.keys(ws)) {
+          if (key.startsWith("!")) continue;
+          const cellObj = ws[key];
+          if (!cellObj) continue;
+
+          let raw = "";
+          let computed: string | number | undefined = undefined;
+
+          // Si contiene fórmula
+          if (cellObj.f) {
+            raw = `=${cellObj.f}`;
+            if (cellObj.v !== undefined && cellObj.v !== null) {
+              computed = cellObj.v;
+            } else if (cellObj.w !== undefined) {
+              computed = cellObj.w;
+            }
+          } else if (cellObj.w !== undefined && cellObj.w !== null && cellObj.w !== "") {
+            raw = String(cellObj.w);
+            computed = cellObj.v !== undefined ? cellObj.v : cellObj.w;
+          } else if (cellObj.v !== undefined && cellObj.v !== null) {
+            raw = String(cellObj.v);
+            computed = cellObj.v;
+          }
+
+          const isNum =
+            typeof computed === "number" ||
+            (!isNaN(Number(raw)) && raw.trim() !== "" && !raw.startsWith("="));
+
+          let format: "general" | "currency" | "percent" | "number" = "general";
+          if (typeof cellObj.z === "string") {
+            const zLower = cellObj.z.toLowerCase();
+            if (
+              zLower.includes("$") ||
+              zLower.includes("cop") ||
+              zLower.includes("€") ||
+              zLower.includes("usd")
+            ) {
+              format = "currency";
+            } else if (zLower.includes("%")) {
+              format = "percent";
+            }
+          }
+
+          data[key.toUpperCase()] = {
+            raw,
+            computed: computed !== undefined ? computed : raw,
+            align: isNum ? "right" : "left",
+            format,
+          };
+        }
+      }
+
+      return {
+        id: `sheet_${Date.now()}_${index}`,
+        name: sheetName,
+        data,
+        colWidths,
+      };
+    });
+
+    return {
+      metadata,
+      sheets,
+      activeSheetId: sheets[0]?.id || "sheet_1",
+    };
+  },
+
+  // Importar desde archivo binario .xlsx, .xls o texto .csv (compatibilidad con hoja simple)
+  importSpreadsheetFile(arrayBuffer: ArrayBuffer, filename: string): Record<string, CellData> {
+    const wb = this.importFullWorkbook(arrayBuffer, filename);
+    return wb.sheets[0]?.data || {};
   },
 
   // Importar contenido de CSV plano

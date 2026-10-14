@@ -1,18 +1,20 @@
 import React, { useState } from "react";
 import { X, Upload, FileText, CheckCircle2 } from "lucide-react";
 import { sheetVault } from "../services/sheetVault";
-import type { CellData } from "../types";
+import type { CellData, Sheet, WorkbookMetadata } from "../types";
 
 interface ImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onApplyImport: (importedData: Record<string, CellData>) => void;
+  onImportWorkbook?: (workbook: { metadata: WorkbookMetadata; sheets: Sheet[]; activeSheetId: string }) => void;
 }
 
 export const ImportModal: React.FC<ImportModalProps> = ({
   isOpen,
   onClose,
   onApplyImport,
+  onImportWorkbook,
 }) => {
   const [csvText, setCsvText] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -28,8 +30,13 @@ export const ImportModal: React.FC<ImportModalProps> = ({
     if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
       try {
         const buffer = await file.arrayBuffer();
-        const data = sheetVault.importSpreadsheetFile(buffer, file.name);
-        onApplyImport(data);
+        if (onImportWorkbook) {
+          const wb = sheetVault.importFullWorkbook(buffer, file.name);
+          onImportWorkbook(wb);
+        } else {
+          const data = sheetVault.importSpreadsheetFile(buffer, file.name);
+          onApplyImport(data);
+        }
         onClose();
       } catch (err) {
         console.error("Error al importar XLSX:", err);
@@ -87,17 +94,17 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         {/* Cuerpo */}
         <div className="p-5 flex flex-col gap-4 text-xs">
           <div className="flex flex-col gap-1.5">
-            <label className="font-semibold text-gray-700">Subir archivo .csv desde tu equipo:</label>
+            <label className="font-semibold text-gray-700">Subir archivo Excel (.xlsx, .xls) o .csv desde tu equipo:</label>
             <label className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-xl hover:border-[#107c41] bg-gray-50 hover:bg-[#dff6dd]/20 cursor-pointer transition-colors text-center">
               <input
                 type="file"
-                accept=".csv,text/csv"
+                accept=".xlsx,.xls,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 onChange={handleFileUpload}
                 className="hidden"
               />
               <div className="flex flex-col items-center gap-1.5 text-gray-600">
                 <FileText size={22} className="text-[#107c41]" />
-                <span className="font-medium">Haz clic aquí para seleccionar archivo CSV</span>
+                <span className="font-medium">Haz clic aquí para seleccionar archivo Excel o CSV</span>
               </div>
             </label>
           </div>

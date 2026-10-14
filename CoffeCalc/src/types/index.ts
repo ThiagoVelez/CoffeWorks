@@ -59,6 +59,7 @@ export interface SelectionStats {
 export type ExcelRibbonTab =
   | "inicio"
   | "insertar"
+  | "dibujar"
   | "disposicion"
   | "formulas"
   | "datos"

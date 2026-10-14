@@ -192,29 +192,97 @@ export const documentVault = {
     URL.revokeObjectURL(url);
   },
 
-  // Importar archivo de Word (.docx), texto (.txt, .md) o nativo (.cfd)
+  // Importar archivo de Word (.docx), texto (.txt, .md), HTML (.html) o nativo (.cfd)
   async importDocumentFile(file: File): Promise<{ content: string; title: string }> {
     const title = file.name.replace(/\.[^/.]+$/, "");
+    const lowerName = file.name.toLowerCase();
 
-    if (file.name.endsWith(".docx")) {
-      const mammoth = await import("mammoth");
-      const buffer = await file.arrayBuffer();
-      const result = await mammoth.convertToHtml({ arrayBuffer: buffer });
-      return { content: result.value || "<p></p>", title };
+    // 1. Si es archivo .docx
+    if (lowerName.endsWith(".docx")) {
+      try {
+        const buffer = await file.arrayBuffer();
+        const uint8 = new Uint8Array(buffer);
+
+        // Verificar si es un archivo ZIP binario (PKZip estándar para Word .docx: firmas 0x50, 0x4B)
+        const isZip = uint8.length >= 4 && uint8[0] === 0x50 && uint8[1] === 0x4b;
+
+        if (isZip) {
+          try {
+            const mammoth = await import("mammoth");
+            const result = await mammoth.convertToHtml({ arrayBuffer: buffer });
+            if (result.value && result.value.trim().length > 0) {
+              return { content: result.value, title };
+            }
+          } catch (mammothErr) {
+            console.warn("Fallo en conversor Mammoth, usando fallback a texto/HTML:", mammothErr);
+          }
+        }
+
+        // Si no es un ZIP o Mammoth falló, decodificar como texto (p.ej. exportado por CoffeDoc en HTML)
+        const text = new TextDecoder("utf-8").decode(buffer);
+        if (text.includes("<html") || text.includes("<body") || text.includes("<p") || text.includes("<div") || text.includes("<table")) {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(text, "text/html");
+          const bodyHtml = doc.body ? doc.body.innerHTML : text;
+          if (bodyHtml && bodyHtml.trim().length > 0) {
+            return { content: bodyHtml, title };
+          }
+        }
+
+        // Si es texto plano dentro de un contenedor .docx
+        if (text.trim().length > 0) {
+          const formatted = text
+            .split(/\r?\n\r?\n/)
+            .map((para) => `<p>${para.replace(/\r?\n/g, "<br/>")}</p>`)
+            .join("");
+          return { content: formatted, title };
+        }
+      } catch (err) {
+        console.error("Error al procesar archivo .docx:", err);
+      }
     }
 
-    if (file.name.endsWith(".cfd") || file.name.endsWith(".json")) {
-      const text = await file.text();
+    // 2. Si es archivo nativo .cfd o .json
+    if (lowerName.endsWith(".cfd") || lowerName.endsWith(".json")) {
       try {
+        const text = await file.text();
         const parsed = JSON.parse(text);
         if (parsed.content) {
           return { content: parsed.content, title: parsed.metadata?.title || title };
         }
       } catch {
+        // Fallback a texto plano
+      }
+    }
+
+    // 3. Si es archivo .html o .htm
+    if (lowerName.endsWith(".html") || lowerName.endsWith(".htm")) {
+      try {
+        const text = await file.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, "text/html");
+        return { content: doc.body ? doc.body.innerHTML : text, title };
+      } catch {
         // Fallback a texto
       }
     }
 
+    // 4. Si es Markdown (.md)
+    if (lowerName.endsWith(".md")) {
+      const rawText = await file.text();
+      const html = rawText
+        .replace(/^### (.*$)/gim, "<h3>$1</h3>")
+        .replace(/^## (.*$)/gim, "<h2>$1</h2>")
+        .replace(/^# (.*$)/gim, "<h1>$1</h1>")
+        .replace(/\*\*(.*?)\*\*/gim, "<strong>$1</strong>")
+        .replace(/\*(.*?)\*/gim, "<em>$1</em>")
+        .split(/\r?\n\r?\n/)
+        .map((p) => (p.startsWith("<h") ? p : `<p>${p.replace(/\r?\n/g, "<br/>")}</p>`))
+        .join("");
+      return { content: html, title };
+    }
+
+    // 5. Fallback general a texto plano
     const rawText = await file.text();
     const formattedHtml = rawText
       .split(/\r?\n\r?\n/)

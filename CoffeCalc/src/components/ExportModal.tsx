@@ -8,6 +8,7 @@ interface ExportModalProps {
   onClose: () => void;
   metadata: WorkbookMetadata;
   activeSheet: Sheet;
+  sheets?: Sheet[];
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
@@ -15,6 +16,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   onClose,
   metadata,
   activeSheet,
+  sheets,
 }) => {
   const [copied, setCopied] = useState(false);
   const [format, setFormat] = useState<"xlsx" | "csv" | "cfs" | "json">("xlsx");
@@ -22,7 +24,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   if (!isOpen) return null;
 
   const csvContent = sheetVault.exportToCSV(activeSheet);
-  const jsonContent = JSON.stringify({ metadata, sheet: activeSheet }, null, 2);
+  const jsonContent = JSON.stringify({ metadata, sheets: sheets || [activeSheet] }, null, 2);
 
   const getExportData = () => {
     if (format === "xlsx") return "Archivo binario de Microsoft Excel (.xlsx)";
@@ -32,7 +34,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
   const handleDownload = () => {
     if (format === "xlsx") {
-      sheetVault.exportToXLSX(activeSheet, metadata.title);
+      const allSheets = sheets && sheets.length > 0 ? sheets : [activeSheet];
+      sheetVault.exportWorkbookToXLSX(allSheets, metadata.title);
       return;
     }
     const data = getExportData();

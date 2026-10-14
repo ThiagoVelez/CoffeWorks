@@ -9,6 +9,7 @@ import { ExportModal } from "./components/ExportModal";
 import { FindReplaceModal } from "./components/FindReplaceModal";
 import { WordCountModal } from "./components/WordCountModal";
 import { HelpModal } from "./components/HelpModal";
+import { StartScreen } from "./components/StartScreen";
 import { documentVault } from "./services/documentVault";
 import type {
   DocumentMetadata,
@@ -33,6 +34,7 @@ export const App: React.FC = () => {
   const [zoom, setZoom] = useState<number>(100);
   const [lineSpacing, setLineSpacing] = useState<string>("1.5");
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [showStartScreen, setShowStartScreen] = useState<boolean>(true);
 
   // Modales
   const [exportModalOpen, setExportModalOpen] = useState<boolean>(false);
@@ -126,18 +128,37 @@ export const App: React.FC = () => {
   };
 
   const handleNewDocument = () => {
-    if (window.confirm("¿Deseas crear un nuevo documento en blanco? Los cambios no guardados se perderán.")) {
+    const newMeta: DocumentMetadata = {
+      id: `doc_${Date.now()}`,
+      title: "Nuevo Documento",
+      author: "Usuario CoffeWorks",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const newContent = "<h1>Nuevo Documento</h1><p></p>";
+    setMetadata(newMeta);
+    setContent(newContent);
+    triggerAutoSave(newContent, newMeta);
+    setShowStartScreen(false);
+  };
+
+  const handleStartOpenDocument = async (file: File) => {
+    try {
+      const imported = await documentVault.importDocumentFile(file);
       const newMeta: DocumentMetadata = {
         id: `doc_${Date.now()}`,
-        title: "Nuevo Documento",
+        title: imported.title || file.name.replace(/\.[^/.]+$/, ""),
         author: "Usuario CoffeWorks",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      const newContent = "<h1>Nuevo Documento</h1><p>Escribe aquí tu texto...</p>";
       setMetadata(newMeta);
-      setContent(newContent);
-      triggerAutoSave(newContent, newMeta);
+      setContent(imported.content);
+      triggerAutoSave(imported.content, newMeta);
+      setShowStartScreen(false);
+    } catch (err) {
+      console.error("Error al abrir archivo en CoffeDoc:", err);
+      alert("No se pudo leer el archivo seleccionado.");
     }
   };
 
@@ -369,6 +390,18 @@ export const App: React.FC = () => {
         isOpen={helpOpen}
         onClose={() => setHelpOpen(false)}
       />
+
+      {/* Pantalla de inicio con botones grandes: Nuevo archivo y Abrir archivo */}
+      {showStartScreen && (
+        <StartScreen
+          onNewDocument={handleNewDocument}
+          onOpenDocument={handleStartOpenDocument}
+          onContinueCurrent={() => setShowStartScreen(false)}
+          hasExistingDocument={Boolean(content && content.length > 0)}
+          currentTitle={metadata.title}
+          lastModified="Bóveda local sincronizada"
+        />
+      )}
     </div>
   );
 };

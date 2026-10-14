@@ -8,6 +8,7 @@ import {
 
 interface SpreadsheetGridProps {
   data: Record<string, CellData>;
+  colWidths?: Record<string, number>;
   activeCellKey: string;
   selectionRange: SelectionRange | null;
   onSelectCell: (key: string) => void;
@@ -25,6 +26,7 @@ interface SpreadsheetGridProps {
 
 export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   data,
+  colWidths,
   activeCellKey,
   selectionRange,
   onSelectCell,
@@ -46,9 +48,24 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
 
   const parsedActive = parseCellKey(activeCellKey) || { col: 0, row: 0, colName: "A", rowNum: 1 };
 
-  // Cantidad de columnas (A - Z = 26) y filas (1 - 100)
-  const TOTAL_COLS = 26;
-  const TOTAL_ROWS = 100;
+  // Cantidad dinámica de columnas y filas según los datos presentes
+  const { totalCols, totalRows } = React.useMemo(() => {
+    let maxColIdx = 25; // Al menos hasta la Z (26 columnas)
+    let maxRowIdx = 99; // Al menos 100 filas
+
+    for (const key of Object.keys(data)) {
+      const parsed = parseCellKey(key);
+      if (parsed) {
+        if (parsed.col > maxColIdx) maxColIdx = parsed.col;
+        if (parsed.row > maxRowIdx) maxRowIdx = parsed.row;
+      }
+    }
+
+    return {
+      totalCols: Math.max(26, maxColIdx + 5),
+      totalRows: Math.max(100, maxRowIdx + 20),
+    };
+  }, [data]);
 
   // Referencias para auto-scroll continuo al arrastrar
   const scrollAnimRef = useRef<number | null>(null);
@@ -62,21 +79,31 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
     }
   }, [isEditing]);
 
+  const getColWidth = (colIdx: number): number => {
+    const colName = colIndexToName(colIdx);
+    if (colWidths && colWidths[colName]) {
+      return colWidths[colName];
+    }
+    return colIdx === 0 ? 200 : 120;
+  };
+
   // Auxiliares para resolver columna y fila por offsets en píxeles dentro del lienzo
   const getColAtOffset = (x: number): number => {
-    const offset = x - 48; // Restar cabecera de filas a la izquierda (48px)
-    if (offset <= 0) return 0;
-    if (offset < 230) return 0; // Columna A (230px)
-    const remaining = offset - 230;
-    const colIndex = 1 + Math.floor(remaining / 130);
-    return Math.min(TOTAL_COLS - 1, Math.max(0, colIndex));
+    let currentX = x - 48; // Restar cabecera de filas a la izquierda (48px)
+    if (currentX <= 0) return 0;
+    for (let c = 0; c < totalCols; c++) {
+      const w = getColWidth(c);
+      if (currentX < w) return c;
+      currentX -= w;
+    }
+    return totalCols - 1;
   };
 
   const getRowAtOffset = (y: number): number => {
     const offset = y - 24; // Restar cabecera de columnas superior (24px)
     if (offset <= 0) return 0;
     const rowIndex = Math.floor(offset / 24);
-    return Math.min(TOTAL_ROWS - 1, Math.max(0, rowIndex));
+    return Math.min(totalRows - 1, Math.max(0, rowIndex));
   };
 
   const updateRangeFromMouseCoords = (clientX: number, clientY: number) => {
@@ -269,8 +296,8 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
         {
           startCol: 0,
           startRow: 0,
-          endCol: TOTAL_COLS - 1,
-          endRow: TOTAL_ROWS - 1,
+          endCol: totalCols - 1,
+          endRow: totalRows - 1,
         },
         "A1"
       );
@@ -292,7 +319,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
       }
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
-      if (parsedActive.row < TOTAL_ROWS - 1) {
+      if (parsedActive.row < totalRows - 1) {
         onSelectCell(`${parsedActive.colName}${parsedActive.row + 2}`);
       }
     } else if (e.key === "ArrowLeft") {
@@ -303,7 +330,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
       }
     } else if (e.key === "ArrowRight") {
       e.preventDefault();
-      if (parsedActive.col < TOTAL_COLS - 1) {
+      if (parsedActive.col < totalCols - 1) {
         const nextColName = colIndexToName(parsedActive.col + 1);
         onSelectCell(`${nextColName}${parsedActive.rowNum}`);
       }
@@ -345,8 +372,8 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                 {
                   startCol: 0,
                   startRow: 0,
-                  endCol: TOTAL_COLS - 1,
-                  endRow: TOTAL_ROWS - 1,
+                  endCol: totalCols - 1,
+                  endRow: totalRows - 1,
                 },
                 "A1"
               );
@@ -358,14 +385,15 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
           </button>
 
           {/* Letras de columna */}
-          {Array.from({ length: TOTAL_COLS }).map((_, colIdx) => {
+          {Array.from({ length: totalCols }).map((_, colIdx) => {
             const colName = colIndexToName(colIdx);
             const isColInSelection = colIdx >= minCol && colIdx <= maxCol;
+            const w = getColWidth(colIdx);
 
             return (
               <div
                 key={colName}
-                style={{ width: colIdx === 0 ? "230px" : "130px" }}
+                style={{ width: `${w}px` }}
                 className={`h-6 flex items-center justify-center font-mono text-[11px] font-semibold border-r border-[#c8c6c4] shrink-0 transition-colors ${
                   isColInSelection
                     ? "bg-[#dff6dd] text-[#0e6b37] border-b-2 border-b-[#107c41]"
@@ -379,7 +407,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
         </div>
 
         {/* FILAS DE DATOS DE LA CUADRÍCULA */}
-        {Array.from({ length: TOTAL_ROWS }).map((_, rowIdx) => {
+        {Array.from({ length: totalRows }).map((_, rowIdx) => {
           const rowNum = rowIdx + 1;
           const isRowInSelection = rowIdx >= minRow && rowIdx <= maxRow;
 
@@ -397,7 +425,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
               </div>
 
               {/* Celdas de la fila */}
-              {Array.from({ length: TOTAL_COLS }).map((_, colIdx) => {
+              {Array.from({ length: totalCols }).map((_, colIdx) => {
                 const colName = colIndexToName(colIdx);
                 const cellKey = `${colName}${rowNum}`;
                 const cell = data[cellKey];
@@ -417,7 +445,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                   ? formatCellValue(cell.computed !== undefined ? cell.computed : cell.raw, cell.format)
                   : "";
 
-                const cellWidth = colIdx === 0 ? "230px" : "130px";
+                const cellWidth = `${getColWidth(colIdx)}px`;
 
                 return (
                   <div

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Sun,
   Moon,
@@ -12,6 +12,8 @@ import {
   Save,
   Undo2,
   Redo2,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 import type { DocumentTheme } from "../types";
 
@@ -85,6 +87,8 @@ export const TitleBar: React.FC<TitleBarProps> = ({
 
   const isLight = theme === "paper-white";
 
+  const [quickAccessMenuOpen, setQuickAccessMenuOpen] = useState(false);
+
   return (
     <header
       data-tauri-drag-region
@@ -119,7 +123,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             type="button"
             onClick={onSave}
             title="Guardar automáticamente (Ctrl + S)"
-            className="p-1 rounded hover:bg-white/20 transition-colors flex items-center gap-1"
+            className="p-1 rounded hover:bg-white/20 transition-colors flex items-center gap-1 cursor-pointer"
           >
             <Save size={13} />
             {isSaving && <span className="text-[10px] animate-pulse">Guardando...</span>}
@@ -130,7 +134,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             type="button"
             onClick={onUndo}
             title="Deshacer (Ctrl + Z)"
-            className="p-1 rounded hover:bg-white/20 transition-colors"
+            className="p-1 rounded hover:bg-white/20 transition-colors cursor-pointer"
           >
             <Undo2 size={13} />
           </button>
@@ -140,11 +144,52 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             type="button"
             onClick={onRedo}
             title="Rehacer (Ctrl + Y)"
-            className="p-1 rounded hover:bg-white/20 transition-colors"
+            className="p-1 rounded hover:bg-white/20 transition-colors cursor-pointer"
           >
             <Redo2 size={13} />
           </button>
         )}
+
+        {/* Botón desplegable para personalizar accesos directos */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setQuickAccessMenuOpen(!quickAccessMenuOpen)}
+            title="Personalizar barra de herramientas de acceso rápido"
+            className="p-1 rounded hover:bg-white/20 transition-colors text-white/90 hover:text-white cursor-pointer"
+          >
+            <ChevronDown size={11} />
+          </button>
+
+          {quickAccessMenuOpen && (
+            <div
+              className="absolute left-0 mt-1 w-56 rounded-lg bg-white text-[#201f1e] border border-[#d2d0ce] shadow-2xl py-1.5 z-50 text-xs font-sans animate-in fade-in"
+              onClick={() => setQuickAccessMenuOpen(false)}
+            >
+              <div className="px-3 py-1 text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                Personalizar acceso rápido
+              </div>
+              <div className="h-px bg-stone-200 my-1" />
+              {[
+                { label: "Autoguardado", checked: true },
+                { label: "Guardar (Ctrl+S)", checked: true },
+                { label: "Deshacer (Ctrl+Z)", checked: true },
+                { label: "Rehacer (Ctrl+Y)", checked: true },
+                { label: "Nuevo documento", checked: false },
+                { label: "Impresión rápida", checked: false },
+                { label: "Ortografía y gramática", checked: false },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="flex items-center justify-between px-3 py-1.5 hover:bg-[#f3f2f1] cursor-pointer"
+                >
+                  <span>{item.label}</span>
+                  {item.checked && <Check size={12} className="text-[#185abd]" />}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="h-4 w-px bg-white/20 mx-1 hidden sm:block" />
 

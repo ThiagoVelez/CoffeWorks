@@ -110,6 +110,14 @@ export default defineConfig({
   server: {
     port: 1420,
     strictPort: true,
+    watch: {
+      ignored: [
+        "**/CoffeDoc/dist/**",
+        "**/CoffeCalc/dist/**",
+        "**/CoffeView/dist/**",
+        "**/data/vault.json",
+      ],
+    },
   },
   envPrefix: ["VITE_", "TAURI_ENV_*"],
   build: {

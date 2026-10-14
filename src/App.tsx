@@ -3,24 +3,31 @@ import { TitleBar } from "./components/TitleBar";
 import { Sidebar, type NavTab } from "./components/Sidebar";
 import { WelcomeBanner } from "./components/WelcomeBanner";
 import { AppGrid } from "./components/AppGrid";
-import { RecentDocuments } from "./components/RecentDocuments";
 import { CommandPalette } from "./components/CommandPalette";
 import { CreateDocModal } from "./components/CreateDocModal";
 import { tauriBridge } from "./services/tauriBridge";
 import type { SuiteApp, RecentDocument } from "./types";
-import { FolderOpen, LayoutTemplate, GitFork, Settings, CheckCircle2 } from "lucide-react";
+import { LayoutTemplate, GitFork, Settings, CheckCircle2 } from "lucide-react";
 
 export const App: React.FC = () => {
   const [apps, setApps] = useState<SuiteApp[]>([]);
   const [documents, setDocuments] = useState<RecentDocument[]>([]);
   const [focusMode, setFocusMode] = useState<boolean>(true);
   const [currentTab, setCurrentTab] = useState<NavTab>("launcher");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState<boolean>(false);
   const [createModal, setCreateModal] = useState<{ open: boolean; docType: string }>({
     open: false,
     docType: "coffedoc",
   });
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Filtrado de aplicaciones según la categoría seleccionada en el acordeón de Coffee Apps
+  const filteredApps = selectedCategory
+    ? apps.filter(
+        (app) => (app.category || "Office").toLowerCase() === selectedCategory.toLowerCase()
+      )
+    : apps;
 
   // Cargar datos iniciales y sincronizar en tiempo real
   useEffect(() => {
@@ -126,21 +133,6 @@ export const App: React.FC = () => {
     showNotification(`Abriendo documento ${doc.name} en ${doc.app_id}`);
   };
 
-  const handleTogglePin = (id: string) => {
-    setDocuments((prev) =>
-      prev.map((doc) =>
-        doc.id === id ? { ...doc, is_pinned: !doc.is_pinned } : doc
-      )
-    );
-  };
-
-  const handleDeleteDoc = async (id: string) => {
-    const docToDelete = documents.find((d) => d.id === id);
-    const updated = await tauriBridge.deleteDocument(id);
-    setDocuments(updated);
-    showNotification(`Documento "${docToDelete?.name || id}" borrado de la bóveda local`);
-  };
-
   const handleOpenCreateModal = (docType: string) => {
     setCreateModal({ open: true, docType });
   };
@@ -158,7 +150,12 @@ export const App: React.FC = () => {
 
       {/* Contenedor principal con barra lateral y área de contenido */}
       <div className="flex flex-1 pt-10">
-        <Sidebar currentTab={currentTab} onSelectTab={setCurrentTab} />
+        <Sidebar
+          currentTab={currentTab}
+          onSelectTab={setCurrentTab}
+          selectedCategory={selectedCategory}
+          onSelectCategory={setSelectedCategory}
+        />
 
         {/* Área central desplazable */}
         <main className="flex-1 ml-64 p-5 lg:p-8 flex flex-col gap-8 max-w-7xl">
@@ -167,42 +164,20 @@ export const App: React.FC = () => {
               {/* Banner superior de bienvenida y modo enfoque */}
               <WelcomeBanner
                 focusMode={focusMode}
-                docCount={documents.length}
                 onToggleFocusMode={handleToggleFocus}
                 onCreateNewDoc={handleOpenCreateModal}
               />
 
-              {/* Cuadrícula de aplicaciones de la suite */}
+              {/* Tienda de aplicaciones de la suite CoffeWorks (cuadrícula de 2 columnas) */}
               <AppGrid
-                apps={apps}
+                apps={filteredApps}
+                selectedCategory={selectedCategory}
+                onClearCategory={() => setSelectedCategory(null)}
                 onLaunchApp={handleLaunchApp}
                 onInstallApp={handleInstallApp}
                 onUninstallApp={handleUninstallApp}
               />
-
-              {/* Documentos recientes */}
-              <RecentDocuments
-                documents={documents}
-                onOpenDoc={handleOpenDoc}
-                onTogglePinDoc={handleTogglePin}
-                onDeleteDoc={handleDeleteDoc}
-              />
             </>
-          )}
-
-          {currentTab === "documents" && (
-            <div className="flex flex-col gap-5">
-              <div className="flex items-center gap-3">
-                <FolderOpen size={24} className="text-primary" />
-                <h1 className="font-display text-2xl font-bold">Bóveda de Documentos</h1>
-              </div>
-              <RecentDocuments
-                documents={documents}
-                onOpenDoc={handleOpenDoc}
-                onTogglePinDoc={handleTogglePin}
-                onDeleteDoc={handleDeleteDoc}
-              />
-            </div>
           )}
 
           {currentTab === "templates" && (

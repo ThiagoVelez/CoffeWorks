@@ -65,4 +65,6 @@ export type PowerPointRibbonTab =
   | "transiciones"
   | "animaciones"
   | "presentacion"
-  | "vista";
+  | "revisar"
+  | "vista"
+  | "ayuda";

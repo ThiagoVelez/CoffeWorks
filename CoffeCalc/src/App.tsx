@@ -6,6 +6,7 @@ import { SpreadsheetGrid } from "./components/SpreadsheetGrid";
 import { SheetTabsBar } from "./components/SheetTabsBar";
 import { ExportModal } from "./components/ExportModal";
 import { ImportModal } from "./components/ImportModal";
+import { StartScreen } from "./components/StartScreen";
 import { sheetVault } from "./services/sheetVault";
 import {
   computeCellValue,
@@ -37,6 +38,7 @@ export const App: React.FC = () => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editingValue, setEditingValue] = useState<string>("");
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [showStartScreen, setShowStartScreen] = useState<boolean>(true);
 
   // Vistas y zoom
   const [showGridlines, setShowGridlines] = useState<boolean>(true);
@@ -79,10 +81,22 @@ export const App: React.FC = () => {
     const next: Record<string, CellData> = { ...data };
     for (const [key, cell] of Object.entries(next)) {
       if (cell.raw && cell.raw.startsWith("=")) {
-        next[key] = {
-          ...cell,
-          computed: computeCellValue(cell.raw, next),
-        };
+        const computed = computeCellValue(cell.raw, next);
+        // Si el motor local da error de evaluación pero la celda ya traía un valor computado válido de Excel, preservarlo
+        if (
+          (computed === "#¡VALOR!" || computed === "#¡ERROR!" || computed === cell.raw) &&
+          cell.computed !== undefined &&
+          cell.computed !== null &&
+          cell.computed !== "" &&
+          cell.computed !== "#¡VALOR!"
+        ) {
+          next[key] = cell;
+        } else {
+          next[key] = {
+            ...cell,
+            computed,
+          };
+        }
       }
     }
     return next;
@@ -459,6 +473,124 @@ export const App: React.FC = () => {
     setActiveCellKey(anchorKey);
   };
 
+  const handleStartNewWorkbook = () => {
+    const blankSheet: Sheet = {
+      id: "sheet_1",
+      name: "Hoja1",
+      data: {},
+      colWidths: {},
+    };
+    const newMeta: WorkbookMetadata = {
+      id: `cfs_${Date.now()}`,
+      title: "Libro en Blanco",
+      author: "Usuario CoffeWorks",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setMetadata(newMeta);
+    setSheets([blankSheet]);
+    setActiveSheetId("sheet_1");
+    setHistory([[blankSheet]]);
+    setHistoryIndex(0);
+    sheetVault.saveWorkbook(newMeta, [blankSheet], "sheet_1");
+    setShowStartScreen(false);
+  };
+
+  const handleStartOpenWorkbook = async (file: File) => {
+    try {
+      const buffer = await file.arrayBuffer();
+      const filename = file.name;
+
+      // 1. Si es archivo nativo de CoffeWorks (.cfs) o JSON
+      if (filename.endsWith(".cfs") || filename.endsWith(".json")) {
+        const text = new TextDecoder().decode(buffer);
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed.sheets && parsed.sheets.length > 0) {
+            setMetadata(parsed.metadata || metadata);
+            setSheets(parsed.sheets);
+            setActiveSheetId(parsed.activeSheetId || parsed.sheets[0].id);
+            setHistory([parsed.sheets]);
+            setHistoryIndex(0);
+            sheetVault.saveWorkbook(parsed.metadata || metadata, parsed.sheets, parsed.activeSheetId || parsed.sheets[0].id);
+            setShowStartScreen(false);
+            return;
+          }
+        } catch {
+          // Continuar con otros formatos
+        }
+      }
+
+      // 2. Si es archivo binario de Excel (.xlsx, .xls) - Carga de libro completo multi-pestaña
+      if (filename.endsWith(".xlsx") || filename.endsWith(".xls")) {
+        const importedWb = sheetVault.importFullWorkbook(buffer, filename);
+        if (importedWb.sheets && importedWb.sheets.length > 0) {
+          setMetadata(importedWb.metadata);
+          setSheets(importedWb.sheets);
+          setActiveSheetId(importedWb.activeSheetId);
+          setHistory([importedWb.sheets]);
+          setHistoryIndex(0);
+          sheetVault.saveWorkbook(importedWb.metadata, importedWb.sheets, importedWb.activeSheetId);
+          setShowStartScreen(false);
+          return;
+        }
+      }
+
+      // 3. Si es archivo delimitado por comas (.csv)
+      if (filename.endsWith(".csv")) {
+        const text = new TextDecoder().decode(buffer);
+        const importedData = sheetVault.importFromCSV(text);
+        const importedSheet: Sheet = {
+          id: `sheet_${Date.now()}`,
+          name: file.name.replace(/\.[^/.]+$/, ""),
+          data: importedData,
+          colWidths: {},
+        };
+        const newMeta: WorkbookMetadata = {
+          id: `cfs_${Date.now()}`,
+          title: file.name.replace(/\.[^/.]+$/, ""),
+          author: "Usuario CoffeWorks",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        setMetadata(newMeta);
+        setSheets([importedSheet]);
+        setActiveSheetId(importedSheet.id);
+        setHistory([[importedSheet]]);
+        setHistoryIndex(0);
+        sheetVault.saveWorkbook(newMeta, [importedSheet], importedSheet.id);
+        setShowStartScreen(false);
+        return;
+      }
+
+      // 4. Fallback genérico para otros formatos
+      const importedData = sheetVault.importSpreadsheetFile(buffer, filename);
+      const importedSheet: Sheet = {
+        id: `sheet_${Date.now()}`,
+        name: file.name.replace(/\.[^/.]+$/, ""),
+        data: importedData,
+        colWidths: {},
+      };
+      const newMeta: WorkbookMetadata = {
+        id: `cfs_${Date.now()}`,
+        title: file.name.replace(/\.[^/.]+$/, ""),
+        author: "Usuario CoffeWorks",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setMetadata(newMeta);
+      setSheets([importedSheet]);
+      setActiveSheetId(importedSheet.id);
+      setHistory([[importedSheet]]);
+      setHistoryIndex(0);
+      sheetVault.saveWorkbook(newMeta, [importedSheet], importedSheet.id);
+      setShowStartScreen(false);
+    } catch (err) {
+      console.error("Error al abrir archivo en CoffeCalc:", err);
+      alert("No se pudo leer el archivo de hoja de cálculo.");
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-white select-none">
       {/* 1. Barra de título estilo Excel */}
@@ -474,12 +606,7 @@ export const App: React.FC = () => {
 
       {/* 2. Cinta Ribbon completa de Excel */}
       <ExcelRibbon
-        onNewWorkbook={() => {
-          if (confirm("¿Crear un nuevo libro en blanco?")) {
-            localStorage.removeItem("coffecalc_active_workbook");
-            window.location.reload();
-          }
-        }}
+        onNewWorkbook={handleStartNewWorkbook}
         onSave={handleSave}
         onOpenExport={() => setExportModalOpen(true)}
         onOpenImport={() => setImportModalOpen(true)}
@@ -528,6 +655,7 @@ export const App: React.FC = () => {
       {/* 4. Cuadrícula de Celdas (Spreadsheet Grid) */}
       <SpreadsheetGrid
         data={activeSheet.data}
+        colWidths={activeSheet.colWidths}
         activeCellKey={activeCellKey}
         selectionRange={selectionRange}
         onSelectCell={handleSelectCell}
@@ -562,6 +690,7 @@ export const App: React.FC = () => {
         onClose={() => setExportModalOpen(false)}
         metadata={metadata}
         activeSheet={activeSheet}
+        sheets={sheets}
       />
 
       <ImportModal
@@ -573,7 +702,26 @@ export const App: React.FC = () => {
             ...imported,
           });
         }}
+        onImportWorkbook={(importedWb) => {
+          setMetadata(importedWb.metadata);
+          setSheets(importedWb.sheets);
+          setActiveSheetId(importedWb.activeSheetId);
+          setHistory([importedWb.sheets]);
+          setHistoryIndex(0);
+          sheetVault.saveWorkbook(importedWb.metadata, importedWb.sheets, importedWb.activeSheetId);
+        }}
       />
+
+      {/* Pantalla de inicio con botones grandes: Nuevo archivo y Abrir archivo */}
+      {showStartScreen && (
+        <StartScreen
+          onNewWorkbook={handleStartNewWorkbook}
+          onOpenWorkbook={handleStartOpenWorkbook}
+          onContinueCurrent={() => setShowStartScreen(false)}
+          hasExistingWorkbook={sheets.length > 0}
+          currentTitle={metadata.title}
+        />
+      )}
     </div>
   );
 };

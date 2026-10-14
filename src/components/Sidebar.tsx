@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Coffee,
   ChevronsUpDown,
   LayoutGrid,
-  FolderOpen,
+  Package,
+  ChevronDown,
+  Briefcase,
   LayoutTemplate,
   GitFork,
   Settings,
@@ -11,17 +13,24 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-export type NavTab = "launcher" | "documents" | "templates" | "integrations" | "settings";
+export type NavTab = "launcher" | "templates" | "integrations" | "settings";
 
 interface SidebarProps {
   currentTab: NavTab;
   onSelectTab: (tab: NavTab) => void;
+  selectedCategory: string | null;
+  onSelectCategory: (category: string | null) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => {
-  const navItems: Array<{ id: NavTab; label: string; icon: React.FC<{ size?: number; className?: string }> }> = [
-    { id: "launcher", label: "Inicio / Launcher", icon: LayoutGrid },
-    { id: "documents", label: "Mis Documentos", icon: FolderOpen },
+export const Sidebar: React.FC<SidebarProps> = ({
+  currentTab,
+  onSelectTab,
+  selectedCategory,
+  onSelectCategory,
+}) => {
+  const [isAppsOpen, setIsAppsOpen] = useState<boolean>(true);
+
+  const staticNavItems: Array<{ id: NavTab; label: string; icon: React.FC<{ size?: number; className?: string }> }> = [
     { id: "templates", label: "Plantillas", icon: LayoutTemplate },
     { id: "integrations", label: "Integraciones", icon: GitFork },
     { id: "settings", label: "Ajustes", icon: Settings },
@@ -60,15 +69,88 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
 
         {/* Lista de navegación */}
         <nav className="flex flex-col gap-1">
-          {navItems.map((item) => {
+          {/* Inicio / Launcher */}
+          <button
+            type="button"
+            onClick={() => {
+              onSelectTab("launcher");
+              onSelectCategory(null);
+            }}
+            className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all text-left ${
+              currentTab === "launcher" && !selectedCategory
+                ? "bg-[#eeddd0] text-[#3e2723] font-bold shadow-xs border-l-4 border-[#6f4e37]"
+                : "text-[#5c3a21] hover:bg-[#f3eae1] hover:text-[#2c1b12]"
+            }`}
+          >
+            <LayoutGrid size={17} className={currentTab === "launcher" && !selectedCategory ? "text-[#6f4e37]" : "text-[#8d6e63]"} />
+            <span>Inicio / Launcher</span>
+          </button>
+
+          {/* Acordeón Coffee Apps */}
+          <div className="flex flex-col">
+            <button
+              type="button"
+              onClick={() => {
+                setIsAppsOpen((prev) => !prev);
+              }}
+              className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left ${
+                selectedCategory !== null
+                  ? "bg-[#eeddd0]/60 text-[#3e2723] font-bold"
+                  : "text-[#5c3a21] hover:bg-[#f3eae1] hover:text-[#2c1b12]"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Package size={17} className={selectedCategory ? "text-[#6f4e37]" : "text-[#8d6e63]"} />
+                <span>Coffee Apps</span>
+              </div>
+              <ChevronDown
+                size={15}
+                className={`text-[#8d6e63] transition-transform duration-200 ${
+                  isAppsOpen ? "rotate-180 text-[#6f4e37]" : ""
+                }`}
+              />
+            </button>
+
+            {/* Categorías del acordeón */}
+            {isAppsOpen && (
+              <div className="ml-5 pl-2.5 border-l-2 border-[#dfd3c7] flex flex-col gap-1 py-1 mt-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSelectTab("launcher");
+                    onSelectCategory("Office");
+                  }}
+                  className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-all text-left ${
+                    currentTab === "launcher" && selectedCategory === "Office"
+                      ? "bg-[#eeddd0] text-[#3e2723] font-bold shadow-xs border-l-4 border-[#6f4e37]"
+                      : "text-[#5c3a21] hover:bg-[#f3eae1] hover:text-[#2c1b12]"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Briefcase size={14} className={currentTab === "launcher" && selectedCategory === "Office" ? "text-[#6f4e37]" : "text-[#8d6e63]"} />
+                    <span>Office</span>
+                  </div>
+                  <span className="font-mono text-[10px] px-1.5 py-0.5 rounded-full bg-[#eeddd0] text-[#6f4e37] font-semibold border border-[#dfd3c7]">
+                    3
+                  </span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Resto de secciones estáticas */}
+          {staticNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentTab === item.id;
             return (
               <button
                 key={item.id}
                 type="button"
-                onClick={() => onSelectTab(item.id)}
-                className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                onClick={() => {
+                  onSelectTab(item.id);
+                  onSelectCategory(null);
+                }}
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all text-left ${
                   isActive
                     ? "bg-[#eeddd0] text-[#3e2723] font-bold shadow-xs border-l-4 border-[#6f4e37]"
                     : "text-[#5c3a21] hover:bg-[#f3eae1] hover:text-[#2c1b12]"

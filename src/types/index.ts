@@ -12,7 +12,10 @@ export interface SuiteApp {
   color_badge: "primary" | "secondary" | "tertiary" | "tertiary-fixed" | "secondary-fixed" | "outline";
   icon_name: string;
   icon_url?: string;
+  category?: string;
 }
+
+export type AppCategory = "all" | "office" | "multimedia";
 
 export interface RecentDocument {
   id: string;

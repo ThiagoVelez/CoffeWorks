@@ -6,10 +6,12 @@ import { SlideCanvas } from "./components/SlideCanvas";
 import { SpeakerNotes } from "./components/SpeakerNotes";
 import { PresentationMode } from "./components/PresentationMode";
 import { ExportModal } from "./components/ExportModal";
+import { StartScreen } from "./components/StartScreen";
 import {
   presentationVault,
   SLIDE_THEMES,
   createSlideForLayout,
+  createDefaultSlides,
 } from "./services/presentationVault";
 import type {
   PresentationMetadata,
@@ -40,6 +42,7 @@ export const App: React.FC = () => {
   const [isPresentationMode, setIsPresentationMode] = useState<boolean>(false);
   const [exportModalOpen, setExportModalOpen] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [showStartScreen, setShowStartScreen] = useState<boolean>(true);
 
   // Historial para Deshacer / Rehacer
   const [history, setHistory] = useState<Slide[][]>([]);
@@ -337,6 +340,56 @@ export const App: React.FC = () => {
     updateSlides(updatedSlides);
   };
 
+  const handleStartNewPresentation = () => {
+    const defaultSlides = createDefaultSlides();
+    const newMeta: PresentationMetadata = {
+      id: `pres_${Date.now()}`,
+      title: "Nueva Presentación",
+      author: "Usuario CoffeWorks",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      themeId: "theme_espresso",
+    };
+    setMetadata(newMeta);
+    setSlides(defaultSlides);
+    setActiveSlideId(defaultSlides[0].id);
+    setSelectedElementId(null);
+    setHistory([defaultSlides]);
+    setHistoryIndex(0);
+    presentationVault.savePresentation(newMeta, defaultSlides, defaultSlides[0].id);
+    setShowStartScreen(false);
+  };
+
+  const handleStartOpenPresentation = async (file: File) => {
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      if (parsed.slides && Array.isArray(parsed.slides) && parsed.slides.length > 0) {
+        const loadedMeta = parsed.metadata || {
+          id: `pres_${Date.now()}`,
+          title: file.name.replace(/\.[^/.]+$/, ""),
+          author: "Usuario CoffeWorks",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          themeId: "theme_espresso",
+        };
+        setMetadata(loadedMeta);
+        setSlides(parsed.slides);
+        setActiveSlideId(parsed.slides[0].id);
+        setSelectedElementId(null);
+        setHistory([parsed.slides]);
+        setHistoryIndex(0);
+        presentationVault.savePresentation(loadedMeta, parsed.slides, parsed.slides[0].id);
+        setShowStartScreen(false);
+      } else {
+        alert("El archivo no contiene diapositivas válidas.");
+      }
+    } catch (err) {
+      console.error("Error al abrir presentación:", err);
+      alert("No se pudo leer el archivo de presentación.");
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-white select-none">
       {/* 1. Barra de título estilo PowerPoint */}
@@ -359,12 +412,7 @@ export const App: React.FC = () => {
       <PowerPointRibbon
         activeTab={activeTab}
         onSelectTab={setActiveTab}
-        onNewPresentation={() => {
-          if (confirm("¿Crear una nueva presentación en blanco?")) {
-            localStorage.removeItem("coffeview_active_presentation");
-            window.location.reload();
-          }
-        }}
+        onNewPresentation={handleStartNewPresentation}
         onSave={handleManualSave}
         onOpenExport={() => setExportModalOpen(true)}
         onStartPresentation={() => setIsPresentationMode(true)}
@@ -443,6 +491,17 @@ export const App: React.FC = () => {
         slides={slides}
         theme={currentTheme}
       />
+
+      {/* Pantalla de inicio con botones grandes: Nuevo archivo y Abrir archivo */}
+      {showStartScreen && (
+        <StartScreen
+          onNewPresentation={handleStartNewPresentation}
+          onOpenPresentation={handleStartOpenPresentation}
+          onContinueCurrent={() => setShowStartScreen(false)}
+          hasExistingPresentation={slides.length > 0}
+          currentTitle={metadata.title}
+        />
+      )}
     </div>
   );
 };

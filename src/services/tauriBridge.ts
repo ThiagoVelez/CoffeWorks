@@ -18,6 +18,7 @@ const MOCK_APPS: SuiteApp[] = [
     color_badge: "primary",
     icon_name: "file-text",
     icon_url: "/icons/CoffeText.ico",
+    category: "Office",
   },
   {
     id: "coffecalc",
@@ -31,6 +32,7 @@ const MOCK_APPS: SuiteApp[] = [
     color_badge: "secondary",
     icon_name: "table",
     icon_url: "/icons/CoffeSheet.ico",
+    category: "Office",
   },
   {
     id: "coffeview",
@@ -44,6 +46,7 @@ const MOCK_APPS: SuiteApp[] = [
     color_badge: "tertiary",
     icon_name: "presentation",
     icon_url: "/icons/CoffeSlides.ico",
+    category: "Office",
   },
 ];
 

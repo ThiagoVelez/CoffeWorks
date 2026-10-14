@@ -3,14 +3,13 @@ import { Command, Coffee } from "lucide-react";
 
 interface WelcomeBannerProps {
   focusMode: boolean;
-  docCount: number;
+  docCount?: number;
   onToggleFocusMode: () => void;
   onCreateNewDoc?: (type: string) => void;
 }
 
 export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
   focusMode,
-  docCount,
   onToggleFocusMode,
 }) => {
 
@@ -49,7 +48,7 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
             <span className="font-mono text-[11px] text-[#795548] font-medium">{formattedDate}</span>
             <span className="text-[#a1887f] font-mono text-[11px]">•</span>
             <span className="font-mono text-[11px] text-[#5c3a21] font-semibold bg-[#eeddd0] px-2 py-0.5 rounded-full border border-[#dfd3c7]">
-              {docCount === 1 ? "1 documento en bóveda" : `${docCount} documentos en bóveda`}
+              Tienda de Apps Activa
             </span>
           </div>
 
@@ -59,15 +58,11 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
               <Coffee size={18} strokeWidth={2.4} />
             </div>
             <h1 className="font-display text-2xl lg:text-3xl text-[#2c1b12] font-bold tracking-tight">
-              Buenos días, listo para crear
+              Buenos días, bienvenido a CoffeWorks
             </h1>
           </div>
           <p className="text-sm text-[#5c3a21] leading-relaxed">
-            {docCount === 0
-              ? "Tu suite ofimática local CoffeWorks está lista. Redacta documentos con CoffeDoc y organízalos en tu bóveda local de alta fidelidad."
-              : `Tu suite ofimática CoffeWorks tiene ${docCount} ${
-                  docCount === 1 ? "documento sincronizado" : "documentos sincronizados"
-                } en tu bóveda local, listos para editar sin conexión.`}
+            Tu centro de distribución y tienda de aplicaciones de la suite. Instala, ejecuta y gestiona tus herramientas de productividad de forma local y sin dependencias externas.
           </p>
 
           {/* Atajo de teclado */}
