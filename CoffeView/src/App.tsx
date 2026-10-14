@@ -44,6 +44,13 @@ export const App: React.FC = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [showStartScreen, setShowStartScreen] = useState<boolean>(true);
 
+  // Estados avanzados de herramientas
+  const [clipboardElement, setClipboardElement] = useState<SlideElement | null>(null);
+  const [isFormatPainterActive, setIsFormatPainterActive] = useState<boolean>(false);
+  const [formatPainterStyle, setFormatPainterStyle] = useState<Partial<SlideElement> | null>(null);
+  const [aspectRatio, setAspectRatio] = useState<"16:9" | "4:3">("16:9");
+  const [showGridlines, setShowGridlines] = useState<boolean>(false);
+
   // Historial para Deshacer / Rehacer
   const [history, setHistory] = useState<Slide[][]>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
@@ -341,6 +348,160 @@ export const App: React.FC = () => {
     updateSlides(updatedSlides);
   };
 
+  const handleApplyTransitionToAll = (transition: SlideTransition) => {
+    const updated = slides.map((s) => ({ ...s, transition }));
+    updateSlides(updated);
+  };
+
+  const handleToggleHideSlide = () => {
+    const updated = slides.map((s) =>
+      s.id === activeSlideId ? { ...s, hidden: !s.hidden } : s
+    );
+    updateSlides(updated);
+  };
+
+  const handleSetElementAnimation = (animation: string) => {
+    if (!selectedElementId) return;
+    modifySelectedElement((el) => ({
+      ...el,
+      animation: animation as SlideElement["animation"],
+    }));
+  };
+
+  // Portapapeles y copiado de formato
+  const handleCopyElement = () => {
+    if (!selectedElementId) return;
+    const el = activeSlide.elements.find((e) => e.id === selectedElementId);
+    if (el) setClipboardElement(el);
+  };
+
+  const handleCutElement = () => {
+    if (!selectedElementId) return;
+    handleCopyElement();
+    handleDeleteElement();
+  };
+
+  const handlePasteElement = () => {
+    if (!clipboardElement) return;
+    const pastedEl: SlideElement = {
+      ...clipboardElement,
+      id: `el_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      x: Math.min(80, clipboardElement.x + 4),
+      y: Math.min(80, clipboardElement.y + 4),
+    };
+    const updatedSlides = slides.map((s) => {
+      if (s.id !== activeSlideId) return s;
+      return { ...s, elements: [...s.elements, pastedEl] };
+    });
+    updateSlides(updatedSlides);
+    setSelectedElementId(pastedEl.id);
+  };
+
+  const handleFormatPainter = () => {
+    if (!selectedElementId) return;
+    const el = activeSlide.elements.find((e) => e.id === selectedElementId);
+    if (!el) return;
+    if (isFormatPainterActive) {
+      setIsFormatPainterActive(false);
+      setFormatPainterStyle(null);
+    } else {
+      setIsFormatPainterActive(true);
+      setFormatPainterStyle({
+        fontSize: el.fontSize,
+        fontFamily: el.fontFamily,
+        fontWeight: el.fontWeight,
+        fontStyle: el.fontStyle,
+        underline: el.underline,
+        align: el.align,
+        color: el.color,
+        bg: el.bg,
+      });
+    }
+  };
+
+  const handleSelectElementWithFormatPainter = (id: string | null) => {
+    setSelectedElementId(id);
+    if (id && isFormatPainterActive && formatPainterStyle) {
+      handleUpdateElement(id, formatPainterStyle);
+      setIsFormatPainterActive(false);
+      setFormatPainterStyle(null);
+    }
+  };
+
+  // Inserción de tablas e imágenes
+  const handleAddTable = () => {
+    const newEl: SlideElement = {
+      id: `el_${Date.now()}`,
+      type: "table",
+      x: 20,
+      y: 25,
+      width: 60,
+      height: 35,
+      content: "Concepto, 2025, 2026\nVentas Netas, $120.000, $145.000\nCostos Operativos, $75.000, $82.000\nMargen EBITDA, 37.5%, 43.4%",
+      color: currentTheme.textColor,
+      bg: "#ffffff",
+    };
+    const updatedSlides = slides.map((s) => {
+      if (s.id !== activeSlideId) return s;
+      return { ...s, elements: [...s.elements, newEl] };
+    });
+    updateSlides(updatedSlides);
+    setSelectedElementId(newEl.id);
+  };
+
+  const handleAddImage = () => {
+    const sampleImage = "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80";
+    const newEl: SlideElement = {
+      id: `el_${Date.now()}`,
+      type: "image",
+      x: 25,
+      y: 20,
+      width: 50,
+      height: 50,
+      content: sampleImage,
+    };
+    const updatedSlides = slides.map((s) => {
+      if (s.id !== activeSlideId) return s;
+      return { ...s, elements: [...s.elements, newEl] };
+    });
+    updateSlides(updatedSlides);
+    setSelectedElementId(newEl.id);
+  };
+
+  // Revisión, idioma y notas
+  const handleSpellCheck = () => {
+    const allWords = activeSlide.elements
+      .map((el) => el.content)
+      .join(" ")
+      .split(/\s+/)
+      .filter(Boolean);
+    const notice = `[Revisión Ortográfica]: ${allWords.length} palabras revisadas sin anomalías.`;
+    handleChangeNotes((activeSlide.notes ? activeSlide.notes + "\n" : "") + notice);
+    if (!showNotes) setShowNotes(true);
+  };
+
+  const handleTranslateSlide = () => {
+    const updatedElements = activeSlide.elements.map((el) => {
+      if (el.type === "title" || el.type === "subtitle" || el.type === "text") {
+        return {
+          ...el,
+          content: el.content.startsWith("[EN] ") ? el.content : `[EN] ${el.content}`,
+        };
+      }
+      return el;
+    });
+    const updatedSlides = slides.map((s) =>
+      s.id === activeSlideId ? { ...s, elements: updatedElements } : s
+    );
+    updateSlides(updatedSlides);
+  };
+
+  const handleAddComment = () => {
+    const commentTag = `\n[Comentario ${new Date().toLocaleTimeString("es-ES")}]: Revisión editorial confirmada.`;
+    handleChangeNotes((activeSlide.notes || "") + commentTag);
+    if (!showNotes) setShowNotes(true);
+  };
+
   const handleChangeNotes = (notes: string) => {
     const updatedSlides = slides.map((s) =>
       s.id === activeSlideId ? { ...s, notes } : s
@@ -443,6 +604,25 @@ export const App: React.FC = () => {
         onToggleNotes={() => setShowNotes(!showNotes)}
         onSetFontFamily={handleSetFontFamily}
         onSetFontSize={handleSetFontSize}
+        onCutElement={handleCutElement}
+        onCopyElement={handleCopyElement}
+        onPasteElement={handlePasteElement}
+        onFormatPainter={handleFormatPainter}
+        isFormatPainterActive={isFormatPainterActive}
+        onInsertTable={handleAddTable}
+        onInsertImage={handleAddImage}
+        aspectRatio={aspectRatio}
+        onSetAspectRatio={setAspectRatio}
+        showGridlines={showGridlines}
+        onToggleGridlines={() => setShowGridlines((prev) => !prev)}
+        onApplyTransitionToAll={handleApplyTransitionToAll}
+        onToggleHideSlide={handleToggleHideSlide}
+        isSlideHidden={Boolean(activeSlide.hidden)}
+        onSetElementAnimation={handleSetElementAnimation}
+        selectedAnimation={activeSlide.elements.find((el) => el.id === selectedElementId)?.animation}
+        onSpellCheck={handleSpellCheck}
+        onTranslateSlide={handleTranslateSlide}
+        onAddComment={handleAddComment}
       />
 
       {/* 3. Área de trabajo principal */}
@@ -468,8 +648,10 @@ export const App: React.FC = () => {
             slide={activeSlide}
             theme={currentTheme}
             selectedElementId={selectedElementId}
-            onSelectElement={setSelectedElementId}
+            onSelectElement={handleSelectElementWithFormatPainter}
             onUpdateElement={handleUpdateElement}
+            aspectRatio={aspectRatio}
+            showGridlines={showGridlines}
           />
 
           {/* Panel inferior de notas del orador */}

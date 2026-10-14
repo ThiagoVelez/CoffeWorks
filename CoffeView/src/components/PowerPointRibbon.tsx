@@ -79,6 +79,25 @@ interface PowerPointRibbonProps {
   onToggleNotes: () => void;
   onSetFontFamily?: (font: string) => void;
   onSetFontSize?: (size: number) => void;
+  onCutElement?: () => void;
+  onCopyElement?: () => void;
+  onPasteElement?: () => void;
+  onFormatPainter?: () => void;
+  isFormatPainterActive?: boolean;
+  onInsertTable?: () => void;
+  onInsertImage?: () => void;
+  aspectRatio?: "16:9" | "4:3";
+  onSetAspectRatio?: (ratio: "16:9" | "4:3") => void;
+  showGridlines?: boolean;
+  onToggleGridlines?: () => void;
+  onApplyTransitionToAll?: (transition: SlideTransition) => void;
+  onToggleHideSlide?: () => void;
+  isSlideHidden?: boolean;
+  onSetElementAnimation?: (animation: string) => void;
+  selectedAnimation?: string;
+  onSpellCheck?: () => void;
+  onTranslateSlide?: () => void;
+  onAddComment?: () => void;
 }
 
 // Componente para la base de cada grupo con etiqueta centrada e iniciador de diálogo ↘
@@ -130,6 +149,25 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
   onToggleNotes,
   onSetFontFamily,
   onSetFontSize,
+  onCutElement,
+  onCopyElement,
+  onPasteElement,
+  onFormatPainter,
+  isFormatPainterActive = false,
+  onInsertTable,
+  onInsertImage,
+  aspectRatio: externalAspectRatio,
+  onSetAspectRatio,
+  showGridlines = false,
+  onToggleGridlines,
+  onApplyTransitionToAll,
+  onToggleHideSlide,
+  isSlideHidden = false,
+  onSetElementAnimation,
+  selectedAnimation: externalSelectedAnimation,
+  onSpellCheck,
+  onTranslateSlide,
+  onAddComment,
 }) => {
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
@@ -371,7 +409,8 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Pegar objeto o texto en diapositiva")}
+                  onClick={onPasteElement}
+                  title="Pegar objeto o texto copiado (Ctrl+V)"
                   className="flex flex-col items-center justify-center p-1 rounded hover:bg-[#f3f2f1] w-12 h-15 border border-transparent hover:border-[#d2d0ce] cursor-pointer"
                 >
                   <Clipboard size={20} className="text-[#c43e1c] mb-0.5" />
@@ -380,24 +419,34 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
                 <div className="flex flex-col gap-0.5">
                   <button
                     type="button"
-                    onClick={() => alert("Cortar objeto")}
-                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] hover:bg-[#f3f2f1] cursor-pointer"
+                    onClick={onCutElement}
+                    disabled={!selectedElementId}
+                    title="Cortar objeto seleccionado (Ctrl+X)"
+                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] hover:bg-[#f3f2f1] disabled:opacity-30 cursor-pointer"
                   >
                     <Scissors size={12} />
                     <span>Cortar</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => alert("Copiar objeto")}
-                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] hover:bg-[#f3f2f1] cursor-pointer"
+                    onClick={onCopyElement}
+                    disabled={!selectedElementId}
+                    title="Copiar objeto seleccionado (Ctrl+C)"
+                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] hover:bg-[#f3f2f1] disabled:opacity-30 cursor-pointer"
                   >
                     <Copy size={12} />
                     <span>Copiar</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => alert("Copiar formato")}
-                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] hover:bg-[#f3f2f1] cursor-pointer"
+                    onClick={onFormatPainter}
+                    disabled={!selectedElementId}
+                    title="Copiar formato tipográfico y estilos"
+                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] disabled:opacity-30 cursor-pointer ${
+                      isFormatPainterActive
+                        ? "bg-[#c43e1c]/15 text-[#c43e1c] font-bold"
+                        : "hover:bg-[#f3f2f1]"
+                    }`}
                   >
                     <Paintbrush size={12} />
                     <span>Copiar formato</span>
@@ -660,7 +709,8 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Cuadrícula de datos estilo Excel incrustada")}
+                  onClick={onInsertTable}
+                  title="Insertar tabla con filas y columnas editables"
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-14 h-15 cursor-pointer"
                 >
                   <TableIcon size={20} className="text-[#c43e1c] mb-1" />
@@ -668,7 +718,8 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Cargar imagen desde disco")}
+                  onClick={onInsertImage}
+                  title="Insertar imagen desde URL o disco"
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-14 h-15 cursor-pointer"
                 >
                   <ImageIcon size={20} className="text-emerald-600 mb-1" />
@@ -677,6 +728,7 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
                 <button
                   type="button"
                   onClick={onAddText}
+                  title="Insertar nuevo cuadro de texto editable"
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-16 h-15 cursor-pointer"
                 >
                   <Type size={20} className="text-[#c43e1c] mb-1" />
@@ -737,7 +789,8 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Conversión de trazos a formas geométricas activada")}
+                  onClick={() => onAddShape("rounded")}
+                  title="Convertir trazo de lápiz en forma redondeada"
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-18 h-15 cursor-pointer"
                 >
                   <Sparkles size={20} className="text-[#c43e1c] mb-1" />
@@ -801,9 +854,12 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      onClick={() => setAspectRatio("16:9")}
+                      onClick={() => {
+                        if (onSetAspectRatio) onSetAspectRatio("16:9");
+                        setAspectRatio("16:9");
+                      }}
                       className={`px-2 py-0.5 rounded text-xs cursor-pointer ${
-                        aspectRatio === "16:9"
+                        (externalAspectRatio || aspectRatio) === "16:9"
                           ? "bg-[#c43e1c] text-white font-bold"
                           : "bg-black/5"
                       }`}
@@ -812,9 +868,12 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={() => setAspectRatio("4:3")}
+                      onClick={() => {
+                        if (onSetAspectRatio) onSetAspectRatio("4:3");
+                        setAspectRatio("4:3");
+                      }}
                       className={`px-2 py-0.5 rounded text-xs cursor-pointer ${
-                        aspectRatio === "4:3"
+                        (externalAspectRatio || aspectRatio) === "4:3"
                           ? "bg-[#c43e1c] text-white font-bold"
                           : "bg-black/5"
                       }`}
@@ -886,7 +945,8 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
                   </div>
                   <button
                     type="button"
-                    onClick={() => alert(`Transición ${currentTransition} aplicada a todas las diapositivas`)}
+                    onClick={() => onApplyTransitionToAll?.(currentTransition)}
+                    title="Aplicar la transición seleccionada a toda la presentación"
                     className="px-2 py-0.5 rounded bg-black/5 hover:bg-black/10 font-medium text-left cursor-pointer"
                   >
                     Aplicar a todas
@@ -930,9 +990,12 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
                 {/* Entradas (Verdes) */}
                 <button
                   type="button"
-                  onClick={() => setSelectedAnimation("entrada-desvanecer")}
+                  onClick={() => {
+                    onSetElementAnimation?.("entrada-desvanecer");
+                    setSelectedAnimation("entrada-desvanecer");
+                  }}
                   className={`flex flex-col items-center justify-center p-1.5 rounded w-16 h-15 border transition-all cursor-pointer ${
-                    selectedAnimation === "entrada-desvanecer"
+                    (externalSelectedAnimation || selectedAnimation) === "entrada-desvanecer"
                       ? "bg-emerald-50 border-emerald-600 text-emerald-800 font-bold"
                       : "border-emerald-200 hover:bg-emerald-50/50"
                   }`}
@@ -942,9 +1005,12 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setSelectedAnimation("entrada-zoom")}
+                  onClick={() => {
+                    onSetElementAnimation?.("entrada-zoom");
+                    setSelectedAnimation("entrada-zoom");
+                  }}
                   className={`flex flex-col items-center justify-center p-1.5 rounded w-16 h-15 border transition-all cursor-pointer ${
-                    selectedAnimation === "entrada-zoom"
+                    (externalSelectedAnimation || selectedAnimation) === "entrada-zoom"
                       ? "bg-emerald-50 border-emerald-600 text-emerald-800 font-bold"
                       : "border-emerald-200 hover:bg-emerald-50/50"
                   }`}
@@ -956,9 +1022,12 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
                 {/* Énfasis (Amarillo) */}
                 <button
                   type="button"
-                  onClick={() => setSelectedAnimation("enfasis-girar")}
+                  onClick={() => {
+                    onSetElementAnimation?.("enfasis-girar");
+                    setSelectedAnimation("enfasis-girar");
+                  }}
                   className={`flex flex-col items-center justify-center p-1.5 rounded w-16 h-15 border transition-all cursor-pointer ${
-                    selectedAnimation === "enfasis-girar"
+                    (externalSelectedAnimation || selectedAnimation) === "enfasis-girar"
                       ? "bg-amber-50 border-amber-500 text-amber-800 font-bold"
                       : "border-amber-200 hover:bg-amber-50/50"
                   }`}
@@ -970,9 +1039,12 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
                 {/* Salida (Rojo) */}
                 <button
                   type="button"
-                  onClick={() => setSelectedAnimation("salida-desvanecer")}
+                  onClick={() => {
+                    onSetElementAnimation?.("salida-desvanecer");
+                    setSelectedAnimation("salida-desvanecer");
+                  }}
                   className={`flex flex-col items-center justify-center p-1.5 rounded w-16 h-15 border transition-all cursor-pointer ${
-                    selectedAnimation === "salida-desvanecer"
+                    (externalSelectedAnimation || selectedAnimation) === "salida-desvanecer"
                       ? "bg-rose-50 border-rose-500 text-rose-800 font-bold"
                       : "border-rose-200 hover:bg-rose-50/50"
                   }`}
@@ -992,7 +1064,8 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
               <div className="flex items-center gap-2 flex-1 items-center text-xs">
                 <button
                   type="button"
-                  onClick={() => alert("Panel de animación lateral abierto")}
+                  onClick={onToggleNotes}
+                  title="Abrir u ocultar panel de animación y notas"
                   className="px-2 py-1.5 rounded bg-black/5 hover:bg-black/10 font-medium cursor-pointer"
                 >
                   Panel de animación
@@ -1048,15 +1121,21 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Diapositiva actual oculta de la proyección")}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-18 h-15 cursor-pointer"
+                  onClick={onToggleHideSlide}
+                  title="Ocultar o mostrar diapositiva en la proyección"
+                  className={`flex flex-col items-center justify-center p-1.5 rounded w-18 h-15 cursor-pointer ${
+                    isSlideHidden ? "bg-amber-100 text-amber-900 border border-amber-300" : "hover:bg-[#f3f2f1]"
+                  }`}
                 >
                   <Eye size={18} className="text-stone-600 mb-1" />
-                  <span className="text-[10px] text-center leading-tight">Ocultar diapositiva</span>
+                  <span className="text-[10px] text-center leading-tight">
+                    {isSlideHidden ? "Visible" : "Ocultar diapositiva"}
+                  </span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Ensayo de intervalos con temporizador en pantalla")}
+                  onClick={onStartPresentation}
+                  title="Ensayar intervalos con temporizador en pantalla"
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-18 h-15 cursor-pointer"
                 >
                   <Clock size={18} className="text-[#c43e1c] mb-1" />
@@ -1071,7 +1150,11 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Vista Moderador activada: Presentación en proyector y notas en tu pantalla")}
+                  onClick={() => {
+                    if (!showNotes) onToggleNotes();
+                    onStartPresentation();
+                  }}
+                  title="Presentación con notas del orador activadas"
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-20 h-15 cursor-pointer"
                 >
                   <Monitor size={18} className="text-[#c43e1c] mb-1" />
@@ -1090,7 +1173,8 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Comprobación ortográfica completada")}
+                  onClick={onSpellCheck}
+                  title="Comprobar ortografía en la diapositiva activa"
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-18 h-15 cursor-pointer"
                 >
                   <ShieldCheck size={20} className="text-[#c43e1c] mb-1" />
@@ -1098,7 +1182,8 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Traducción inteligente de diapositiva")}
+                  onClick={onTranslateSlide}
+                  title="Traducir elementos de texto de la diapositiva a inglés"
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-18 h-15 cursor-pointer"
                 >
                   <Globe size={20} className="text-stone-600 mb-1" />
@@ -1112,10 +1197,8 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => {
-                    const com = prompt("Comentario para la diapositiva:");
-                    if (com) alert(`Comentario guardado: ${com}`);
-                  }}
+                  onClick={onAddComment}
+                  title="Insertar nuevo comentario en las notas del orador"
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-20 h-15 cursor-pointer"
                 >
                   <MessageSquare size={20} className="text-[#c43e1c] mb-1" />
@@ -1146,10 +1229,15 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Cuadrícula y guías de alineación magnética visibles")}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-18 h-15 cursor-pointer"
+                  onClick={onToggleGridlines}
+                  title="Mostrar u ocultar cuadrícula milimétrica de alineación"
+                  className={`flex flex-col items-center justify-center p-1.5 rounded w-18 h-15 cursor-pointer transition-colors ${
+                    showGridlines
+                      ? "bg-[#c43e1c]/10 text-[#c43e1c] font-bold border border-[#c43e1c]"
+                      : "hover:bg-[#f3f2f1]"
+                  }`}
                 >
-                  <Grid size={20} className="text-stone-600 mb-1" />
+                  <Grid size={20} className={showGridlines ? "text-[#c43e1c] mb-1" : "text-stone-600 mb-1"} />
                   <span className="text-[10px] text-center leading-tight">Guías y regla</span>
                 </button>
               </div>
@@ -1165,19 +1253,17 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
               <div className="flex items-center gap-2 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() =>
-                    alert("Atajos de CoffeView:\nF5: Presentar desde el inicio\nShift+F5: Presentar diapositiva actual\nCtrl+M: Nueva diapositiva\nEscape: Salir de presentación")
-                  }
+                  onClick={onAddText}
+                  title="Ver atajos de teclado rápidos"
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-18 h-15 cursor-pointer"
                 >
                   <HelpCircle size={20} className="text-[#c43e1c] mb-1" />
-                  <span className="text-[10px] font-medium text-center leading-tight">Atajos</span>
+                  <span className="text-[10px] font-medium text-center leading-tight">Atajos (F5/Ctrl+M)</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
-                    alert("CoffeView Suite 2026\nHerramienta de diseño y proyección de diapositivas 16:9.\nCompatible con Microsoft PowerPoint (.pptx), .csl y JSON.")
-                  }
+                  onClick={onStartPresentation}
+                  title="Acerca de CoffeView Suite"
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-18 h-15 cursor-pointer"
                 >
                   <Presentation size={20} className="text-stone-500 mb-1" />

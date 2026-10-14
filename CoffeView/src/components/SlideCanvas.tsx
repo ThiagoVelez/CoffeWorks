@@ -7,6 +7,8 @@ interface SlideCanvasProps {
   selectedElementId: string | null;
   onSelectElement: (id: string | null) => void;
   onUpdateElement: (id: string, updates: Partial<SlideElement>) => void;
+  aspectRatio?: "16:9" | "4:3";
+  showGridlines?: boolean;
 }
 
 export const SlideCanvas: React.FC<SlideCanvasProps> = ({
@@ -15,6 +17,8 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
   selectedElementId,
   onSelectElement,
   onUpdateElement,
+  aspectRatio = "16:9",
+  showGridlines = false,
 }) => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -27,18 +31,35 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
     }
   };
 
+  const isWide = aspectRatio === "16:9";
+
   return (
     <div
       className="flex-1 bg-[#4a4744] overflow-auto flex items-center justify-center p-8 select-none relative"
       onClick={handleCanvasClick}
     >
-      {/* Contenedor principal de la Diapositiva 16:9 */}
+      {/* Contenedor principal de la Diapositiva 16:9 o 4:3 */}
       <div
         ref={canvasRef}
         onClick={handleCanvasClick}
-        style={{ backgroundColor: slide.background || theme.slideBg }}
-        className="w-[960px] h-[540px] max-w-full aspect-video rounded-sm relative slide-canvas-shadow overflow-hidden transition-colors shrink-0"
+        style={{
+          backgroundColor: slide.background || theme.slideBg,
+          backgroundImage: showGridlines
+            ? "linear-gradient(to right, rgba(0,0,0,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.08) 1px, transparent 1px)"
+            : undefined,
+          backgroundSize: showGridlines ? "24px 24px" : undefined,
+        }}
+        className={`${
+          isWide ? "w-[960px] h-[540px] aspect-video" : "w-[720px] h-[540px] aspect-[4/3]"
+        } max-w-full rounded-sm relative slide-canvas-shadow overflow-hidden transition-all shrink-0`}
       >
+        {/* Banner de diapositiva oculta */}
+        {slide.hidden && (
+          <div className="absolute top-2 left-2 z-30 px-2 py-0.5 rounded bg-black/60 text-white text-[10px] font-mono tracking-wider">
+            Oculta de la proyección
+          </div>
+        )}
+
         {/* Elementos dentro de la Diapositiva */}
         {slide.elements.map((el) => {
           const isSelected = el.id === selectedElementId;
@@ -94,8 +115,54 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
                   : "hover:outline-1 hover:outline-dashed hover:outline-gray-400"
               }`}
             >
-              {/* Modo de edición de texto */}
-              {isEditing ? (
+              {/* Elemento de tipo Imagen */}
+              {el.type === "image" ? (
+                <div className="w-full h-full flex items-center justify-center overflow-hidden rounded">
+                  {el.content && (el.content.startsWith("http") || el.content.startsWith("data:")) ? (
+                    <img
+                      src={el.content}
+                      alt="Diapositiva"
+                      className="w-full h-full object-contain pointer-events-none"
+                    />
+                  ) : (
+                    <div className="w-full h-full border-2 border-dashed border-stone-400/50 rounded flex flex-col items-center justify-center p-2 text-stone-500 bg-stone-100/50">
+                      <span className="text-xs font-semibold">{el.content || "Imagen"}</span>
+                    </div>
+                  )}
+                </div>
+              ) : el.type === "table" ? (
+                /* Elemento de tipo Tabla */
+                <div className="w-full h-full overflow-hidden flex flex-col">
+                  {isEditing ? (
+                    <textarea
+                      value={el.content}
+                      onChange={(e) => onUpdateElement(el.id, { content: e.target.value })}
+                      onBlur={() => setEditingId(null)}
+                      autoFocus
+                      className="w-full h-full bg-white/90 text-xs font-mono p-1 border rounded"
+                      placeholder="Fila 1 Col 1, Fila 1 Col 2&#10;Fila 2 Col 1, Fila 2 Col 2"
+                    />
+                  ) : (
+                    <table className="w-full h-full border-collapse text-xs select-none">
+                      <tbody>
+                        {el.content.split("\n").filter(Boolean).map((row, rIdx) => (
+                          <tr key={`r_${rIdx}`} className={rIdx === 0 ? "font-bold bg-black/5" : ""}>
+                            {row.split(",").map((cell, cIdx) => (
+                              <td
+                                key={`c_${cIdx}`}
+                                className="border border-stone-300 p-1.5 text-center truncate"
+                              >
+                                {cell.trim()}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              ) : isEditing ? (
+                /* Modo de edición de texto general */
                 <textarea
                   value={el.content}
                   onChange={(e) => onUpdateElement(el.id, { content: e.target.value })}

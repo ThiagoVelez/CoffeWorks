@@ -24,6 +24,14 @@ export interface CellData {
   borders?: CellBorders;
   fontFamily?: string;
   fontSize?: number;
+  wrapText?: boolean;
+  decimals?: number;
+}
+
+export interface ChartConfig {
+  type: "bar" | "line" | "pie";
+  title: string;
+  data: Array<{ label: string; value: number }>;
 }
 
 export interface Sheet {
@@ -32,6 +40,11 @@ export interface Sheet {
   data: Record<string, CellData>;
   colWidths?: Record<string, number>;
   rowHeights?: Record<number, number>;
+  isProtected?: boolean;
+  filterEnabled?: boolean;
+  frozenPanes?: boolean;
+  showRawFormulas?: boolean;
+  chart?: ChartConfig | null;
 }
 
 export interface WorkbookMetadata {

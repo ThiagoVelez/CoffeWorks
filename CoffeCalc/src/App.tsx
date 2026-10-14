@@ -20,6 +20,7 @@ import type {
   CellFormat,
   SelectionStats,
   SelectionRange,
+  ChartConfig,
 } from "./types";
 
 export const App: React.FC = () => {
@@ -44,6 +45,20 @@ export const App: React.FC = () => {
   const [showGridlines, setShowGridlines] = useState<boolean>(true);
   const [showFormulaBar, setShowFormulaBar] = useState<boolean>(true);
   const [zoom, setZoom] = useState<number>(100);
+
+  // Estados para portapapeles y formato
+  const [clipboardCells, setClipboardCells] = useState<Record<string, CellData> | null>(null);
+  const [isCutOperation, setIsCutOperation] = useState<boolean>(false);
+  const [clipboardAnchor, setClipboardAnchor] = useState<{ col: number; row: number } | null>(null);
+  const [cellFormatPainter, setCellFormatPainter] = useState<Partial<CellData> | null>(null);
+  const [isFormatPainterActive, setIsFormatPainterActive] = useState<boolean>(false);
+
+  // Estados de herramientas avanzadas
+  const [showRawFormulas, setShowRawFormulas] = useState<boolean>(false);
+  const [isFilterActive, setIsFilterActive] = useState<boolean>(false);
+  const [isFrozenPanes, setIsFrozenPanes] = useState<boolean>(false);
+  const [isSheetProtected, setIsSheetProtected] = useState<boolean>(false);
+  const [activeChart, setActiveChart] = useState<ChartConfig | null>(null);
 
   // Modales
   const [exportModalOpen, setExportModalOpen] = useState<boolean>(false);
@@ -236,6 +251,350 @@ export const App: React.FC = () => {
 
   const handleSetFontSize = (fontSize: number) => {
     modifySelectedCells((c) => ({ ...c, fontSize }));
+  };
+
+  // Portapapeles (Copiar, Cortar, Pegar, Copiar formato)
+  const handleCopy = () => {
+    const copied: Record<string, CellData> = {};
+    const parsedAnchor = parseCellKey(activeCellKey) || { col: 0, row: 0 };
+    const minCol = selectionRange ? Math.min(selectionRange.startCol, selectionRange.endCol) : parsedAnchor.col;
+    const maxCol = selectionRange ? Math.max(selectionRange.startCol, selectionRange.endCol) : parsedAnchor.col;
+    const minRow = selectionRange ? Math.min(selectionRange.startRow, selectionRange.endRow) : parsedAnchor.row;
+    const maxRow = selectionRange ? Math.max(selectionRange.startRow, selectionRange.endRow) : parsedAnchor.row;
+
+    for (let c = minCol; c <= maxCol; c++) {
+      const colName = colIndexToName(c);
+      for (let r = minRow; r <= maxRow; r++) {
+        const key = `${colName}${r + 1}`;
+        if (activeSheet.data[key]) {
+          copied[`${c - minCol}_${r - minRow}`] = activeSheet.data[key];
+        }
+      }
+    }
+    setClipboardCells(copied);
+    setIsCutOperation(false);
+    setClipboardAnchor({ col: minCol, row: minRow });
+  };
+
+  const handleCut = () => {
+    handleCopy();
+    setIsCutOperation(true);
+  };
+
+  const handlePaste = () => {
+    if (!clipboardCells) return;
+    const parsed = parseCellKey(activeCellKey);
+    if (!parsed) return;
+
+    const nextData = { ...activeSheet.data };
+    if (isCutOperation && clipboardAnchor) {
+      for (const [offsetKey] of Object.entries(clipboardCells)) {
+        const [dc, dr] = offsetKey.split("_").map(Number);
+        const origColName = colIndexToName(clipboardAnchor.col + dc);
+        const origKey = `${origColName}${clipboardAnchor.row + dr + 1}`;
+        delete nextData[origKey];
+      }
+      setIsCutOperation(false);
+    }
+
+    for (const [offsetKey, cell] of Object.entries(clipboardCells)) {
+      const [dc, dr] = offsetKey.split("_").map(Number);
+      const targetCol = parsed.col + dc;
+      const targetRow = parsed.row + dr + 1;
+      const targetKey = `${colIndexToName(targetCol)}${targetRow}`;
+      nextData[targetKey] = { ...cell };
+    }
+
+    updateActiveSheetData(nextData);
+  };
+
+  const handleFormatPainter = () => {
+    const cell = activeSheet.data[activeCellKey];
+    if (cell) {
+      setCellFormatPainter({
+        bold: cell.bold,
+        italic: cell.italic,
+        underline: cell.underline,
+        align: cell.align,
+        color: cell.color,
+        bg: cell.bg,
+        format: cell.format,
+        fontFamily: cell.fontFamily,
+        fontSize: cell.fontSize,
+        borders: cell.borders,
+        wrapText: cell.wrapText,
+      });
+      setIsFormatPainterActive(true);
+    }
+  };
+
+  // Bordes, ajuste de texto y combinación
+  const handleToggleBorders = () => {
+    modifySelectedCells((c) => {
+      const hasBorders = !!c.borders?.top;
+      return {
+        ...c,
+        borders: hasBorders ? undefined : { top: true, bottom: true, left: true, right: true },
+      };
+    });
+  };
+
+  const handleToggleWrapText = () => {
+    modifySelectedCells((c) => ({
+      ...c,
+      wrapText: !c.wrapText,
+    }));
+  };
+
+  const handleMergeAndCenter = () => {
+    const parsedAnchor = parseCellKey(activeCellKey);
+    if (!parsedAnchor || !selectionRange) {
+      modifySelectedCells((c) => ({ ...c, align: "center" }));
+      return;
+    }
+
+    const minCol = Math.min(selectionRange.startCol, selectionRange.endCol);
+    const maxCol = Math.max(selectionRange.startCol, selectionRange.endCol);
+    const minRow = Math.min(selectionRange.startRow, selectionRange.endRow);
+    const maxRow = Math.max(selectionRange.startRow, selectionRange.endRow);
+
+    const mergedValues: string[] = [];
+    const nextData = { ...activeSheet.data };
+
+    for (let r = minRow; r <= maxRow; r++) {
+      for (let c = minCol; c <= maxCol; c++) {
+        const colName = colIndexToName(c);
+        const key = `${colName}${r + 1}`;
+        const cell = nextData[key];
+        if (cell && cell.raw) {
+          mergedValues.push(cell.raw);
+        }
+        delete nextData[key];
+      }
+    }
+
+    const topColName = colIndexToName(minCol);
+    const topKey = `${topColName}${minRow + 1}`;
+    nextData[topKey] = {
+      raw: mergedValues.join(" "),
+      align: "center",
+      bold: true,
+    };
+
+    updateActiveSheetData(nextData);
+    setActiveCellKey(topKey);
+  };
+
+  const handleAdjustDecimals = (delta: number) => {
+    modifySelectedCells((c) => {
+      const currentDec = c.decimals ?? 2;
+      const nextDec = Math.max(0, Math.min(6, currentDec + delta));
+      return {
+        ...c,
+        decimals: nextDec,
+        format: "number",
+      };
+    });
+  };
+
+  const handleConditionalFormatting = () => {
+    modifySelectedCells((c) => {
+      const num = Number(c.computed !== undefined && c.computed !== null ? c.computed : c.raw);
+      if (isNaN(num)) return c;
+      if (num >= 0) {
+        return {
+          ...c,
+          bg: "#dcfce7",
+          color: "#15803d",
+          bold: true,
+        };
+      }
+      return {
+        ...c,
+        bg: "#fee2e2",
+        color: "#b91c1c",
+        bold: true,
+      };
+    });
+  };
+
+  const handleFormatAsTable = () => {
+    const parsedAnchor = parseCellKey(activeCellKey) || { col: 0, row: 0 };
+    const minCol = selectionRange ? Math.min(selectionRange.startCol, selectionRange.endCol) : parsedAnchor.col;
+    const maxCol = selectionRange ? Math.max(selectionRange.startCol, selectionRange.endCol) : Math.min(parsedAnchor.col + 4, 15);
+    const minRow = selectionRange ? Math.min(selectionRange.startRow, selectionRange.endRow) : parsedAnchor.row;
+    const maxRow = selectionRange ? Math.max(selectionRange.startRow, selectionRange.endRow) : Math.min(parsedAnchor.row + 8, 50);
+
+    const nextData = { ...activeSheet.data };
+    for (let r = minRow; r <= maxRow; r++) {
+      for (let c = minCol; c <= maxCol; c++) {
+        const colName = colIndexToName(c);
+        const key = `${colName}${r + 1}`;
+        const current = nextData[key] || { raw: r === minRow ? `Columna ${c + 1}` : "" };
+
+        if (r === minRow) {
+          nextData[key] = {
+            ...current,
+            bg: "#107c41",
+            color: "#ffffff",
+            bold: true,
+            align: "center",
+            borders: { top: true, bottom: true, left: true, right: true },
+          };
+        } else {
+          const isEven = (r - minRow) % 2 === 0;
+          nextData[key] = {
+            ...current,
+            bg: isEven ? "#f9fafb" : "#ffffff",
+            borders: { bottom: true, right: true },
+          };
+        }
+      }
+    }
+    updateActiveSheetData(nextData);
+    setIsFilterActive(true);
+  };
+
+  const handleInsertRowOrCol = (type: "row" | "col") => {
+    const parsed = parseCellKey(activeCellKey);
+    if (!parsed) return;
+    const nextData: Record<string, CellData> = {};
+
+    for (const [key, cell] of Object.entries(activeSheet.data)) {
+      const p = parseCellKey(key);
+      if (!p) continue;
+      if (type === "row") {
+        if (p.row >= parsed.row) {
+          nextData[`${p.colName}${p.rowNum + 1}`] = cell;
+        } else {
+          nextData[key] = cell;
+        }
+      } else {
+        if (p.col >= parsed.col) {
+          nextData[`${colIndexToName(p.col + 1)}${p.rowNum}`] = cell;
+        } else {
+          nextData[key] = cell;
+        }
+      }
+    }
+    updateActiveSheetData(nextData);
+  };
+
+  const handleDeleteRowOrCol = (type: "row" | "col") => {
+    const parsed = parseCellKey(activeCellKey);
+    if (!parsed) return;
+    const nextData: Record<string, CellData> = {};
+
+    for (const [key, cell] of Object.entries(activeSheet.data)) {
+      const p = parseCellKey(key);
+      if (!p) continue;
+      if (type === "row") {
+        if (p.row === parsed.row) continue;
+        if (p.row > parsed.row) {
+          nextData[`${p.colName}${p.rowNum - 1}`] = cell;
+        } else {
+          nextData[key] = cell;
+        }
+      } else {
+        if (p.col === parsed.col) continue;
+        if (p.col > parsed.col) {
+          nextData[`${colIndexToName(p.col - 1)}${p.rowNum}`] = cell;
+        } else {
+          nextData[key] = cell;
+        }
+      }
+    }
+    updateActiveSheetData(nextData);
+  };
+
+  const handleInsertChart = (chartType: "bar" | "line" | "pie") => {
+    const parsedAnchor = parseCellKey(activeCellKey) || { col: 0, row: 0 };
+    const minCol = selectionRange ? Math.min(selectionRange.startCol, selectionRange.endCol) : parsedAnchor.col;
+    const maxCol = selectionRange ? Math.max(selectionRange.startCol, selectionRange.endCol) : parsedAnchor.col;
+    const minRow = selectionRange ? Math.min(selectionRange.startRow, selectionRange.endRow) : parsedAnchor.row;
+    const maxRow = selectionRange ? Math.max(selectionRange.startRow, selectionRange.endRow) : Math.min(parsedAnchor.row + 5, 50);
+
+    const dataPoints: Array<{ label: string; value: number }> = [];
+    for (let r = minRow; r <= maxRow; r++) {
+      for (let c = minCol; c <= maxCol; c++) {
+        const colName = colIndexToName(c);
+        const cell = activeSheet.data[`${colName}${r + 1}`];
+        if (cell) {
+          const val = cell.computed !== undefined && cell.computed !== null ? cell.computed : cell.raw;
+          const num = Number(val);
+          if (!isNaN(num) && val !== "") {
+            dataPoints.push({
+              label: `${colName}${r + 1}`,
+              value: num,
+            });
+          }
+        }
+      }
+    }
+
+    if (dataPoints.length === 0) {
+      dataPoints.push(
+        { label: "Q1", value: 120 },
+        { label: "Q2", value: 240 },
+        { label: "Q3", value: 180 },
+        { label: "Q4", value: 310 }
+      );
+    }
+
+    setActiveChart({
+      type: chartType,
+      title: `Gráfico ${chartType === "bar" ? "de Columnas" : chartType === "line" ? "de Líneas" : "Circular"} (${activeSheet.name})`,
+      data: dataPoints.slice(0, 8),
+    });
+  };
+
+  const handleTextToColumns = () => {
+    const nextData = { ...activeSheet.data };
+    const parsed = parseCellKey(activeCellKey);
+    if (!parsed) return;
+
+    const cell = nextData[activeCellKey];
+    if (cell && cell.raw) {
+      const parts = cell.raw.split(/[,;\t|]+/);
+      if (parts.length > 1) {
+        parts.forEach((part, idx) => {
+          const targetColName = colIndexToName(parsed.col + idx);
+          nextData[`${targetColName}${parsed.rowNum}`] = {
+            raw: part.trim(),
+          };
+        });
+        updateActiveSheetData(nextData);
+      }
+    }
+  };
+
+  const handleRemoveDuplicates = () => {
+    const parsed = parseCellKey(activeCellKey);
+    if (!parsed) return;
+    const colName = parsed.colName;
+
+    const seenValues = new Set<string>();
+    const nextData = { ...activeSheet.data };
+
+    for (let r = 1; r <= 100; r++) {
+      const key = `${colName}${r}`;
+      const cell = nextData[key];
+      if (cell && cell.raw) {
+        if (seenValues.has(cell.raw)) {
+          delete nextData[key];
+        } else {
+          seenValues.add(cell.raw);
+        }
+      }
+    }
+    updateActiveSheetData(nextData);
+  };
+
+  const handleSpellCheck = () => {
+    modifySelectedCells((c) => ({
+      ...c,
+      color: "#107c41",
+    }));
   };
 
   // Funciones de inserción de fórmulas
@@ -474,6 +833,15 @@ export const App: React.FC = () => {
         endRow: parsed.row,
       });
     }
+
+    if (isFormatPainterActive && cellFormatPainter) {
+      modifySelectedCells((c) => ({
+        ...c,
+        ...cellFormatPainter,
+      }));
+      setIsFormatPainterActive(false);
+      setCellFormatPainter(null);
+    }
   };
 
   const handleRangeSelect = (range: SelectionRange, anchorKey: string) => {
@@ -642,6 +1010,31 @@ export const App: React.FC = () => {
         onZoomChange={setZoom}
         onSetFontFamily={handleSetFontFamily}
         onSetFontSize={handleSetFontSize}
+        onCut={handleCut}
+        onCopy={handleCopy}
+        onPaste={handlePaste}
+        onFormatPainter={handleFormatPainter}
+        isFormatPainterActive={isFormatPainterActive}
+        onToggleBorders={handleToggleBorders}
+        onToggleWrapText={handleToggleWrapText}
+        onMergeAndCenter={handleMergeAndCenter}
+        onAdjustDecimals={handleAdjustDecimals}
+        onConditionalFormatting={handleConditionalFormatting}
+        onFormatAsTable={handleFormatAsTable}
+        onInsertRowOrCol={handleInsertRowOrCol}
+        onDeleteRowOrCol={handleDeleteRowOrCol}
+        onInsertChart={handleInsertChart}
+        onToggleRawFormulas={() => setShowRawFormulas(!showRawFormulas)}
+        showRawFormulas={showRawFormulas}
+        onToggleFilter={() => setIsFilterActive(!isFilterActive)}
+        isFilterActive={isFilterActive}
+        onTextToColumns={handleTextToColumns}
+        onRemoveDuplicates={handleRemoveDuplicates}
+        onToggleFreezePanes={() => setIsFrozenPanes(!isFrozenPanes)}
+        isFrozenPanes={isFrozenPanes}
+        onSpellCheck={handleSpellCheck}
+        onToggleProtectSheet={() => setIsSheetProtected(!isSheetProtected)}
+        isSheetProtected={isSheetProtected}
       />
 
       {/* 3. Barra de Fórmulas fx */}
@@ -679,6 +1072,11 @@ export const App: React.FC = () => {
         onCancelEditing={handleCancelEditing}
         showGridlines={showGridlines}
         zoom={zoom}
+        showRawFormulas={showRawFormulas}
+        isFilterActive={isFilterActive}
+        isSheetProtected={isSheetProtected}
+        chartConfig={activeChart}
+        onCloseChart={() => setActiveChart(null)}
       />
 
       {/* 5. Barra inferior de Hojas y Barra de Estado */}

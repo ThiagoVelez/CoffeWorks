@@ -1,6 +1,6 @@
 // Tipos de datos para CoffeView (Herramienta de Presentaciones estilo Microsoft PowerPoint)
 
-export type ElementType = "title" | "subtitle" | "text" | "shape" | "image";
+export type ElementType = "title" | "subtitle" | "text" | "shape" | "image" | "table";
 
 export type ShapeType =
   | "rectangle"
@@ -21,7 +21,7 @@ export interface SlideElement {
   y: number; // Porcentaje relativo al alto (0 - 100)
   width: number; // Porcentaje de ancho (0 - 100)
   height: number; // Porcentaje de alto (0 - 100)
-  content: string; // Texto o URL de imagen
+  content: string; // Texto, JSON de celdas o URL de imagen
   fontSize?: number;
   fontFamily?: string;
   fontWeight?: "normal" | "bold";
@@ -32,6 +32,7 @@ export interface SlideElement {
   bg?: string;
   shapeType?: ShapeType;
   zIndex?: number;
+  animation?: "none" | "entrada-desvanecer" | "entrada-zoom" | "enfasis-girar" | "salida-desvanecer";
 }
 
 export type SlideLayout = "title" | "title-content" | "two-columns" | "blank";
@@ -46,6 +47,7 @@ export interface Slide {
   elements: SlideElement[];
   notes: string;
   transition: SlideTransition;
+  hidden?: boolean;
 }
 
 export interface SlideTheme {

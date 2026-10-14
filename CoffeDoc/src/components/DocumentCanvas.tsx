@@ -10,6 +10,8 @@ interface DocumentCanvasProps {
   margins?: PageMargins;
   columns?: ColumnCount;
   watermark?: string;
+  pageColor?: string;
+  isProtected?: boolean;
 }
 
 export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
@@ -21,6 +23,8 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
   margins = "normal",
   columns = 1,
   watermark,
+  pageColor,
+  isProtected = false,
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
 
@@ -32,7 +36,7 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
   }, [content]);
 
   const handleInput = () => {
-    if (editorRef.current) {
+    if (editorRef.current && !isProtected) {
       onChange(editorRef.current.innerHTML);
     }
   };
@@ -46,6 +50,12 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
       ? "p-24"
       : "p-16";
 
+  const sheetBg = pageColor
+    ? pageColor
+    : isDark
+    ? "#1f1b19"
+    : "#ffffff";
+
   return (
     <div
       className={`flex-1 overflow-y-auto py-8 px-4 flex justify-center transition-colors ${
@@ -57,12 +67,21 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
         style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top center" }}
         className="transition-transform duration-150 ease-out"
       >
+        {/* Banner de protección */}
+        {isProtected && (
+          <div className="w-[794px] mb-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-700 text-xs rounded font-medium flex items-center justify-between">
+            <span>Documento protegido contra edición (Modo solo lectura)</span>
+            <span className="font-mono text-[10px]">Protección activa</span>
+          </div>
+        )}
+
         {/* Hoja de papel A4 física */}
         <div
+          style={{ backgroundColor: sheetBg }}
           className={`w-[794px] min-h-[1123px] ${marginPadding} relative rounded-sm transition-all border ${
             isDark
-              ? "bg-[#1f1b19] text-[#eae0dd] border-[#393431]/60 shadow-[0_8px_30px_rgb(0,0,0,0.5)]"
-              : "bg-white text-[#111111] border-[#d2d0ce] shadow-[0_4px_24px_rgba(0,0,0,0.12)]"
+              ? "text-[#eae0dd] border-[#393431]/60 shadow-[0_8px_30px_rgb(0,0,0,0.5)]"
+              : "text-[#111111] border-[#d2d0ce] shadow-[0_4px_24px_rgba(0,0,0,0.12)]"
           }`}
         >
           {/* Marca de agua de documento (Estilo .uno:WatermarkDialog de LibreOffice Writer) */}
@@ -77,7 +96,7 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
           {/* Área de edición enriquecida con columnas dinámicas (.uno:FormatColumns) */}
           <div
             ref={editorRef}
-            contentEditable
+            contentEditable={!isProtected}
             onInput={handleInput}
             suppressContentEditableWarning
             style={{

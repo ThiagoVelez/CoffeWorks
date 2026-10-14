@@ -39,7 +39,7 @@ const MOCK_APPS: SuiteApp[] = [
     name: "CoffeView",
     subtitle: "Diseño de presentaciones visuales y diapositivas de alto impacto",
     description: "Diseñador de diapositivas interactivas, transiciones cinematográficas, lienzos gráficos, modo orador y exportación universal.",
-    version: "v1.0 (Próximamente)",
+    version: "v1.0",
     installed: true,
     size_mb: 178,
     status: "Instalada (178 MB)",

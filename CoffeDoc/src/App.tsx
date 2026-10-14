@@ -38,6 +38,8 @@ export const App: React.FC = () => {
   const [margins, setMargins] = useState<PageMargins>("normal");
   const [columns, setColumns] = useState<ColumnCount>(1);
   const [watermark, setWatermark] = useState<string>("");
+  const [pageColor, setPageColor] = useState<string>("#ffffff");
+  const [isProtected, setIsProtected] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [showStartScreen, setShowStartScreen] = useState<boolean>(true);
 
@@ -354,6 +356,10 @@ export const App: React.FC = () => {
           onSetColumnsCount={(c) => setColumns(c as ColumnCount)}
           watermark={watermark}
           onSetWatermark={setWatermark}
+          pageColor={pageColor}
+          onSetPageColor={setPageColor}
+          isProtected={isProtected}
+          onToggleProtected={() => setIsProtected((prev) => !prev)}
         />
       )}
 
@@ -382,6 +388,8 @@ export const App: React.FC = () => {
           margins={margins}
           columns={columns}
           watermark={watermark}
+          pageColor={pageColor}
+          isProtected={isProtected}
         />
       </div>
 

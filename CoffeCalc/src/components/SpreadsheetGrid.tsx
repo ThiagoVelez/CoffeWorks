@@ -1,10 +1,11 @@
 import React, { useRef, useEffect } from "react";
-import type { CellData, SelectionRange } from "../types";
+import type { CellData, SelectionRange, ChartConfig } from "../types";
 import {
   colIndexToName,
   parseCellKey,
   formatCellValue,
 } from "../services/formulaEngine";
+import { Filter, X, ShieldAlert } from "lucide-react";
 
 interface SpreadsheetGridProps {
   data: Record<string, CellData>;
@@ -22,6 +23,11 @@ interface SpreadsheetGridProps {
   onCancelEditing: () => void;
   showGridlines: boolean;
   zoom: number;
+  showRawFormulas?: boolean;
+  isFilterActive?: boolean;
+  isSheetProtected?: boolean;
+  chartConfig?: ChartConfig | null;
+  onCloseChart?: () => void;
 }
 
 export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
@@ -40,6 +46,11 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
   onCancelEditing,
   showGridlines,
   zoom,
+  showRawFormulas = false,
+  isFilterActive = false,
+  isSheetProtected = false,
+  chartConfig,
+  onCloseChart,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -360,6 +371,112 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
         transformOrigin: "top left",
       }}
     >
+      {/* Banner de protección de hoja si está activa */}
+      {isSheetProtected && (
+        <div className="sticky top-0 left-0 right-0 z-50 bg-amber-50 border-b border-amber-300 px-3 py-1 flex items-center justify-between text-xs text-amber-900 shadow-sm">
+          <div className="flex items-center gap-2">
+            <ShieldAlert size={14} className="text-amber-700" />
+            <span className="font-semibold">Hoja protegida contra modificaciones accidentales (Modo de solo lectura)</span>
+          </div>
+          <span className="text-[11px] text-amber-800">Usa "Revisar &gt; Proteger hoja" en la cinta de opciones para habilitar edición.</span>
+        </div>
+      )}
+
+      {/* Widget flotante de Gráfico generado */}
+      {chartConfig && (
+        <div className="absolute top-10 right-10 z-40 bg-white/95 backdrop-blur-md rounded-lg shadow-xl border border-stone-300 p-4 w-96 flex flex-col gap-2">
+          <div className="flex items-center justify-between border-b border-stone-200 pb-2">
+            <div className="font-bold text-xs text-stone-800 tracking-wide uppercase">
+              {chartConfig.title || "Gráfico de datos"}
+            </div>
+            {onCloseChart && (
+              <button
+                type="button"
+                onClick={onCloseChart}
+                className="w-5 h-5 flex items-center justify-center rounded hover:bg-stone-200 text-stone-500 cursor-pointer"
+                title="Cerrar gráfico"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+
+          {/* Renderizado SVG según tipo de gráfico */}
+          <div className="h-44 w-full flex items-end justify-center gap-3 pt-4 px-2 pb-2 bg-stone-50 rounded border border-stone-100">
+            {chartConfig.type === "bar" && (
+              <div className="w-full h-full flex items-end justify-around gap-2">
+                {chartConfig.data.map((item, idx) => {
+                  const maxVal = Math.max(...chartConfig.data.map((d) => d.value), 1);
+                  const heightPercent = Math.max(10, Math.min(100, Math.round((item.value / maxVal) * 100)));
+                  return (
+                    <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group">
+                      <span className="text-[9px] font-mono font-bold text-stone-600 mb-1">{item.value}</span>
+                      <div
+                        className="w-full bg-[#107c41] rounded-t hover:bg-[#0e6b37] transition-all shadow-sm"
+                        style={{ height: `${heightPercent}%` }}
+                      />
+                      <span className="text-[9px] truncate max-w-[40px] text-stone-500 mt-1 font-medium">{item.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {chartConfig.type === "line" && (
+              <svg viewBox="0 0 300 120" className="w-full h-full overflow-visible">
+                {(() => {
+                  const maxVal = Math.max(...chartConfig.data.map((d) => d.value), 1);
+                  const minVal = Math.min(...chartConfig.data.map((d) => d.value), 0);
+                  const range = maxVal - minVal || 1;
+                  const points = chartConfig.data.map((d, i) => {
+                    const x = (i / Math.max(chartConfig.data.length - 1, 1)) * 280 + 10;
+                    const y = 110 - ((d.value - minVal) / range) * 90;
+                    return { x, y, val: d.value, label: d.label };
+                  });
+                  const polylinePoints = points.map((p) => `${p.x},${p.y}`).join(" ");
+
+                  return (
+                    <>
+                      <polyline fill="none" stroke="#0e6b37" strokeWidth="2.5" points={polylinePoints} />
+                      {points.map((p, i) => (
+                        <g key={i}>
+                          <circle cx={p.x} cy={p.y} r="3.5" fill="#107c41" stroke="#fff" strokeWidth="1.5" />
+                          <text x={p.x} y={p.y - 6} fontSize="8" textAnchor="middle" fill="#333" fontFamily="monospace">
+                            {p.val}
+                          </text>
+                          <text x={p.x} y={118} fontSize="7" textAnchor="middle" fill="#666">
+                            {p.label}
+                          </text>
+                        </g>
+                      ))}
+                    </>
+                  );
+                })()}
+              </svg>
+            )}
+
+            {chartConfig.type === "pie" && (
+              <div className="w-full h-full flex items-center justify-around">
+                <div className="relative w-28 h-28 rounded-full border-4 border-white shadow-md bg-[#107c41] flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[10px] font-bold text-stone-700">
+                    {chartConfig.data.length}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1 text-[10px]">
+                  {chartConfig.data.slice(0, 5).map((d, i) => (
+                    <div key={i} className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#107c41]" />
+                      <span className="truncate max-w-[80px] font-medium">{d.label}:</span>
+                      <span className="font-mono font-bold text-stone-700">{d.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="inline-block min-w-full">
         {/* FILA DE ENCABEZADOS DE COLUMNA (A, B, C...) */}
         <div className="flex sticky top-0 z-30 bg-[#f3f2f1] border-b border-[#c8c6c4]">
@@ -394,13 +511,25 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
               <div
                 key={colName}
                 style={{ width: `${w}px` }}
-                className={`h-6 flex items-center justify-center font-mono text-[11px] font-semibold border-r border-[#c8c6c4] shrink-0 transition-colors ${
+                className={`h-6 flex items-center justify-between px-1.5 font-mono text-[11px] font-semibold border-r border-[#c8c6c4] shrink-0 transition-colors ${
                   isColInSelection
                     ? "bg-[#dff6dd] text-[#0e6b37] border-b-2 border-b-[#107c41]"
                     : "text-[#595959] hover:bg-[#edebe9]"
                 }`}
               >
-                {colName}
+                <span className="mx-auto">{colName}</span>
+                {isFilterActive && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                    title={`Filtrar columna ${colName}`}
+                    className="w-3.5 h-3.5 rounded hover:bg-stone-300 flex items-center justify-center text-stone-600 cursor-pointer"
+                  >
+                    <Filter size={9} />
+                  </button>
+                )}
               </div>
             );
           })}
@@ -441,7 +570,10 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                 const isLeftEdge = inRange && colIdx === minCol;
                 const isRightEdge = inRange && colIdx === maxCol;
 
-                const displayValue = cell
+                // Si está activada la opción de mostrar fórmulas directas
+                const displayValue = showRawFormulas && cell?.raw
+                  ? cell.raw
+                  : cell
                   ? formatCellValue(cell.computed !== undefined ? cell.computed : cell.raw, cell.format)
                   : "";
 
@@ -460,10 +592,15 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                       textAlign: cell?.align || (typeof cell?.computed === "number" ? "right" : "left"),
                       fontFamily: cell?.fontFamily || undefined,
                       fontSize: cell?.fontSize ? `${cell.fontSize}pt` : undefined,
+                      borderTop: cell?.borders?.top ? "1px solid #107c41" : undefined,
+                      borderBottom: cell?.borders?.bottom ? "1px solid #107c41" : undefined,
+                      borderLeft: cell?.borders?.left ? "1px solid #107c41" : undefined,
+                      borderRight: cell?.borders?.right ? "1px solid #107c41" : undefined,
                     }}
                     onMouseDown={(e) => handleCellMouseDown(colIdx, rowIdx, e)}
                     onMouseEnter={() => handleCellMouseEnter(colIdx, rowIdx)}
                     onDoubleClick={() => {
+                      if (isSheetProtected) return;
                       onSelectCell(cellKey);
                       onStartEditing();
                     }}
@@ -497,7 +634,11 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                         style={{ textAlign: cell?.align || "left" }}
                       />
                     ) : (
-                      <span className="truncate w-full font-sans leading-none pointer-events-none">
+                      <span
+                        className={`w-full font-sans leading-none pointer-events-none ${
+                          cell?.wrapText ? "whitespace-normal break-words" : "truncate"
+                        }`}
+                      >
                         {displayValue}
                       </span>
                     )}
@@ -505,7 +646,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                     {/* Tirador de autollenado de Excel en la esquina inferior derecha del rango */}
                     {((isActive && !isMultiCellRange) ||
                       (isMultiCellRange && isBottomEdge && isRightEdge)) &&
-                      !isEditing && <div className="excel-fill-handle" />}
+                      !isEditing && !isSheetProtected && <div className="excel-fill-handle" />}
                   </div>
                 );
               })}

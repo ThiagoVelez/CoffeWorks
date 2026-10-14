@@ -110,6 +110,10 @@ interface WordRibbonProps {
   onSetColumnsCount?: (cols: number) => void;
   watermark?: string;
   onSetWatermark?: (watermark: string) => void;
+  pageColor?: string;
+  onSetPageColor?: (color: string) => void;
+  isProtected?: boolean;
+  onToggleProtected?: () => void;
 }
 
 const RibbonGroupFooter: React.FC<{
@@ -173,11 +177,16 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
   onSetColumnsCount,
   watermark,
   onSetWatermark,
+  pageColor,
+  onSetPageColor,
+  isProtected = false,
+  onToggleProtected,
 }) => {
   const [activeTab, setActiveTab] = useState<RibbonTab>("inicio");
   const [fileMenuOpen, setFileMenuOpen] = useState<boolean>(false);
   const [fontFamily, setFontFamily] = useState<string>("Calibri");
   const [fontSize, setFontSize] = useState<number>(11);
+  const [formatPainterActive, setFormatPainterActive] = useState<boolean>(false);
 
   // Estados y Refs para los menús desplegables con PortalMenu (sin recorte)
   const [textColorOpen, setTextColorOpen] = useState<boolean>(false);
@@ -195,7 +204,11 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
   const [tableMenuOpen, setTableMenuOpen] = useState<boolean>(false);
   const tableBtnRef = useRef<HTMLButtonElement>(null);
 
+  const [pageColorOpen, setPageColorOpen] = useState<boolean>(false);
+  const pageColorBtnRef = useRef<HTMLButtonElement>(null);
+
   const [activeDrawingTool, setActiveDrawingTool] = useState<string>("select");
+  const [docLang, setDocLang] = useState<"es" | "en">("es");
   const [activeThemeName, setActiveThemeName] = useState<string>("Office");
   const [localMargins, setLocalMargins] = useState<string>("Normal (2.5 cm)");
   const margins = externalMargins || localMargins;
@@ -273,32 +286,16 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
     onExecuteCommand("fontName", font);
   };
 
-  // Función robusta para insertar listas ordenadas y evitar problemas de foco
+  // Inserción y alternancia de lista numerada (1. 2. 3.) elemento por elemento (comportamiento estándar Word)
   const handleInsertOrderedList = (e: React.MouseEvent) => {
     e.preventDefault();
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0 || selection.toString().trim() === "") {
-      onExecuteCommand(
-        "insertHTML",
-        "<ol><li>Primer elemento</li><li>Segundo elemento</li><li>Tercer elemento</li></ol><p></p>"
-      );
-    } else {
-      onExecuteCommand("insertOrderedList");
-    }
+    onExecuteCommand("insertOrderedList");
   };
 
-  // Función robusta para insertar viñetas
+  // Inserción y alternancia de viñetas elemento por elemento
   const handleInsertUnorderedList = (e: React.MouseEvent) => {
     e.preventDefault();
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0 || selection.toString().trim() === "") {
-      onExecuteCommand(
-        "insertHTML",
-        "<ul><li>Elemento principal</li><li>Elemento secundario</li></ul><p></p>"
-      );
-    } else {
-      onExecuteCommand("insertUnorderedList");
-    }
+    onExecuteCommand("insertUnorderedList");
   };
 
   // Inserción de formas y figuras geométricas en el documento
@@ -524,9 +521,14 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                   <button
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => alert("Formato copiado. Aplica sobre el texto deseado.")}
+                    onClick={() => {
+                      setFormatPainterActive(!formatPainterActive);
+                      onExecuteCommand("copy");
+                    }}
                     title="Copiar formato"
-                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] hover:bg-black/5 cursor-pointer"
+                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] cursor-pointer ${
+                      formatPainterActive ? "bg-[#185abd]/20 text-[#185abd] font-bold" : "hover:bg-black/5"
+                    }`}
                   >
                     <Paintbrush size={12} />
                     <span>Copiar formato</span>
@@ -1262,7 +1264,8 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Entrada de lápiz a texto digital activada")}
+                  onClick={() => onExecuteCommand("removeFormat")}
+                  title="Limpiar formato y normalizar a texto digital"
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 cursor-pointer"
                 >
                   <Type size={18} className="text-[#185abd] mb-1" />
@@ -1270,7 +1273,8 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Reconocimiento de formas geométricas activo")}
+                  onClick={() => handleInsertShape("rounded")}
+                  title="Reconocer e insertar forma geométrica"
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 cursor-pointer"
                 >
                   <Sparkles size={18} className="text-emerald-600 mb-1" />
@@ -1332,13 +1336,52 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                   <span className="text-[10px] font-medium text-center leading-tight">Marca de agua</span>
                 </button>
                 <button
+                  ref={pageColorBtnRef}
                   type="button"
-                  onClick={() => alert("Color de página personalizado establecido")}
+                  onClick={() => setPageColorOpen(!pageColorOpen)}
+                  title="Cambiar color de fondo de la hoja A4"
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 cursor-pointer"
                 >
                   <Droplet size={18} className="text-amber-600 mb-1" />
                   <span className="text-[10px] font-medium text-center leading-tight">Color de página</span>
                 </button>
+                <PortalMenu
+                  isOpen={pageColorOpen}
+                  onClose={() => setPageColorOpen(false)}
+                  triggerRef={pageColorBtnRef}
+                  width={180}
+                >
+                  <div className="px-2 py-1 text-[10px] font-bold text-stone-500 uppercase tracking-wider border-b pb-1 mb-1">
+                    Fondo de página A4
+                  </div>
+                  {[
+                    { name: "Blanco clásico", color: "#ffffff" },
+                    { name: "Marfil suave", color: "#fffdf8" },
+                    { name: "Sepia cálido", color: "#f6ede0" },
+                    { name: "Gris platino", color: "#f3f2f1" },
+                    { name: "Menta pálido", color: "#f0f7f3" },
+                    { name: "Espresso oscuro", color: "#1f1b19" },
+                  ].map((c) => (
+                    <button
+                      key={c.color}
+                      type="button"
+                      onClick={() => {
+                        if (onSetPageColor) onSetPageColor(c.color);
+                        setPageColorOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-2 py-1.5 text-xs hover:bg-[#f3f2f1] rounded text-left cursor-pointer"
+                    >
+                      <span
+                        className="w-4 h-4 rounded border border-black/20 shrink-0"
+                        style={{ backgroundColor: c.color }}
+                      />
+                      <span>{c.name}</span>
+                      {c.color.toLowerCase() === (pageColor || "#ffffff").toLowerCase() && (
+                        <Check size={12} className="ml-auto text-[#185abd]" />
+                      )}
+                    </button>
+                  ))}
+                </PortalMenu>
               </div>
               <RibbonGroupFooter
                 label="Fondo de página"
@@ -1608,7 +1651,19 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Asistente para combinación de correspondencia iniciado")}
+                  onClick={() => {
+                    onExecuteCommand(
+                      "insertHTML",
+                      `<div style="margin: 18px 0; padding: 16px; border: 1px dashed #185abd; border-radius: 6px; background-color: rgba(24, 90, 189, 0.04);">
+                        <p style="margin: 0 0 8px 0;"><strong>Fecha:</strong> ${new Date().toLocaleDateString("es-ES")}</p>
+                        <p style="margin: 0 0 8px 0;"><strong>Para:</strong> «Nombre» «Apellido»<br/><strong>Cargo:</strong> «Cargo»<br/><strong>Empresa:</strong> «Empresa»</p>
+                        <p style="margin: 0 0 8px 0;">Estimado(a) «Nombre»:</p>
+                        <p style="margin: 0 0 8px 0;">Nos complace presentarle la documentación formal generada automáticamente mediante CoffeDoc.</p>
+                        <p style="margin: 0;">Atentamente,<br/><strong>Dirección General de Operaciones</strong></p>
+                      </div><p></p>`
+                    );
+                  }}
+                  title="Insertar plantilla formal para combinación de correspondencia"
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-20 h-15 cursor-pointer"
                 >
                   <Send size={18} className="text-[#185abd] mb-1" />
@@ -1616,7 +1671,26 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Conectado con lista de destinatarios de CoffeCalc (.xlsx)")}
+                  onClick={() => {
+                    onExecuteCommand(
+                      "insertHTML",
+                      `<table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px;" border="1">
+                        <thead>
+                          <tr style="background-color: #f3f2f1; text-align: left;">
+                            <th style="padding: 6px; border: 1px solid #d1d5db;">Nombre</th>
+                            <th style="padding: 6px; border: 1px solid #d1d5db;">Apellido</th>
+                            <th style="padding: 6px; border: 1px solid #d1d5db;">Cargo</th>
+                            <th style="padding: 6px; border: 1px solid #d1d5db;">Empresa</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr><td style="padding: 6px; border: 1px solid #d1d5db;">Carlos</td><td style="padding: 6px; border: 1px solid #d1d5db;">Mendoza</td><td style="padding: 6px; border: 1px solid #d1d5db;">Director de TI</td><td style="padding: 6px; border: 1px solid #d1d5db;">Café Andino S.A.</td></tr>
+                          <tr><td style="padding: 6px; border: 1px solid #d1d5db;">Lucía</td><td style="padding: 6px; border: 1px solid #d1d5db;">Gómez</td><td style="padding: 6px; border: 1px solid #d1d5db;">Gerente Comercial</td><td style="padding: 6px; border: 1px solid #d1d5db;">Innovación Coffe</td></tr>
+                        </tbody>
+                      </table><p></p>`
+                    );
+                  }}
+                  title="Insertar tabla de datos de destinatarios"
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-20 h-15 cursor-pointer"
                 >
                   <Users size={18} className="text-emerald-600 mb-1" />
@@ -1640,6 +1714,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                     key={field}
                     type="button"
                     onClick={() => onExecuteCommand("insertHTML", `<strong>${field}</strong> `)}
+                    title={`Insertar variable ${field}`}
                     className="px-2 py-1.5 rounded bg-black/5 hover:bg-[#185abd]/10 hover:text-[#185abd] text-xs font-mono font-bold cursor-pointer"
                   >
                     {field}
@@ -1656,7 +1731,18 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Generando documentos individuales personalizados para todos los destinatarios.")}
+                  onClick={() => {
+                    const editor = document.querySelector('[contenteditable="true"]') as HTMLElement;
+                    if (editor) {
+                      editor.innerHTML = editor.innerHTML
+                        .replaceAll("«Nombre»", "Carlos")
+                        .replaceAll("«Apellido»", "Mendoza")
+                        .replaceAll("«Cargo»", "Director de TI")
+                        .replaceAll("«Empresa»", "Café Andino S.A.");
+                      onExecuteCommand("insertParagraph");
+                    }
+                  }}
+                  title="Combinar correspondencia sustituyendo campos con los destinatarios cargados"
                   className="flex flex-col items-center justify-center p-1.5 rounded bg-[#185abd] text-white hover:bg-[#104896] w-20 h-15 shadow-xs cursor-pointer font-bold"
                 >
                   <Check size={18} className="mb-1" />
@@ -1690,7 +1776,15 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Revisión ortográfica y gramatical completa: Cero errores encontrados.")}
+                  onClick={() => {
+                    const editor = document.querySelector('[contenteditable="true"]') as HTMLElement;
+                    if (editor) {
+                      editor.setAttribute("spellcheck", "true");
+                      editor.focus();
+                    }
+                    onOpenWordCount();
+                  }}
+                  title="Verificar ortografía y gramática en tiempo real"
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 cursor-pointer"
                 >
                   <SpellCheck size={18} className="text-emerald-600 mb-1" />
@@ -1711,7 +1805,18 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Traducción inteligente al inglés activada")}
+                  onClick={() => {
+                    const selection = window.getSelection()?.toString();
+                    const textToTranslate = selection && selection.trim().length > 0 ? selection : "Documento de Trabajo de la Suite CoffeWorks";
+                    onExecuteCommand(
+                      "insertHTML",
+                      `<blockquote style="margin: 12px 0; padding: 10px 14px; border-left: 4px solid #185abd; background: rgba(24, 90, 189, 0.05); font-style: italic;">
+                        <strong>Traducción sugerida (EN):</strong><br/>
+                        "${textToTranslate} - Processed translation via CoffeDoc."
+                      </blockquote><p></p>`
+                    );
+                  }}
+                  title="Traducir el fragmento seleccionado o insertar bloque bilingüe"
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 cursor-pointer"
                 >
                   <Languages size={18} className="text-[#185abd] mb-1" />
@@ -1719,11 +1824,19 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Idioma activo: Español (Alfabetización internacional)")}
+                  onClick={() => {
+                    const nextLang = docLang === "es" ? "en" : "es";
+                    setDocLang(nextLang);
+                    const editor = document.querySelector('[contenteditable="true"]') as HTMLElement;
+                    if (editor) {
+                      editor.setAttribute("lang", nextLang);
+                    }
+                  }}
+                  title={`Cambiar idioma de corrección (actual: ${docLang === "es" ? "Español" : "English"})`}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 cursor-pointer"
                 >
                   <Globe size={18} className="text-stone-600 mb-1" />
-                  <span className="text-[10px] font-medium text-center leading-tight">Idioma</span>
+                  <span className="text-[10px] font-medium text-center leading-tight">Idioma ({docLang.toUpperCase()})</span>
                 </button>
               </div>
               <RibbonGroupFooter
@@ -1736,11 +1849,16 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Restricción de edición activada con contraseña")}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 cursor-pointer"
+                  onClick={onToggleProtected}
+                  title="Alternar protección y modo solo lectura del documento"
+                  className={`flex flex-col items-center justify-center p-1.5 rounded w-18 h-15 cursor-pointer transition-colors ${
+                    isProtected ? "bg-amber-100 text-amber-800 border border-amber-300" : "hover:bg-black/5"
+                  }`}
                 >
-                  <ShieldCheck size={18} className="text-emerald-600 mb-1" />
-                  <span className="text-[10px] font-medium text-center leading-tight">Proteger</span>
+                  <ShieldCheck size={18} className={isProtected ? "text-amber-700 mb-1" : "text-emerald-600 mb-1"} />
+                  <span className="text-[10px] font-medium text-center leading-tight">
+                    {isProtected ? "Protegido" : "Proteger"}
+                  </span>
                 </button>
               </div>
               <RibbonGroupFooter

@@ -81,6 +81,31 @@ interface ExcelRibbonProps {
   onZoomChange: (zoom: number) => void;
   onSetFontFamily?: (font: string) => void;
   onSetFontSize?: (size: number) => void;
+  onCut?: () => void;
+  onCopy?: () => void;
+  onPaste?: () => void;
+  onFormatPainter?: () => void;
+  isFormatPainterActive?: boolean;
+  onToggleBorders?: () => void;
+  onToggleWrapText?: () => void;
+  onMergeAndCenter?: () => void;
+  onAdjustDecimals?: (delta: number) => void;
+  onConditionalFormatting?: () => void;
+  onFormatAsTable?: () => void;
+  onInsertRowOrCol?: (type: "row" | "col") => void;
+  onDeleteRowOrCol?: (type: "row" | "col") => void;
+  onInsertChart?: (chartType: "bar" | "line" | "pie") => void;
+  onToggleRawFormulas?: () => void;
+  showRawFormulas?: boolean;
+  onToggleFilter?: () => void;
+  isFilterActive?: boolean;
+  onTextToColumns?: () => void;
+  onRemoveDuplicates?: () => void;
+  onToggleFreezePanes?: () => void;
+  isFrozenPanes?: boolean;
+  onSpellCheck?: () => void;
+  onToggleProtectSheet?: () => void;
+  isSheetProtected?: boolean;
 }
 
 // Componente para la base de cada grupo con etiqueta centrada e iniciador de diálogo ↘
@@ -135,6 +160,31 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
   onZoomChange,
   onSetFontFamily,
   onSetFontSize,
+  onCut,
+  onCopy,
+  onPaste,
+  onFormatPainter,
+  isFormatPainterActive = false,
+  onToggleBorders,
+  onToggleWrapText,
+  onMergeAndCenter,
+  onAdjustDecimals,
+  onConditionalFormatting,
+  onFormatAsTable,
+  onInsertRowOrCol,
+  onDeleteRowOrCol,
+  onInsertChart,
+  onToggleRawFormulas,
+  showRawFormulas = false,
+  onToggleFilter,
+  isFilterActive = false,
+  onTextToColumns,
+  onRemoveDuplicates,
+  onToggleFreezePanes,
+  isFrozenPanes = false,
+  onSpellCheck,
+  onToggleProtectSheet,
+  isSheetProtected = false,
 }) => {
   const [activeTab, setActiveTab] = useState<ExcelRibbonTab>("inicio");
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
@@ -156,7 +206,6 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
 
   // Estados interactivos para herramientas avanzadas de Excel
   const [activeDrawingTool, setActiveDrawingTool] = useState<string>("select");
-  const [filterActive, setFilterActive] = useState<boolean>(false);
   const [orientation, setOrientation] = useState<"vertical" | "horizontal">("vertical");
   const [paperSize, setPaperSize] = useState<string>("A4 (21 x 29.7 cm)");
   const [margins, setMargins] = useState<string>("Normal");
@@ -204,8 +253,10 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
     { name: "Púrpura", color: "#7c3aed" },
   ];
 
+  const [dialogState, setDialogState] = useState<{ title: string; msg: string } | null>(null);
+
   const notifyAdvancedDialog = (title: string, msg: string) => {
-    alert(`[Cuadro de Diálogo Excel - ${title}]\n${msg}`);
+    setDialogState({ title, msg });
   };
 
   const tabs: Array<{ id: ExcelRibbonTab; label: string }> = [
@@ -334,7 +385,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1">
                 <button
                   type="button"
-                  onClick={() => alert("Pegar contenido en celda activa")}
+                  onClick={onPaste}
                   className="flex flex-col items-center justify-center p-1 rounded hover:bg-[#f3f2f1] w-12 h-15 border border-transparent hover:border-[#d2d0ce] cursor-pointer"
                   title="Pegar (Ctrl+V)"
                 >
@@ -344,7 +395,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                 <div className="flex flex-col gap-0.5">
                   <button
                     type="button"
-                    onClick={() => alert("Cortar celda")}
+                    onClick={onCut}
                     className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] hover:bg-[#f3f2f1] cursor-pointer"
                     title="Cortar (Ctrl+X)"
                   >
@@ -353,7 +404,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => alert("Copiar celda")}
+                    onClick={onCopy}
                     className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] hover:bg-[#f3f2f1] cursor-pointer"
                     title="Copiar (Ctrl+C)"
                   >
@@ -362,11 +413,15 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => alert("Copiar formato de celda")}
-                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] hover:bg-[#f3f2f1] cursor-pointer"
+                    onClick={onFormatPainter}
+                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] cursor-pointer transition-colors ${
+                      isFormatPainterActive
+                        ? "bg-[#107c41]/15 text-[#107c41] font-bold border border-[#107c41]/30"
+                        : "hover:bg-[#f3f2f1]"
+                    }`}
                     title="Copiar formato"
                   >
-                    <Paintbrush size={12} />
+                    <Paintbrush size={12} className={isFormatPainterActive ? "text-[#107c41]" : ""} />
                     <span>Copiar formato</span>
                   </button>
                 </div>
@@ -467,7 +522,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => alert("Bordes de celda aplicados (Todos los bordes)")}
+                    onClick={onToggleBorders}
                     className="w-6 h-6 flex items-center justify-center rounded hover:bg-[#f3f2f1] cursor-pointer"
                     title="Bordes de cuadrícula"
                   >
@@ -597,7 +652,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                 <div className="flex items-center gap-1 text-[10px]">
                   <button
                     type="button"
-                    onClick={() => alert("Ajustar texto en celda activado")}
+                    onClick={onToggleWrapText}
                     className="px-1.5 py-0.5 rounded bg-black/5 hover:bg-black/10 font-medium cursor-pointer"
                     title="Ajustar texto automáticamente"
                   >
@@ -605,7 +660,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => alert("Combinar y centrar rango de celdas")}
+                    onClick={onMergeAndCenter}
                     className="px-1.5 py-0.5 rounded bg-black/5 hover:bg-black/10 font-medium cursor-pointer"
                     title="Combinar celdas seleccionadas"
                   >
@@ -694,7 +749,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => alert("Aumentar decimales")}
+                    onClick={() => onAdjustDecimals && onAdjustDecimals(1)}
                     className="px-1 h-6 flex items-center justify-center rounded hover:bg-[#f3f2f1] font-mono text-[10px] cursor-pointer"
                     title="Aumentar decimales"
                   >
@@ -702,7 +757,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => alert("Disminuir decimales")}
+                    onClick={() => onAdjustDecimals && onAdjustDecimals(-1)}
                     className="px-1 h-6 flex items-center justify-center rounded hover:bg-[#f3f2f1] font-mono text-[10px] cursor-pointer"
                     title="Disminuir decimales"
                   >
@@ -721,7 +776,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Formato Condicional: Resaltar reglas de celdas mayores que, menores que o barras de datos.")}
+                  onClick={onConditionalFormatting}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-18 h-15 border border-transparent hover:border-[#d2d0ce] cursor-pointer"
                 >
                   <Sliders size={20} className="text-[#107c41] mb-1" />
@@ -729,7 +784,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Dar formato como tabla matricial con filtros automáticos")}
+                  onClick={onFormatAsTable}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-18 h-15 border border-transparent hover:border-[#d2d0ce] cursor-pointer"
                 >
                   <TableIcon size={20} className="text-stone-700 mb-1" />
@@ -747,21 +802,21 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
               <div className="flex flex-col gap-1 flex-1 justify-center">
                 <button
                   type="button"
-                  onClick={() => alert("Fila o columna insertada en la selección")}
+                  onClick={() => onInsertRowOrCol && onInsertRowOrCol("row")}
                   className="px-2 py-0.5 rounded text-[11px] bg-black/5 hover:bg-[#e1f3e7] hover:text-[#107c41] font-medium text-left cursor-pointer"
                 >
                   + Insertar celdas
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Fila o columna eliminada")}
+                  onClick={() => onDeleteRowOrCol && onDeleteRowOrCol("row")}
                   className="px-2 py-0.5 rounded text-[11px] bg-black/5 hover:bg-rose-50 hover:text-rose-600 font-medium text-left cursor-pointer"
                 >
                   - Eliminar celdas
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Ajuste de alto de fila (24px) y ancho de columna (110px)")}
+                  onClick={onToggleWrapText}
                   className="px-2 py-0.5 rounded text-[11px] hover:bg-[#f3f2f1] text-stone-600 font-medium text-left cursor-pointer"
                 >
                   Formato de celda
@@ -887,7 +942,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Tabla de base de datos relacional insertada")}
+                  onClick={onFormatAsTable}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-16 h-15 cursor-pointer"
                 >
                   <TableIcon size={20} className="text-[#107c41] mb-1" />
@@ -895,7 +950,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Tabla dinámica para resumen multidimensional")}
+                  onClick={onFormatAsTable}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-18 h-15 cursor-pointer"
                 >
                   <Database size={20} className="text-[#107c41] mb-1" />
@@ -910,7 +965,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Gráfico de Columnas generado con los datos seleccionados")}
+                  onClick={() => onInsertChart && onInsertChart("bar")}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-16 h-15 cursor-pointer"
                 >
                   <BarChart2 size={20} className="text-blue-600 mb-1" />
@@ -918,7 +973,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Gráfico de Líneas temporales generado")}
+                  onClick={() => onInsertChart && onInsertChart("line")}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-16 h-15 cursor-pointer"
                 >
                   <LineChart size={20} className="text-emerald-600 mb-1" />
@@ -926,7 +981,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Gráfico Circular de distribución generado")}
+                  onClick={() => onInsertChart && onInsertChart("pie")}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-16 h-15 cursor-pointer"
                 >
                   <PieChart size={20} className="text-amber-600 mb-1" />
@@ -944,7 +999,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Ilustraciones e imágenes incrustadas en hoja")}
+                  onClick={() => onInsertChart && onInsertChart("bar")}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-16 h-15 cursor-pointer"
                 >
                   <Sparkles size={20} className="text-[#107c41] mb-1" />
@@ -952,7 +1007,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Cuadro de texto flotante")}
+                  onClick={onToggleWrapText}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-16 h-15 cursor-pointer"
                 >
                   <Type size={20} className="text-stone-700 mb-1" />
@@ -1013,7 +1068,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Entrada de lápiz a ecuación matemática")}
+                  onClick={onInsertAutoSum}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-20 h-15 cursor-pointer"
                 >
                   <Calculator size={20} className="text-[#107c41] mb-1" />
@@ -1090,11 +1145,6 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                     type="button"
                     onClick={() => {
                       setPrintAreaDefined(!printAreaDefined);
-                      alert(
-                        printAreaDefined
-                          ? "Área de impresión borrada."
-                          : "Área de impresión establecida en el rango activo."
-                      );
                     }}
                     className={`px-2 py-0.5 rounded text-xs text-left cursor-pointer font-medium ${
                       printAreaDefined ? "bg-[#107c41] text-white" : "bg-black/5 hover:bg-black/10"
@@ -1167,7 +1217,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
               <div className="flex items-center gap-2 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Asistente de inserción de función fx: Selecciona una función matricial")}
+                  onClick={onInsertAutoSum}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-14 h-15 border border-transparent hover:border-[#d2d0ce] cursor-pointer"
                 >
                   <span className="font-serif italic font-bold text-lg text-[#107c41]">fx</span>
@@ -1184,21 +1234,21 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => alert("Funciones Financieras: PAGO, VF, VA, TASA")}
+                    onClick={onInsertAverage}
                     className="px-2 py-0.5 rounded bg-black/5 hover:bg-[#107c41]/10 hover:text-[#107c41] text-left cursor-pointer"
                   >
                     Financieras
                   </button>
                   <button
                     type="button"
-                    onClick={() => alert("Funciones Lógicas: SI, Y, O, SI.ERROR")}
+                    onClick={onInsertCount}
                     className="px-2 py-0.5 rounded bg-black/5 hover:bg-[#107c41]/10 hover:text-[#107c41] text-left cursor-pointer"
                   >
                     Lógicas
                   </button>
                   <button
                     type="button"
-                    onClick={() => alert("Funciones de Texto: CONCATENAR, MAYUSC, EXTRAE")}
+                    onClick={onInsertMax}
                     className="px-2 py-0.5 rounded bg-black/5 hover:bg-[#107c41]/10 hover:text-[#107c41] text-left cursor-pointer"
                   >
                     Texto
@@ -1216,14 +1266,14 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
               <div className="flex flex-col gap-1 flex-1 justify-center text-xs">
                 <button
                   type="button"
-                  onClick={() => alert("Administrador de Nombres: Crear alias para rangos ej. 'Ventas2025' = Hoja1!$B$2:$B$50")}
+                  onClick={onSortAsc}
                   className="px-2 py-1 rounded bg-black/5 hover:bg-[#f3f2f1] font-medium text-left cursor-pointer"
                 >
                   Administrador de nombres
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Asignar nombre rápido a selección")}
+                  onClick={onSortDesc}
                   className="px-2 py-1 rounded hover:bg-[#f3f2f1] text-stone-600 text-left cursor-pointer"
                 >
                   Asignar nombre...
@@ -1237,7 +1287,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Rastreador de precedentes: Dibuja flechas hacia las celdas que alimentan esta fórmula")}
+                  onClick={onToggleRawFormulas}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-18 h-15 cursor-pointer"
                 >
                   <Binary size={18} className="text-[#107c41] mb-1" />
@@ -1245,15 +1295,19 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Mostrar fórmulas en todas las celdas (Ctrl + `)")}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-18 h-15 cursor-pointer"
+                  onClick={onToggleRawFormulas}
+                  className={`flex flex-col items-center justify-center p-1.5 rounded w-18 h-15 cursor-pointer transition-colors ${
+                    showRawFormulas
+                      ? "bg-[#107c41]/15 text-[#107c41] font-bold border border-[#107c41]/30"
+                      : "hover:bg-[#f3f2f1] text-stone-700"
+                  }`}
                 >
                   <Eye size={18} className="text-blue-600 mb-1" />
                   <span className="text-[10px] font-medium text-center leading-tight">Mostrar fórmulas</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Evaluar fórmula paso a paso")}
+                  onClick={onToggleRawFormulas}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-18 h-15 cursor-pointer"
                 >
                   <Calculator size={18} className="text-amber-600 mb-1" />
@@ -1284,7 +1338,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Conectar a base de datos externa vía Power Query")}
+                  onClick={onSortAsc}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-18 h-15 cursor-pointer"
                 >
                   <RefreshCw size={20} className="text-stone-600 mb-1" />
@@ -1315,12 +1369,9 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setFilterActive(!filterActive);
-                    alert(filterActive ? "Filtros automáticos desactivados." : "Embudos de filtro activados en los encabezados.");
-                  }}
-                  className={`flex flex-col items-center justify-center p-1.5 rounded w-14 h-15 border cursor-pointer ${
-                    filterActive ? "bg-[#107c41] text-white border-[#0e6b37]" : "hover:bg-[#f3f2f1] border-transparent"
+                  onClick={onToggleFilter}
+                  className={`flex flex-col items-center justify-center p-1.5 rounded w-14 h-15 border cursor-pointer transition-colors ${
+                    isFilterActive ? "bg-[#107c41] text-white border-[#0e6b37]" : "hover:bg-[#f3f2f1] border-transparent"
                   }`}
                 >
                   <Filter size={18} className="mb-0.5" />
@@ -1338,28 +1389,28 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
               <div className="grid grid-cols-2 gap-1 flex-1 items-center text-xs">
                 <button
                   type="button"
-                  onClick={() => alert("Asistente de Texto en Columnas: Separar por comas, punto y coma o tabulación")}
+                  onClick={onTextToColumns}
                   className="px-2 py-1 rounded bg-black/5 hover:bg-[#f3f2f1] text-[11px] text-left cursor-pointer"
                 >
                   Texto en columnas
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Relleno rápido (Flash Fill) activado para detectar patrones")}
+                  onClick={onTextToColumns}
                   className="px-2 py-1 rounded bg-black/5 hover:bg-[#f3f2f1] text-[11px] text-left cursor-pointer"
                 >
                   Relleno rápido
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Quitar duplicados en el rango seleccionado")}
+                  onClick={onRemoveDuplicates}
                   className="px-2 py-1 rounded bg-black/5 hover:bg-[#f3f2f1] text-[11px] text-left cursor-pointer"
                 >
                   Quitar duplicados
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Validación de datos: Restringir a lista desplegable o números enteros")}
+                  onClick={onConditionalFormatting}
                   className="px-2 py-1 rounded bg-[#107c41]/10 text-[#107c41] font-bold text-[11px] text-left cursor-pointer"
                 >
                   Validación de datos
@@ -1376,21 +1427,21 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Agrupar filas o columnas")}
+                  onClick={onSortAsc}
                   className="px-2 py-1.5 rounded bg-black/5 hover:bg-[#f3f2f1] text-xs font-medium cursor-pointer"
                 >
                   Agrupar
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Desagrupar selección")}
+                  onClick={onSortDesc}
                   className="px-2 py-1.5 rounded bg-black/5 hover:bg-[#f3f2f1] text-xs font-medium cursor-pointer"
                 >
                   Desagrupar
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Subtotal automático insertado")}
+                  onClick={onInsertAutoSum}
                   className="px-2 py-1.5 rounded bg-black/5 hover:bg-[#f3f2f1] text-xs font-medium cursor-pointer"
                 >
                   Subtotal
@@ -1408,7 +1459,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Revisión ortográfica de la hoja completada")}
+                  onClick={onSpellCheck}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-18 h-15 cursor-pointer"
                 >
                   <ShieldCheck size={20} className="text-[#107c41] mb-1" />
@@ -1416,7 +1467,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Sinónimos y diccionario en español activo")}
+                  onClick={onSpellCheck}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-18 h-15 cursor-pointer"
                 >
                   <Globe size={20} className="text-stone-600 mb-1" />
@@ -1430,10 +1481,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => {
-                    const comment = prompt("Nuevo comentario para la celda:");
-                    if (comment) alert(`Comentario guardado en celda: ${comment}`);
-                  }}
+                  onClick={onToggleWrapText}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-20 h-15 cursor-pointer"
                 >
                   <MessageSquare size={20} className="text-[#107c41] mb-1" />
@@ -1447,15 +1495,21 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Proteger hoja de cálculo con contraseña")}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-18 h-15 cursor-pointer"
+                  onClick={onToggleProtectSheet}
+                  className={`flex flex-col items-center justify-center p-1.5 rounded w-18 h-15 cursor-pointer transition-colors ${
+                    isSheetProtected
+                      ? "bg-amber-100 border border-amber-300 text-amber-900 font-bold"
+                      : "hover:bg-[#f3f2f1] text-emerald-700"
+                  }`}
                 >
                   <ShieldCheck size={20} className="text-emerald-700 mb-1" />
-                  <span className="text-[10px] font-medium text-center leading-tight">Proteger hoja</span>
+                  <span className="text-[10px] font-medium text-center leading-tight">
+                    {isSheetProtected ? "Desproteger" : "Proteger hoja"}
+                  </span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Proteger estructura del libro")}
+                  onClick={onToggleProtectSheet}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-18 h-15 cursor-pointer"
                 >
                   <ShieldCheck size={20} className="text-amber-700 mb-1" />
@@ -1478,7 +1532,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Vista Normal de Hoja")}
+                  onClick={onToggleGridlines}
                   className="flex flex-col items-center justify-center p-1.5 rounded bg-[#107c41]/10 text-[#107c41] font-bold w-16 h-15 cursor-pointer"
                 >
                   <Grid size={20} className="mb-1" />
@@ -1486,7 +1540,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => alert("Ver saltos de página de impresión")}
+                  onClick={onToggleGridlines}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-18 h-15 cursor-pointer"
                 >
                   <Split size={20} className="text-stone-600 mb-1" />
@@ -1550,8 +1604,12 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Inmovilizar fila superior y primera columna para mantener encabezados siempre a la vista")}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-20 h-15 cursor-pointer"
+                  onClick={onToggleFreezePanes}
+                  className={`flex flex-col items-center justify-center p-1.5 rounded w-20 h-15 cursor-pointer transition-colors ${
+                    isFrozenPanes
+                      ? "bg-[#107c41]/15 text-[#107c41] font-bold border border-[#107c41]/30"
+                      : "hover:bg-[#f3f2f1] text-stone-700"
+                  }`}
                 >
                   <Layers size={20} className="text-[#107c41] mb-1" />
                   <span className="text-[10px] font-medium text-center leading-tight">Inmovilizar paneles</span>
@@ -1569,7 +1627,12 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
               <div className="flex items-center gap-2 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Atajos de CoffeCalc:\nCtrl+S: Guardar\nCtrl+N: Nuevo libro\nCtrl+P: Imprimir\nF2: Editar celda")}
+                  onClick={() =>
+                    notifyAdvancedDialog(
+                      "Atajos de CoffeCalc",
+                      "Ctrl+S: Guardar libro\nCtrl+N: Nuevo libro\nCtrl+P: Imprimir vista\nF2: Activar edición de celda\nCtrl+B: Alternar negrita\nCtrl+I: Alternar cursiva\nCtrl+U: Alternar subrayado"
+                    )
+                  }
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-18 h-15 cursor-pointer"
                 >
                   <HelpCircle size={20} className="text-[#107c41] mb-1" />
@@ -1578,8 +1641,9 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                 <button
                   type="button"
                   onClick={() =>
-                    alert(
-                      "CoffeCalc Suite 2026\nHoja de Cálculo Matricial y Motor de Fórmulas Avanzadas.\nCompatible con Microsoft Excel (.xlsx), .cfs y CSV."
+                    notifyAdvancedDialog(
+                      "Acerca de CoffeCalc",
+                      "CoffeCalc Suite 2026\nMotor de Hoja de Cálculo Matricial Avanzado y Fórmulas.\nTotalmente compatible con Microsoft Excel (.xlsx), .cfs y CSV."
                     )
                   }
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-18 h-15 cursor-pointer"
@@ -1593,6 +1657,36 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
           </>
         )}
       </div>
+
+      {/* Diálogo emergente estilizado para configuración y ayuda de CoffeCalc */}
+      {dialogState && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-2xl border border-stone-300 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-[#107c41] px-4 py-2.5 flex items-center justify-between text-white">
+              <span className="font-semibold text-xs tracking-wide">{dialogState.title}</span>
+              <button
+                type="button"
+                onClick={() => setDialogState(null)}
+                className="w-5 h-5 flex items-center justify-center rounded hover:bg-white/20 text-white cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-4 text-xs text-stone-700 whitespace-pre-line leading-relaxed">
+              {dialogState.msg}
+            </div>
+            <div className="px-4 py-2.5 bg-stone-50 border-t border-stone-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setDialogState(null)}
+                className="px-4 py-1.5 bg-[#107c41] text-white rounded text-xs font-medium hover:bg-[#0e6b37] transition-colors cursor-pointer"
+              >
+                Aceptar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
