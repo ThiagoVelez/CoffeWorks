@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
+import { PortalMenu } from "./PortalMenu";
 import {
   Clipboard,
   Scissors,
@@ -78,6 +79,8 @@ interface ExcelRibbonProps {
   onToggleFormulaBar: () => void;
   zoom: number;
   onZoomChange: (zoom: number) => void;
+  onSetFontFamily?: (font: string) => void;
+  onSetFontSize?: (size: number) => void;
 }
 
 // Componente para la base de cada grupo con etiqueta centrada e iniciador de diálogo ↘
@@ -130,6 +133,8 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
   onToggleFormulaBar,
   zoom,
   onZoomChange,
+  onSetFontFamily,
+  onSetFontSize,
 }) => {
   const [activeTab, setActiveTab] = useState<ExcelRibbonTab>("inicio");
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
@@ -138,6 +143,16 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
   const [autoSumMenuOpen, setAutoSumMenuOpen] = useState(false);
   const [formatMenuOpen, setFormatMenuOpen] = useState(false);
   const [currentFormat, setCurrentFormat] = useState<string>("General");
+  const [currentFont, setCurrentFont] = useState<string>("Calibri");
+  const [currentFontSize, setCurrentFontSize] = useState<number>(11);
+  const [fontMenuOpen, setFontMenuOpen] = useState(false);
+
+  // Referencias para popovers anclados con PortalMenu
+  const fillButtonRef = useRef<HTMLButtonElement>(null);
+  const textButtonRef = useRef<HTMLButtonElement>(null);
+  const formatButtonRef = useRef<HTMLButtonElement>(null);
+  const autoSumButtonRef = useRef<HTMLButtonElement>(null);
+  const fontButtonRef = useRef<HTMLButtonElement>(null);
 
   // Estados interactivos para herramientas avanzadas de Excel
   const [activeDrawingTool, setActiveDrawingTool] = useState<string>("select");
@@ -147,22 +162,46 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
   const [margins, setMargins] = useState<string>("Normal");
   const [printAreaDefined, setPrintAreaDefined] = useState<boolean>(false);
 
+  const fontLibraries = [
+    { name: "Calibri", family: "Calibri, Carlito, sans-serif" },
+    { name: "Arial", family: "Arial, Helvetica, sans-serif" },
+    { name: "Segoe UI", family: "'Segoe UI', Roboto, sans-serif" },
+    { name: "Consolas", family: "Consolas, 'Courier New', monospace" },
+    { name: "Times New Roman", family: "'Times New Roman', Times, serif" },
+    { name: "Georgia", family: "Georgia, serif" },
+    { name: "Inter", family: "Inter, sans-serif" },
+    { name: "Roboto", family: "Roboto, sans-serif" },
+    { name: "Fira Code", family: "'Fira Code', monospace" },
+    { name: "Trebuchet MS", family: "'Trebuchet MS', sans-serif" },
+    { name: "Verdana", family: "Verdana, Geneva, sans-serif" },
+    { name: "Garamond", family: "Garamond, serif" },
+  ];
+
   const themeColors = [
     { name: "Sin relleno", color: "transparent" },
-    { name: "Amarillo Suave", color: "#fef08a" },
-    { name: "Verde Excel", color: "#bbf7d0" },
+    { name: "Negro Carbón", color: "#111827" },
+    { name: "Gris Grafito", color: "#4b5563" },
+    { name: "Blanco Puro", color: "#ffffff" },
+    { name: "Verde Excel", color: "#107c41" },
+    { name: "Verde Menta", color: "#bbf7d0" },
     { name: "Celeste Suave", color: "#bae6fd" },
+    { name: "Azul Marino", color: "#1e40af" },
+    { name: "Amarillo Suave", color: "#fef08a" },
     { name: "Naranja Melocotón", color: "#fed7aa" },
-    { name: "Gris Platino", color: "#e5e7eb" },
     { name: "Rojo Tenue", color: "#fecaca" },
+    { name: "Rojo Carmesí", color: "#dc2626" },
+    { name: "Púrpura", color: "#7c3aed" },
   ];
 
   const textColors = [
     { name: "Automático (Negro)", color: "#111111" },
+    { name: "Gris Grafito", color: "#4b5563" },
+    { name: "Blanco", color: "#ffffff" },
     { name: "Verde Office", color: "#107c41" },
     { name: "Azul Marino", color: "#1e40af" },
-    { name: "Rojo Oscuro", color: "#991b1b" },
-    { name: "Gris Grafito", color: "#4b5563" },
+    { name: "Rojo Carmesí", color: "#dc2626" },
+    { name: "Naranja", color: "#ea580c" },
+    { name: "Púrpura", color: "#7c3aed" },
   ];
 
   const notifyAdvancedDialog = (title: string, msg: string) => {
@@ -342,20 +381,59 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
             <div className="flex flex-col justify-between px-2 border-r border-[#e1dfdd]">
               <div className="flex flex-col gap-1 flex-1 justify-center">
                 <div className="flex items-center gap-1">
+                  <div className="relative">
+                    <button
+                      ref={fontButtonRef}
+                      type="button"
+                      onClick={() => setFontMenuOpen(!fontMenuOpen)}
+                      className="text-xs px-2 py-0.5 rounded border border-[#d2d0ce] font-medium w-28 bg-white flex items-center justify-between cursor-pointer hover:border-[#107c41]"
+                      title="Familia tipográfica"
+                    >
+                      <span className="truncate">{currentFont}</span>
+                      <ChevronDown size={11} className="text-stone-500 shrink-0 ml-1" />
+                    </button>
+                    <PortalMenu
+                      isOpen={fontMenuOpen}
+                      onClose={() => setFontMenuOpen(false)}
+                      triggerRef={fontButtonRef}
+                      width={180}
+                    >
+                      <div className="px-2 py-1 text-[11px] font-bold text-stone-500 border-b border-[#e1dfdd]">
+                        Fuentes disponibles
+                      </div>
+                      <div className="flex flex-col gap-0.5 mt-1 max-h-48 overflow-y-auto">
+                        {fontLibraries.map((f) => (
+                          <button
+                            key={f.name}
+                            type="button"
+                            onClick={() => {
+                              setCurrentFont(f.name);
+                              if (onSetFontFamily) onSetFontFamily(f.family);
+                              setFontMenuOpen(false);
+                            }}
+                            className={`w-full px-2.5 py-1 text-xs text-left rounded hover:bg-[#e1f3e7] hover:text-[#107c41] cursor-pointer flex items-center justify-between ${
+                              currentFont === f.name ? "bg-[#e1f3e7] font-bold text-[#107c41]" : ""
+                            }`}
+                            style={{ fontFamily: f.family }}
+                          >
+                            <span>{f.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </PortalMenu>
+                  </div>
+
                   <select
-                    className="text-xs px-2 py-0.5 rounded border border-[#d2d0ce] font-medium w-28 bg-white"
-                    defaultValue="Calibri"
+                    className="text-xs px-1 py-0.5 rounded border border-[#d2d0ce] font-medium w-12 bg-white text-center cursor-pointer"
+                    value={currentFontSize}
+                    onChange={(e) => {
+                      const sz = Number(e.target.value);
+                      setCurrentFontSize(sz);
+                      if (onSetFontSize) onSetFontSize(sz);
+                    }}
+                    title="Tamaño de fuente"
                   >
-                    <option value="Calibri">Calibri</option>
-                    <option value="Arial">Arial</option>
-                    <option value="Segoe UI">Segoe UI</option>
-                    <option value="Consolas">Consolas</option>
-                  </select>
-                  <select
-                    className="text-xs px-1 py-0.5 rounded border border-[#d2d0ce] font-medium w-12 bg-white text-center"
-                    defaultValue="11"
-                  >
-                    {[9, 10, 11, 12, 14, 16, 18, 20].map((s) => (
+                    {[9, 10, 11, 12, 14, 16, 18, 20, 24].map((s) => (
                       <option key={s} value={s}>
                         {s}
                       </option>
@@ -396,9 +474,10 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                     <Grid size={13} />
                   </button>
 
-                  {/* Relleno de celda */}
-                  <div className="relative">
+                  {/* Relleno de celda con PortalMenu para evitar recortes */}
+                  <div>
                     <button
+                      ref={fillButtonRef}
                       type="button"
                       onClick={() => setFillColorOpen(!fillColorOpen)}
                       className="w-6 h-6 flex items-center justify-center rounded hover:bg-[#f3f2f1] text-[#107c41] cursor-pointer"
@@ -406,8 +485,16 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                     >
                       <PaintBucket size={13} />
                     </button>
-                    {fillColorOpen && (
-                      <div className="absolute left-0 mt-1 w-36 rounded-lg bg-white border border-[#d2d0ce] shadow-xl p-1.5 z-50">
+                    <PortalMenu
+                      isOpen={fillColorOpen}
+                      onClose={() => setFillColorOpen(false)}
+                      triggerRef={fillButtonRef}
+                      width={180}
+                    >
+                      <div className="px-2 py-1 text-[11px] font-bold text-stone-500 border-b border-[#e1dfdd]">
+                        Color de relleno
+                      </div>
+                      <div className="grid grid-cols-1 gap-0.5 mt-1">
                         {themeColors.map((c) => (
                           <button
                             key={c.color}
@@ -419,19 +506,20 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                             className="w-full flex items-center gap-2 px-2 py-1 text-xs hover:bg-[#f3f2f1] rounded text-left cursor-pointer"
                           >
                             <span
-                              className="w-3.5 h-3.5 rounded border border-black/20"
+                              className="w-3.5 h-3.5 rounded border border-black/20 shrink-0"
                               style={{ backgroundColor: c.color }}
                             />
-                            <span>{c.name}</span>
+                            <span className="truncate">{c.name}</span>
                           </button>
                         ))}
                       </div>
-                    )}
+                    </PortalMenu>
                   </div>
 
-                  {/* Color de texto */}
-                  <div className="relative">
+                  {/* Color de texto con PortalMenu para evitar recortes */}
+                  <div>
                     <button
+                      ref={textButtonRef}
                       type="button"
                       onClick={() => setTextColorOpen(!textColorOpen)}
                       className="w-6 h-6 flex items-center justify-center rounded hover:bg-[#f3f2f1] text-[#dc2626] cursor-pointer"
@@ -439,8 +527,16 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                     >
                       <Palette size={13} />
                     </button>
-                    {textColorOpen && (
-                      <div className="absolute left-0 mt-1 w-36 rounded-lg bg-white border border-[#d2d0ce] shadow-xl p-1.5 z-50">
+                    <PortalMenu
+                      isOpen={textColorOpen}
+                      onClose={() => setTextColorOpen(false)}
+                      triggerRef={textButtonRef}
+                      width={180}
+                    >
+                      <div className="px-2 py-1 text-[11px] font-bold text-stone-500 border-b border-[#e1dfdd]">
+                        Color de fuente
+                      </div>
+                      <div className="grid grid-cols-1 gap-0.5 mt-1">
                         {textColors.map((tc) => (
                           <button
                             key={tc.color}
@@ -452,14 +548,14 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                             className="w-full flex items-center gap-2 px-2 py-1 text-xs hover:bg-[#f3f2f1] rounded text-left cursor-pointer"
                           >
                             <span
-                              className="w-3.5 h-3.5 rounded-full border border-black/20"
+                              className="w-3.5 h-3.5 rounded-full border border-black/20 shrink-0"
                               style={{ backgroundColor: tc.color }}
                             />
-                            <span>{tc.name}</span>
+                            <span className="truncate">{tc.name}</span>
                           </button>
                         ))}
                       </div>
-                    )}
+                    </PortalMenu>
                   </div>
                 </div>
               </div>
@@ -526,17 +622,26 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
             {/* GRUPO NÚMERO (EXCLUSIVO DE EXCEL) */}
             <div className="flex flex-col justify-between px-2 border-r border-[#e1dfdd]">
               <div className="flex flex-col gap-1 flex-1 justify-center">
-                <div className="relative">
+                <div>
                   <button
+                    ref={formatButtonRef}
                     type="button"
                     onClick={() => setFormatMenuOpen(!formatMenuOpen)}
-                    className="w-34 px-2 py-0.5 text-xs rounded border border-[#d2d0ce] bg-white flex items-center justify-between font-medium cursor-pointer"
+                    className="w-34 px-2 py-0.5 text-xs rounded border border-[#d2d0ce] bg-white flex items-center justify-between font-medium cursor-pointer hover:border-[#107c41]"
                   >
                     <span>{currentFormat}</span>
                     <ChevronDown size={11} className="text-stone-500" />
                   </button>
-                  {formatMenuOpen && (
-                    <div className="absolute left-0 mt-1 w-36 rounded-lg bg-white border border-[#d2d0ce] shadow-xl p-1 z-50">
+                  <PortalMenu
+                    isOpen={formatMenuOpen}
+                    onClose={() => setFormatMenuOpen(false)}
+                    triggerRef={formatButtonRef}
+                    width={180}
+                  >
+                    <div className="px-2 py-1 text-[11px] font-bold text-stone-500 border-b border-[#e1dfdd]">
+                      Formato numérico
+                    </div>
+                    <div className="flex flex-col gap-0.5 mt-1">
                       {[
                         { label: "General", val: "general" as CellFormat },
                         { label: "Moneda ($)", val: "currency" as CellFormat },
@@ -551,13 +656,15 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                             setCurrentFormat(item.label);
                             setFormatMenuOpen(false);
                           }}
-                          className="w-full px-2 py-1 text-xs hover:bg-[#f3f2f1] rounded text-left cursor-pointer"
+                          className={`w-full px-2 py-1 text-xs hover:bg-[#e1f3e7] hover:text-[#107c41] rounded text-left cursor-pointer ${
+                            currentFormat === item.label ? "bg-[#e1f3e7] font-semibold text-[#107c41]" : ""
+                          }`}
                         >
                           {item.label}
                         </button>
                       ))}
                     </div>
-                  )}
+                  </PortalMenu>
                 </div>
 
                 <div className="flex items-center gap-1 text-xs">
@@ -669,9 +776,10 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
             {/* GRUPO EDICIÓN */}
             <div className="flex flex-col justify-between pl-1">
               <div className="flex items-center gap-1.5 flex-1 items-center">
-                {/* Menú de Autosuma */}
-                <div className="relative">
+                {/* Menú de Autosuma con PortalMenu */}
+                <div>
                   <button
+                    ref={autoSumButtonRef}
                     type="button"
                     onClick={() => setAutoSumMenuOpen(!autoSumMenuOpen)}
                     className="flex flex-col items-center justify-center p-1 rounded hover:bg-[#f3f2f1] w-14 h-15 border border-transparent hover:border-[#d2d0ce] cursor-pointer"
@@ -679,15 +787,23 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                     <Sigma size={20} className="text-[#107c41] mb-0.5" />
                     <span className="text-[10px] font-bold">Autosuma</span>
                   </button>
-                  {autoSumMenuOpen && (
-                    <div className="absolute left-0 mt-1 w-32 rounded-lg bg-white border border-[#d2d0ce] shadow-xl p-1 z-50">
+                  <PortalMenu
+                    isOpen={autoSumMenuOpen}
+                    onClose={() => setAutoSumMenuOpen(false)}
+                    triggerRef={autoSumButtonRef}
+                    width={160}
+                  >
+                    <div className="px-2 py-1 text-[11px] font-bold text-stone-500 border-b border-[#e1dfdd]">
+                      Funciones rápidas
+                    </div>
+                    <div className="flex flex-col gap-0.5 mt-1">
                       <button
                         type="button"
                         onClick={() => {
                           onInsertAutoSum();
                           setAutoSumMenuOpen(false);
                         }}
-                        className="w-full px-2 py-1 text-xs hover:bg-[#f3f2f1] rounded text-left font-bold cursor-pointer"
+                        className="w-full px-2 py-1 text-xs hover:bg-[#e1f3e7] hover:text-[#107c41] rounded text-left font-bold cursor-pointer"
                       >
                         SUMA
                       </button>
@@ -697,7 +813,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                           onInsertAverage();
                           setAutoSumMenuOpen(false);
                         }}
-                        className="w-full px-2 py-1 text-xs hover:bg-[#f3f2f1] rounded text-left cursor-pointer"
+                        className="w-full px-2 py-1 text-xs hover:bg-[#e1f3e7] hover:text-[#107c41] rounded text-left cursor-pointer"
                       >
                         PROMEDIO
                       </button>
@@ -707,7 +823,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                           onInsertCount();
                           setAutoSumMenuOpen(false);
                         }}
-                        className="w-full px-2 py-1 text-xs hover:bg-[#f3f2f1] rounded text-left cursor-pointer"
+                        className="w-full px-2 py-1 text-xs hover:bg-[#e1f3e7] hover:text-[#107c41] rounded text-left cursor-pointer"
                       >
                         CONTAR
                       </button>
@@ -717,7 +833,7 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                           onInsertMax();
                           setAutoSumMenuOpen(false);
                         }}
-                        className="w-full px-2 py-1 text-xs hover:bg-[#f3f2f1] rounded text-left cursor-pointer"
+                        className="w-full px-2 py-1 text-xs hover:bg-[#e1f3e7] hover:text-[#107c41] rounded text-left cursor-pointer"
                       >
                         MAX
                       </button>
@@ -727,12 +843,12 @@ export const ExcelRibbon: React.FC<ExcelRibbonProps> = ({
                           onInsertMin();
                           setAutoSumMenuOpen(false);
                         }}
-                        className="w-full px-2 py-1 text-xs hover:bg-[#f3f2f1] rounded text-left cursor-pointer"
+                        className="w-full px-2 py-1 text-xs hover:bg-[#e1f3e7] hover:text-[#107c41] rounded text-left cursor-pointer"
                       >
                         MIN
                       </button>
                     </div>
-                  )}
+                  </PortalMenu>
                 </div>
 
                 <div className="flex flex-col gap-0.5">

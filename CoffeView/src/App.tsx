@@ -320,6 +320,14 @@ export const App: React.FC = () => {
     modifySelectedElement((el) => ({ ...el, align }));
   };
 
+  const handleSetFontFamily = (fontFamily: string) => {
+    modifySelectedElement((el) => ({ ...el, fontFamily }));
+  };
+
+  const handleSetFontSize = (fontSize: number) => {
+    modifySelectedElement((el) => ({ ...el, fontSize }));
+  };
+
   const handleSelectTheme = (theme: SlideTheme) => {
     const updatedMeta = { ...metadata, themeId: theme.id };
     setMetadata(updatedMeta);
@@ -433,6 +441,8 @@ export const App: React.FC = () => {
         onDeleteElement={handleDeleteElement}
         showNotes={showNotes}
         onToggleNotes={() => setShowNotes(!showNotes)}
+        onSetFontFamily={handleSetFontFamily}
+        onSetFontSize={handleSetFontSize}
       />
 
       {/* 3. Área de trabajo principal */}

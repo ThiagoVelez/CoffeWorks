@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   Clipboard,
   Scissors,
@@ -48,7 +48,6 @@ import {
   Layers,
   Droplet,
   Stamp,
-  Columns,
   BookOpen,
   Quote,
   Bookmark,
@@ -60,8 +59,14 @@ import {
   Send,
   Type,
   Globe,
+  Square,
+  Circle,
+  ArrowRight,
+  Star,
+  Triangle,
 } from "lucide-react";
 import type { DocumentTheme } from "../types";
+import { PortalMenu } from "./PortalMenu";
 
 export type RibbonTab =
   | "inicio"
@@ -101,7 +106,6 @@ interface WordRibbonProps {
   onSetLineSpacing: (spacing: string) => void;
 }
 
-// Componente para la base de cada grupo con etiqueta centrada e iniciador de diálogo ↘
 const RibbonGroupFooter: React.FC<{
   label: string;
   onOpenDialog?: () => void;
@@ -162,11 +166,23 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
   const [fileMenuOpen, setFileMenuOpen] = useState<boolean>(false);
   const [fontFamily, setFontFamily] = useState<string>("Calibri");
   const [fontSize, setFontSize] = useState<number>(11);
-  const [textColorOpen, setTextColorOpen] = useState<boolean>(false);
-  const [highlightOpen, setHighlightOpen] = useState<boolean>(false);
-  const [lineSpacingOpen, setLineSpacingOpen] = useState<boolean>(false);
 
-  // Estados interactivos para las herramientas específicas
+  // Estados y Refs para los menús desplegables con PortalMenu (sin recorte)
+  const [textColorOpen, setTextColorOpen] = useState<boolean>(false);
+  const textColorBtnRef = useRef<HTMLButtonElement>(null);
+
+  const [highlightOpen, setHighlightOpen] = useState<boolean>(false);
+  const highlightBtnRef = useRef<HTMLButtonElement>(null);
+
+  const [lineSpacingOpen, setLineSpacingOpen] = useState<boolean>(false);
+  const lineSpacingBtnRef = useRef<HTMLButtonElement>(null);
+
+  const [shapesMenuOpen, setShapesMenuOpen] = useState<boolean>(false);
+  const shapesBtnRef = useRef<HTMLButtonElement>(null);
+
+  const [tableMenuOpen, setTableMenuOpen] = useState<boolean>(false);
+  const tableBtnRef = useRef<HTMLButtonElement>(null);
+
   const [activeDrawingTool, setActiveDrawingTool] = useState<string>("select");
   const [activeThemeName, setActiveThemeName] = useState<string>("Office");
   const [margins, setMargins] = useState<string>("Normal (2.5 cm)");
@@ -179,21 +195,46 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
   const [spaceAfter, setSpaceAfter] = useState<number>(8);
   const [citationStyle, setCitationStyle] = useState<string>("APA 7ma Edición");
 
+  // Paleta completa de colores de texto estilo Office
   const textColors = [
-    { name: "Negro / Oscuro", color: "#111111" },
-    { name: "Azul Microsoft Office", color: "#185abd" },
-    { name: "Caramelo Elegante", color: "#e08e45" },
-    { name: "Verde Bosque", color: "#16a34a" },
+    { name: "Automático (Negro)", color: "#111111" },
+    { name: "Azul Microsoft Word", color: "#185abd" },
+    { name: "Azul Marino Oscuro", color: "#103f7a" },
+    { name: "Verde Esmeralda", color: "#107c41" },
     { name: "Rojo Carmesí", color: "#dc2626" },
-    { name: "Gris Suave", color: "#6b7280" },
+    { name: "Naranja Ámbar", color: "#d97706" },
+    { name: "Púrpura Imperial", color: "#7c3aed" },
+    { name: "Gris Oscuro", color: "#4b5563" },
+    { name: "Gris Claro", color: "#9ca3af" },
   ];
 
+  // Paleta de resaltado
   const highlightColors = [
     { name: "Sin color", color: "transparent" },
     { name: "Amarillo Fluorescente", color: "#fef08a" },
     { name: "Verde Menta", color: "#bbf7d0" },
     { name: "Celeste Cielo", color: "#bae6fd" },
+    { name: "Rosa Chicle", color: "#fbcfe8" },
+    { name: "Lavanda Suave", color: "#e9d5ff" },
     { name: "Ámbar Cálido", color: "#fed7aa" },
+  ];
+
+  // Catálogo completo de fuentes tipográficas
+  const fontLibraries = [
+    { name: "Calibri", family: "Calibri, sans-serif" },
+    { name: "Segoe UI", family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" },
+    { name: "Arial", family: "Arial, Helvetica, sans-serif" },
+    { name: "Times New Roman", family: "'Times New Roman', Times, serif" },
+    { name: "Georgia", family: "Georgia, serif" },
+    { name: "Garamond", family: "Garamond, serif" },
+    { name: "Palatino", family: "'Palatino Linotype', Book Antiqua, Palatino, serif" },
+    { name: "Verdana", family: "Verdana, Geneva, Tahoma, sans-serif" },
+    { name: "Trebuchet MS", family: "'Trebuchet MS', Helvetica, sans-serif" },
+    { name: "Hanken Grotesk", family: "'Hanken Grotesk', sans-serif" },
+    { name: "Inter", family: "Inter, sans-serif" },
+    { name: "JetBrains Mono", family: "'JetBrains Mono', monospace" },
+    { name: "Courier New", family: "'Courier New', Courier, monospace" },
+    { name: "Impact", family: "Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif" },
   ];
 
   const changeFontSize = (delta: number) => {
@@ -208,6 +249,79 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
   const handleFontChange = (font: string) => {
     setFontFamily(font);
     onExecuteCommand("fontName", font);
+  };
+
+  // Función robusta para insertar listas ordenadas y evitar problemas de foco
+  const handleInsertOrderedList = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.toString().trim() === "") {
+      onExecuteCommand(
+        "insertHTML",
+        "<ol><li>Primer elemento</li><li>Segundo elemento</li><li>Tercer elemento</li></ol><p></p>"
+      );
+    } else {
+      onExecuteCommand("insertOrderedList");
+    }
+  };
+
+  // Función robusta para insertar viñetas
+  const handleInsertUnorderedList = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.toString().trim() === "") {
+      onExecuteCommand(
+        "insertHTML",
+        "<ul><li>Elemento principal</li><li>Elemento secundario</li></ul><p></p>"
+      );
+    } else {
+      onExecuteCommand("insertUnorderedList");
+    }
+  };
+
+  // Inserción de formas y figuras geométricas en el documento
+  const handleInsertShape = (shapeType: string) => {
+    setShapesMenuOpen(false);
+    let html = "";
+    if (shapeType === "rectangle") {
+      html = `<div style="display:inline-block; margin:8px; border:2px solid #185abd; background:#e8f1fc; width:130px; height:65px; border-radius:4px; text-align:center; line-height:65px; color:#185abd; font-size:12px; font-weight:600; user-select:none;">Rectángulo</div>`;
+    } else if (shapeType === "rounded") {
+      html = `<div style="display:inline-block; margin:8px; border:2px solid #185abd; background:#e8f1fc; width:130px; height:65px; border-radius:24px; text-align:center; line-height:65px; color:#185abd; font-size:12px; font-weight:600; user-select:none;">Redondeado</div>`;
+    } else if (shapeType === "circle") {
+      html = `<div style="display:inline-block; margin:8px; border:2px solid #107c41; background:#e1f3e7; width:75px; height:75px; border-radius:50%; text-align:center; line-height:75px; color:#107c41; font-size:12px; font-weight:600; user-select:none;">Círculo</div>`;
+    } else if (shapeType === "triangle") {
+      html = `<svg width="80" height="70" viewBox="0 0 80 70" style="display:inline-block; margin:8px; vertical-align:middle;"><polygon points="40,5 75,65 5,65" fill="#fef08a" stroke="#ca8a04" stroke-width="2" /></svg>`;
+    } else if (shapeType === "arrow-right") {
+      html = `<svg width="100" height="40" viewBox="0 0 100 40" style="display:inline-block; margin:8px; vertical-align:middle;"><path d="M5,14 L65,14 L65,4 L95,20 L65,36 L65,26 L5,26 Z" fill="#185abd" stroke="#0e4594" stroke-width="1.5" /></svg>`;
+    } else if (shapeType === "star") {
+      html = `<svg width="70" height="70" viewBox="0 0 100 100" style="display:inline-block; margin:8px; vertical-align:middle;"><polygon points="50,5 64,36 98,36 70,57 81,91 50,70 19,91 30,57 2,36 36,36" fill="#f59e0b" stroke="#d97706" stroke-width="2" /></svg>`;
+    } else if (shapeType === "callout") {
+      html = `<div style="display:inline-block; margin:8px; background:#f3f2f1; border:2px solid #605e5c; border-radius:8px; padding:8px 14px; font-size:12px; color:#323130;">Mensaje o llamada de atención</div>`;
+    }
+    onExecuteCommand("insertHTML", html + "&nbsp;");
+  };
+
+  // Inserción de tabla interactiva con filas y columnas personalizadas
+  const handleInsertGridTable = (rows: number, cols: number, styleName: "azul" | "verde" | "clasica" = "azul") => {
+    setTableMenuOpen(false);
+    const thBg = styleName === "azul" ? "#185abd" : styleName === "verde" ? "#107c41" : "#f3f2f1";
+    const thColor = styleName === "clasica" ? "#201f1e" : "#ffffff";
+    let html = `<table style="width:100%; border-collapse:collapse; margin:16px 0; font-size:13px;"><thead><tr>`;
+    for (let c = 1; c <= cols; c++) {
+      html += `<th style="background:${thBg}; color:${thColor}; border:1px solid #d2d0ce; padding:8px 12px; text-align:left; font-weight:600;">Encabezado ${c}</th>`;
+    }
+    html += `</tr></thead><tbody>`;
+    for (let r = 1; r <= rows; r++) {
+      const bg = r % 2 === 0 ? "#fbf9f6" : "#ffffff";
+      html += `<tr style="background:${bg};">`;
+      for (let c = 1; c <= cols; c++) {
+        html += `<td style="border:1px solid #d2d0ce; padding:8px 12px;">Fila ${r}, Celda ${c}</td>`;
+      }
+      html += `</tr>`;
+    }
+    html += `</tbody></table><p></p>`;
+    onExecuteCommand("insertHTML", html);
+    if (onInsertTable) onInsertTable();
   };
 
   const notifyAdvancedDialog = (title: string, msg: string) => {
@@ -237,13 +351,12 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
           : "bg-[#231f1d] border-[#3d3836] text-[#eae0dd]"
       }`}
     >
-      {/* 1. FILA DE PESTAÑAS DE LA CINTA (RIBBON TABS DE MICROSOFT WORD) */}
+      {/* 1. FILA DE PESTAÑAS DE LA CINTA */}
       <div
         className={`flex items-center px-2 pt-1 border-b gap-0.5 text-xs transition-colors overflow-x-auto ${
           isLight ? "bg-[#f3f2f1] border-[#e1dfdd]" : "bg-[#1a1715] border-[#35302d]"
         }`}
       >
-        {/* Pestaña ARCHIVO (Estilo botón distintivo de Microsoft Word azul) */}
         <div className="relative mr-1.5 shrink-0">
           <button
             type="button"
@@ -254,7 +367,6 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
             <ChevronDown size={11} />
           </button>
 
-          {/* Menú desplegable Backstage de Archivo */}
           {fileMenuOpen && (
             <div
               className={`absolute left-0 mt-1 w-64 rounded-xl border shadow-2xl py-1.5 z-50 animate-in fade-in zoom-in-95 font-sans ${
@@ -267,53 +379,52 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
               <button
                 type="button"
                 onClick={onNewDocument}
-                className="w-full flex items-center justify-between px-3.5 py-2 hover:bg-surface-container text-on-surface hover:text-primary transition-colors text-xs cursor-pointer"
+                className="w-full flex items-center justify-between px-3.5 py-2 hover:bg-[#f3f2f1] transition-colors text-xs cursor-pointer"
               >
                 <span className="flex items-center gap-2.5">
                   <FilePlus size={15} className="text-[#185abd]" />
                   Nuevo documento
                 </span>
-                <span className="font-mono text-[10px] text-outline">Ctrl+N</span>
+                <span className="font-mono text-[10px] text-stone-400">Ctrl+N</span>
               </button>
               <button
                 type="button"
                 onClick={onSave}
-                className="w-full flex items-center justify-between px-3.5 py-2 hover:bg-surface-container text-on-surface hover:text-primary transition-colors text-xs cursor-pointer"
+                className="w-full flex items-center justify-between px-3.5 py-2 hover:bg-[#f3f2f1] transition-colors text-xs cursor-pointer"
               >
                 <span className="flex items-center gap-2.5">
                   <Save size={15} className="text-emerald-600" />
                   Guardar
                 </span>
-                <span className="font-mono text-[10px] text-outline">Ctrl+S</span>
+                <span className="font-mono text-[10px] text-stone-400">Ctrl+S</span>
               </button>
-              <div className="h-px bg-outline-variant/20 my-1" />
+              <div className="h-px bg-stone-200 my-1" />
               <button
                 type="button"
                 onClick={onOpenExport}
-                className="w-full flex items-center justify-between px-3.5 py-2 hover:bg-surface-container text-on-surface hover:text-primary transition-colors text-xs cursor-pointer"
+                className="w-full flex items-center justify-between px-3.5 py-2 hover:bg-[#f3f2f1] transition-colors text-xs cursor-pointer"
               >
                 <span className="flex items-center gap-2.5">
                   <Download size={15} className="text-[#185abd]" />
                   Exportar / Guardar como...
                 </span>
-                <span className="font-mono text-[10px] text-outline">.cfd, .docx, .md</span>
+                <span className="font-mono text-[10px] text-stone-400">.docx, .cfd</span>
               </button>
               <button
                 type="button"
                 onClick={onPrint}
-                className="w-full flex items-center justify-between px-3.5 py-2 hover:bg-surface-container text-on-surface hover:text-primary transition-colors text-xs cursor-pointer"
+                className="w-full flex items-center justify-between px-3.5 py-2 hover:bg-[#f3f2f1] transition-colors text-xs cursor-pointer"
               >
                 <span className="flex items-center gap-2.5">
-                  <Printer size={15} className="text-outline" />
+                  <Printer size={15} className="text-stone-500" />
                   Imprimir / PDF
                 </span>
-                <span className="font-mono text-[10px] text-outline">Ctrl+P</span>
+                <span className="font-mono text-[10px] text-stone-400">Ctrl+P</span>
               </button>
             </div>
           )}
         </div>
 
-        {/* Pestañas estándar y avanzadas de la Suite */}
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
@@ -340,7 +451,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
         })}
       </div>
 
-      {/* 2. CUERPO DE LA CINTA RIBBON (RIBBON CONTAINER CON GRUPOS VERTICALES E INICIADORES ↘) */}
+      {/* 2. CUERPO DE LA CINTA RIBBON */}
       <div
         className={`h-25 px-2.5 py-1 flex items-stretch gap-2 overflow-x-auto transition-colors ${
           isLight ? "bg-[#ffffff] text-[#201f1e]" : "bg-[#231f1d] text-[#eae0dd]"
@@ -349,7 +460,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
         {/* ===================== PESTAÑA: INICIO ===================== */}
         {activeTab === "inicio" && (
           <>
-            {/* GRUPO 1: PORTAPAPELES */}
+            {/* GRUPO PORTAPAPELES */}
             <div
               className={`flex flex-col justify-between pr-2 border-r ${
                 isLight ? "border-[#e1dfdd]" : "border-[#3a3430]"
@@ -358,13 +469,10 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1">
                 <button
                   type="button"
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => onExecuteCommand("paste")}
                   title="Pegar (Ctrl + V)"
-                  className={`flex flex-col items-center justify-center p-1 rounded transition-colors w-12 h-15 border cursor-pointer ${
-                    isLight
-                      ? "hover:bg-[#f3f2f1] text-[#201f1e] border-transparent hover:border-[#d2d0ce]"
-                      : "hover:bg-surface-container-high text-on-surface border-transparent hover:border-outline-variant/30"
-                  }`}
+                  className="flex flex-col items-center justify-center p-1 rounded hover:bg-black/5 w-12 h-15 border border-transparent hover:border-[#d2d0ce] cursor-pointer"
                 >
                   <Clipboard size={20} className={`${isLight ? "text-[#185abd]" : "text-primary"} mb-0.5`} />
                   <span className="text-[10px] leading-tight font-medium">Pegar</span>
@@ -373,39 +481,30 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                 <div className="flex flex-col gap-0.5">
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => onExecuteCommand("cut")}
                     title="Cortar (Ctrl + X)"
-                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] transition-colors cursor-pointer ${
-                      isLight
-                        ? "hover:bg-[#f3f2f1] text-[#323130] hover:text-[#185abd]"
-                        : "hover:bg-surface-container-high text-outline hover:text-on-surface"
-                    }`}
+                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] hover:bg-black/5 cursor-pointer"
                   >
                     <Scissors size={12} />
                     <span>Cortar</span>
                   </button>
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => onExecuteCommand("copy")}
                     title="Copiar (Ctrl + C)"
-                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] transition-colors cursor-pointer ${
-                      isLight
-                        ? "hover:bg-[#f3f2f1] text-[#323130] hover:text-[#185abd]"
-                        : "hover:bg-surface-container-high text-outline hover:text-on-surface"
-                    }`}
+                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] hover:bg-black/5 cursor-pointer"
                   >
                     <Copy size={12} />
                     <span>Copiar</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => alert("Formato copiado. Aplica en cualquier selección.")}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => alert("Formato copiado. Aplica sobre el texto deseado.")}
                     title="Copiar formato"
-                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] transition-colors cursor-pointer ${
-                      isLight
-                        ? "hover:bg-[#f3f2f1] text-[#323130] hover:text-[#185abd]"
-                        : "hover:bg-surface-container-high text-outline hover:text-on-surface"
-                    }`}
+                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] hover:bg-black/5 cursor-pointer"
                   >
                     <Paintbrush size={12} />
                     <span>Copiar formato</span>
@@ -416,12 +515,12 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                 label="Portapapeles"
                 isLight={isLight}
                 onOpenDialog={() =>
-                  notifyAdvancedDialog("Portapapeles", "Opciones del historial del portapapeles y pegado especial.")
+                  notifyAdvancedDialog("Portapapeles", "Historial de pegado y pegado sin formato.")
                 }
               />
             </div>
 
-            {/* GRUPO 2: FUENTE */}
+            {/* GRUPO FUENTE */}
             <div
               className={`flex flex-col justify-between px-2 border-r ${
                 isLight ? "border-[#e1dfdd]" : "border-[#3a3430]"
@@ -429,28 +528,24 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
             >
               <div className="flex flex-col gap-1 flex-1 justify-center">
                 <div className="flex items-center gap-1">
+                  {/* Selector con catálogo enriquecido de fuentes */}
                   <select
                     value={fontFamily}
                     onChange={(e) => handleFontChange(e.target.value)}
-                    className={`text-xs px-2 py-0.5 rounded border font-medium w-34 shadow-2xs focus:outline-none transition-colors ${
-                      isLight
-                        ? "bg-white text-[#201f1e] border-[#d2d0ce] focus:border-[#185abd]"
-                        : "bg-[#1a1715] text-on-surface border-outline-variant/40 focus:border-primary"
-                    }`}
+                    className="text-xs px-2 py-0.5 rounded border border-[#d2d0ce] font-medium w-36 bg-white cursor-pointer"
                   >
-                    <option value="Calibri">Calibri</option>
-                    <option value="Hanken Grotesk">Hanken Grotesk</option>
-                    <option value="Inter">Inter</option>
-                    <option value="JetBrains Mono">JetBrains Mono</option>
-                    <option value="Times New Roman">Times New Roman</option>
-                    <option value="Georgia">Georgia</option>
-                    <option value="Arial">Arial</option>
+                    {fontLibraries.map((f) => (
+                      <option key={f.name} value={f.name} style={{ fontFamily: f.family }}>
+                        {f.name}
+                      </option>
+                    ))}
                   </select>
 
                   <div className="flex items-center border rounded px-1 gap-1">
                     <span className="font-mono text-xs w-5 text-center">{fontSize}</span>
                     <button
                       type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => changeFontSize(1)}
                       className="hover:text-primary font-bold px-0.5 cursor-pointer"
                     >
@@ -458,6 +553,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                     </button>
                     <button
                       type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => changeFontSize(-1)}
                       className="hover:text-primary font-bold px-0.5 cursor-pointer"
                     >
@@ -469,6 +565,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                 <div className="flex items-center gap-0.5">
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => onExecuteCommand("bold")}
                     className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5 font-bold cursor-pointer"
                     title="Negrita (Ctrl + B)"
@@ -477,6 +574,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                   </button>
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => onExecuteCommand("italic")}
                     className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5 italic cursor-pointer"
                     title="Cursiva (Ctrl + I)"
@@ -485,6 +583,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                   </button>
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => onExecuteCommand("underline")}
                     className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5 underline cursor-pointer"
                     title="Subrayado (Ctrl + U)"
@@ -493,6 +592,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                   </button>
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => onExecuteCommand("strikeThrough")}
                     className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5 cursor-pointer"
                     title="Tachado"
@@ -501,6 +601,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                   </button>
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => onExecuteCommand("subscript")}
                     className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5 cursor-pointer"
                     title="Subíndice"
@@ -509,6 +610,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                   </button>
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => onExecuteCommand("superscript")}
                     className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5 cursor-pointer"
                     title="Superíndice"
@@ -516,81 +618,95 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                     <Superscript size={13} />
                   </button>
 
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setTextColorOpen(!textColorOpen)}
-                      className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5 text-[#185abd] cursor-pointer"
-                      title="Color de fuente"
-                    >
-                      <Palette size={13} />
-                    </button>
-                    {textColorOpen && (
-                      <div className="absolute left-0 mt-1 w-36 rounded-lg bg-white border border-[#d2d0ce] shadow-xl p-1.5 z-50">
-                        {textColors.map((tc) => (
-                          <button
-                            key={tc.color}
-                            type="button"
-                            onClick={() => {
-                              onExecuteCommand("foreColor", tc.color);
-                              setTextColorOpen(false);
-                            }}
-                            className="w-full flex items-center gap-2 px-2 py-1 text-xs hover:bg-[#f3f2f1] rounded text-left cursor-pointer"
-                          >
-                            <span
-                              className="w-3 h-3 rounded-full border border-black/20"
-                              style={{ backgroundColor: tc.color }}
-                            />
-                            <span>{tc.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  {/* Color de fuente con PortalMenu flotante (libre de recortes) */}
+                  <button
+                    ref={textColorBtnRef}
+                    type="button"
+                    onClick={() => setTextColorOpen(!textColorOpen)}
+                    className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5 text-[#185abd] cursor-pointer"
+                    title="Color de fuente"
+                  >
+                    <Palette size={13} />
+                  </button>
+                  <PortalMenu
+                    isOpen={textColorOpen}
+                    onClose={() => setTextColorOpen(false)}
+                    triggerRef={textColorBtnRef}
+                    width={180}
+                  >
+                    <div className="px-2 py-1 text-[10px] font-bold text-stone-500 uppercase tracking-wider border-b pb-1 mb-1">
+                      Colores del tema
+                    </div>
+                    {textColors.map((tc) => (
+                      <button
+                        key={tc.color}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          onExecuteCommand("foreColor", tc.color);
+                          setTextColorOpen(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-2 py-1.5 text-xs hover:bg-[#f3f2f1] rounded text-left cursor-pointer"
+                      >
+                        <span
+                          className="w-3.5 h-3.5 rounded-full border border-black/20 shrink-0"
+                          style={{ backgroundColor: tc.color }}
+                        />
+                        <span className="truncate">{tc.name}</span>
+                      </button>
+                    ))}
+                  </PortalMenu>
 
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setHighlightOpen(!highlightOpen)}
-                      className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5 text-amber-500 cursor-pointer"
-                      title="Color de resaltado"
-                    >
-                      <Highlighter size={13} />
-                    </button>
-                    {highlightOpen && (
-                      <div className="absolute left-0 mt-1 w-40 rounded-lg bg-white border border-[#d2d0ce] shadow-xl p-1.5 z-50">
-                        {highlightColors.map((hc) => (
-                          <button
-                            key={hc.name}
-                            type="button"
-                            onClick={() => {
-                              onExecuteCommand("hiliteColor", hc.color);
-                              setHighlightOpen(false);
-                            }}
-                            className="w-full flex items-center gap-2 px-2 py-1 text-xs hover:bg-[#f3f2f1] rounded text-left cursor-pointer"
-                          >
-                            <span
-                              className="w-3 h-3 rounded border border-black/20"
-                              style={{ backgroundColor: hc.color }}
-                            />
-                            <span>{hc.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  {/* Color de resaltado con PortalMenu */}
+                  <button
+                    ref={highlightBtnRef}
+                    type="button"
+                    onClick={() => setHighlightOpen(!highlightOpen)}
+                    className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5 text-amber-500 cursor-pointer"
+                    title="Color de resaltado"
+                  >
+                    <Highlighter size={13} />
+                  </button>
+                  <PortalMenu
+                    isOpen={highlightOpen}
+                    onClose={() => setHighlightOpen(false)}
+                    triggerRef={highlightBtnRef}
+                    width={190}
+                  >
+                    <div className="px-2 py-1 text-[10px] font-bold text-stone-500 uppercase tracking-wider border-b pb-1 mb-1">
+                      Color de resaltado de texto
+                    </div>
+                    {highlightColors.map((hc) => (
+                      <button
+                        key={hc.name}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          onExecuteCommand("hiliteColor", hc.color);
+                          setHighlightOpen(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-2 py-1.5 text-xs hover:bg-[#f3f2f1] rounded text-left cursor-pointer"
+                      >
+                        <span
+                          className="w-3.5 h-3.5 rounded border border-black/20 shrink-0"
+                          style={{ backgroundColor: hc.color }}
+                        />
+                        <span className="truncate">{hc.name}</span>
+                      </button>
+                    ))}
+                  </PortalMenu>
                 </div>
               </div>
               <RibbonGroupFooter
                 label="Fuente"
                 isLight={isLight}
                 onOpenDialog={() =>
-                  notifyAdvancedDialog("Fuente", "Configuraciones tipográficas avanzadas, ligaduras OpenType y espaciado entre caracteres.")
+                  notifyAdvancedDialog("Fuente", "Configuraciones tipográficas avanzadas y ligaduras OpenType.")
                 }
               />
             </div>
 
-            {/* GRUPO 3: PÁRRAFO */}
+            {/* GRUPO PÁRRAFO (CON REPARACIÓN DE LISTAS 1. 2. 3. Y VIÑETAS) */}
             <div
               className={`flex flex-col justify-between px-2 border-r ${
                 isLight ? "border-[#e1dfdd]" : "border-[#3a3430]"
@@ -598,28 +714,36 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
             >
               <div className="flex flex-col gap-1 flex-1 justify-center">
                 <div className="flex items-center gap-0.5">
+                  {/* Botón Viñetas */}
                   <button
                     type="button"
-                    onClick={() => onExecuteCommand("insertUnorderedList")}
-                    title="Viñetas"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={handleInsertUnorderedList}
+                    title="Viñetas con puntos"
                     className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5 cursor-pointer"
                   >
                     <List size={13} />
                   </button>
+
+                  {/* Botón Lista numerada 1. 2. 3. (Reparado) */}
                   <button
                     type="button"
-                    onClick={() => onExecuteCommand("insertOrderedList")}
-                    title="Numeración"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={handleInsertOrderedList}
+                    title="Numeración (1. 2. 3.)"
                     className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5 cursor-pointer"
                   >
                     <ListOrdered size={13} />
                   </button>
+
+                  {/* Botón Lista de tareas con casillas */}
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() =>
                       onExecuteCommand(
                         "insertHTML",
-                        "<ul class='checklist'><li><input type='checkbox'> Tarea completada</li></ul><p></p>"
+                        "<ul style='list-style:none; padding-left:0.5rem;'><li><input type='checkbox' checked style='margin-right:8px;' /> Tarea completada</li><li><input type='checkbox' style='margin-right:8px;' /> Tarea pendiente</li></ul><p></p>"
                       )
                     }
                     title="Lista de tareas (Checklist)"
@@ -629,6 +753,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                   </button>
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => onExecuteCommand("outdent")}
                     title="Disminuir sangría"
                     className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5 cursor-pointer"
@@ -637,6 +762,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                   </button>
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => onExecuteCommand("indent")}
                     title="Aumentar sangría"
                     className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5 cursor-pointer"
@@ -648,6 +774,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                 <div className="flex items-center gap-0.5">
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => onExecuteCommand("justifyLeft")}
                     title="Alinear a la izquierda"
                     className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5 cursor-pointer"
@@ -656,6 +783,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                   </button>
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => onExecuteCommand("justifyCenter")}
                     title="Centrar"
                     className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5 cursor-pointer"
@@ -664,6 +792,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                   </button>
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => onExecuteCommand("justifyRight")}
                     title="Alinear a la derecha"
                     className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5 cursor-pointer"
@@ -672,6 +801,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                   </button>
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => onExecuteCommand("justifyFull")}
                     title="Justificar"
                     className="w-6 h-6 flex items-center justify-center rounded hover:bg-black/5 cursor-pointer"
@@ -679,47 +809,50 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                     <AlignJustify size={13} />
                   </button>
 
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setLineSpacingOpen(!lineSpacingOpen)}
-                      title={`Espaciado entre líneas (${lineSpacing})`}
-                      className="px-1 py-0.5 flex items-center gap-0.5 rounded hover:bg-black/5 text-xs cursor-pointer"
-                    >
-                      <span className="font-mono text-[10px]">{lineSpacing}</span>
-                      <ChevronDown size={9} />
-                    </button>
-                    {lineSpacingOpen && (
-                      <div className="absolute left-0 mt-1 w-28 rounded-lg bg-white border border-[#d2d0ce] shadow-xl p-1 z-50">
-                        {["1.0", "1.15", "1.5", "2.0"].map((s) => (
-                          <button
-                            key={s}
-                            type="button"
-                            onClick={() => {
-                              onSetLineSpacing(s);
-                              setLineSpacingOpen(false);
-                            }}
-                            className="w-full px-2 py-1 text-xs hover:bg-[#f3f2f1] rounded flex items-center justify-between text-left cursor-pointer"
-                          >
-                            <span>{s}</span>
-                            {lineSpacing === s && <Check size={11} className="text-[#185abd]" />}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  {/* Interlineado con PortalMenu */}
+                  <button
+                    ref={lineSpacingBtnRef}
+                    type="button"
+                    onClick={() => setLineSpacingOpen(!lineSpacingOpen)}
+                    title={`Espaciado entre líneas (${lineSpacing})`}
+                    className="px-1 py-0.5 flex items-center gap-0.5 rounded hover:bg-black/5 text-xs cursor-pointer"
+                  >
+                    <span className="font-mono text-[10px]">{lineSpacing}</span>
+                    <ChevronDown size={9} />
+                  </button>
+                  <PortalMenu
+                    isOpen={lineSpacingOpen}
+                    onClose={() => setLineSpacingOpen(false)}
+                    triggerRef={lineSpacingBtnRef}
+                    width={130}
+                  >
+                    {["1.0", "1.15", "1.5", "2.0", "2.5", "3.0"].map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => {
+                          onSetLineSpacing(s);
+                          setLineSpacingOpen(false);
+                        }}
+                        className="w-full px-2 py-1 text-xs hover:bg-[#f3f2f1] rounded flex items-center justify-between text-left cursor-pointer"
+                      >
+                        <span>{s} líneas</span>
+                        {lineSpacing === s && <Check size={11} className="text-[#185abd]" />}
+                      </button>
+                    ))}
+                  </PortalMenu>
                 </div>
               </div>
               <RibbonGroupFooter
                 label="Párrafo"
                 isLight={isLight}
                 onOpenDialog={() =>
-                  notifyAdvancedDialog("Párrafo", "Alineación, sangría milimétrica, espaciado anterior/posterior y saltos de línea.")
+                  notifyAdvancedDialog("Párrafo", "Alineación, espaciado anterior y posterior en puntos.")
                 }
               />
             </div>
 
-            {/* GRUPO 4: ESTILOS */}
+            {/* GRUPO ESTILOS */}
             <div
               className={`flex flex-col justify-between px-2 border-r ${
                 isLight ? "border-[#e1dfdd]" : "border-[#3a3430]"
@@ -736,6 +869,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                   <button
                     key={st.tag}
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => onExecuteCommand("formatBlock", st.tag)}
                     className={`flex flex-col items-center justify-center px-1.5 py-1 rounded transition-all w-14 h-15 group border cursor-pointer ${
                       isLight
@@ -764,12 +898,12 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                 label="Estilos"
                 isLight={isLight}
                 onOpenDialog={() =>
-                  notifyAdvancedDialog("Estilos", "Inspector de estilos, jerarquía CSS y creación de nuevos estilos de párrafo.")
+                  notifyAdvancedDialog("Estilos", "Creación y administración de estilos CSS.")
                 }
               />
             </div>
 
-            {/* GRUPO 5: EDICIÓN */}
+            {/* GRUPO EDICIÓN */}
             <div className="flex flex-col justify-between pl-1">
               <div className="flex flex-col gap-1 flex-1 justify-center">
                 <button
@@ -792,9 +926,6 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
               <RibbonGroupFooter
                 label="Edición"
                 isLight={isLight}
-                onOpenDialog={() =>
-                  notifyAdvancedDialog("Edición", "Búsqueda avanzada con expresiones regulares y comodines.")
-                }
               />
             </div>
           </>
@@ -803,7 +934,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
         {/* ===================== PESTAÑA: INSERTAR ===================== */}
         {activeTab === "insertar" && (
           <>
-            {/* GRUPO TABLAS */}
+            {/* GRUPO TABLAS CON MENÚ DE PLANTILLAS DE TABLA */}
             <div
               className={`flex flex-col justify-between pr-2.5 border-r ${
                 isLight ? "border-[#e1dfdd]" : "border-[#3a3430]"
@@ -811,24 +942,66 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
             >
               <div className="flex items-center gap-2 flex-1 items-center">
                 <button
+                  ref={tableBtnRef}
                   type="button"
-                  onClick={onInsertTable}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-14 h-15 border border-transparent cursor-pointer"
+                  onClick={() => setTableMenuOpen(!tableMenuOpen)}
+                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-16 h-15 border border-transparent hover:border-[#d2d0ce] cursor-pointer"
                 >
-                  <TableIcon size={22} className="text-[#185abd] mb-1" />
-                  <span className="text-[10px] font-medium">Tabla</span>
+                  <TableIcon size={20} className="text-[#185abd] mb-1" />
+                  <span className="text-[10px] font-medium flex items-center gap-0.5">
+                    <span>Tabla</span>
+                    <ChevronDown size={8} />
+                  </span>
                 </button>
+
+                <PortalMenu
+                  isOpen={tableMenuOpen}
+                  onClose={() => setTableMenuOpen(false)}
+                  triggerRef={tableBtnRef}
+                  width={220}
+                >
+                  <div className="px-2 py-1 text-[10px] font-bold text-stone-500 uppercase tracking-wider border-b pb-1 mb-1">
+                    Insertar tabla rápida
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 p-1">
+                    <button
+                      type="button"
+                      onClick={() => handleInsertGridTable(2, 2, "azul")}
+                      className="px-2 py-1.5 text-xs bg-black/5 hover:bg-[#185abd]/10 hover:text-[#185abd] rounded font-medium text-left cursor-pointer"
+                    >
+                      Tabla 2 x 2
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleInsertGridTable(3, 3, "azul")}
+                      className="px-2 py-1.5 text-xs bg-black/5 hover:bg-[#185abd]/10 hover:text-[#185abd] rounded font-medium text-left cursor-pointer"
+                    >
+                      Tabla 3 x 3
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleInsertGridTable(4, 3, "verde")}
+                      className="px-2 py-1.5 text-xs bg-black/5 hover:bg-[#107c41]/10 hover:text-[#107c41] rounded font-medium text-left cursor-pointer"
+                    >
+                      Tabla 4 x 3
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleInsertGridTable(5, 4, "clasica")}
+                      className="px-2 py-1.5 text-xs bg-black/5 hover:bg-black/10 rounded font-medium text-left cursor-pointer"
+                    >
+                      Tabla 5 x 4
+                    </button>
+                  </div>
+                </PortalMenu>
               </div>
               <RibbonGroupFooter
                 label="Tablas"
                 isLight={isLight}
-                onOpenDialog={() =>
-                  notifyAdvancedDialog("Tablas", "Insertar cuadrículas personalizadas, filas, columnas y estilos de celda.")
-                }
               />
             </div>
 
-            {/* GRUPO ILUSTRACIONES */}
+            {/* GRUPO ILUSTRACIONES & FORMAS GEOMÉTRICAS */}
             <div
               className={`flex flex-col justify-between px-2.5 border-r ${
                 isLight ? "border-[#e1dfdd]" : "border-[#3a3430]"
@@ -840,24 +1013,96 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                   onClick={onInsertImage}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-14 h-15 border border-transparent cursor-pointer"
                 >
-                  <ImageIcon size={22} className="text-emerald-600 mb-1" />
+                  <ImageIcon size={20} className="text-emerald-600 mb-1" />
                   <span className="text-[10px] font-medium">Imágenes</span>
                 </button>
+
+                {/* Librería de formas y figuras geométricas */}
                 <button
+                  ref={shapesBtnRef}
                   type="button"
-                  onClick={() => alert("Modelos 3D e iconos vectoriales integrados.")}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-14 h-15 border border-transparent cursor-pointer"
+                  onClick={() => setShapesMenuOpen(!shapesMenuOpen)}
+                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-14 h-15 border border-transparent hover:border-[#d2d0ce] cursor-pointer"
                 >
-                  <Sparkles size={22} className="text-amber-600 mb-1" />
-                  <span className="text-[10px] font-medium">Iconos</span>
+                  <Square size={20} className="text-[#185abd] mb-1" />
+                  <span className="text-[10px] font-medium flex items-center gap-0.5">
+                    <span>Formas</span>
+                    <ChevronDown size={8} />
+                  </span>
                 </button>
+
+                <PortalMenu
+                  isOpen={shapesMenuOpen}
+                  onClose={() => setShapesMenuOpen(false)}
+                  triggerRef={shapesBtnRef}
+                  width={250}
+                >
+                  <div className="px-2 py-1 text-[10px] font-bold text-stone-500 uppercase tracking-wider border-b pb-1 mb-1">
+                    Librería de formas geométricas
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 p-1">
+                    <button
+                      type="button"
+                      onClick={() => handleInsertShape("rectangle")}
+                      className="flex items-center gap-2 p-1.5 hover:bg-[#f3f2f1] rounded text-xs cursor-pointer"
+                    >
+                      <Square size={14} className="text-[#185abd]" />
+                      <span>Rectángulo</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleInsertShape("rounded")}
+                      className="flex items-center gap-2 p-1.5 hover:bg-[#f3f2f1] rounded text-xs cursor-pointer"
+                    >
+                      <Square size={14} className="text-[#185abd] rounded-md" />
+                      <span>Redondeado</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleInsertShape("circle")}
+                      className="flex items-center gap-2 p-1.5 hover:bg-[#f3f2f1] rounded text-xs cursor-pointer"
+                    >
+                      <Circle size={14} className="text-[#107c41]" />
+                      <span>Círculo</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleInsertShape("triangle")}
+                      className="flex items-center gap-2 p-1.5 hover:bg-[#f3f2f1] rounded text-xs cursor-pointer"
+                    >
+                      <Triangle size={14} className="text-amber-500" />
+                      <span>Triángulo</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleInsertShape("arrow-right")}
+                      className="flex items-center gap-2 p-1.5 hover:bg-[#f3f2f1] rounded text-xs cursor-pointer"
+                    >
+                      <ArrowRight size={14} className="text-blue-600" />
+                      <span>Flecha</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleInsertShape("star")}
+                      className="flex items-center gap-2 p-1.5 hover:bg-[#f3f2f1] rounded text-xs cursor-pointer"
+                    >
+                      <Star size={14} className="text-amber-400" />
+                      <span>Estrella</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleInsertShape("callout")}
+                      className="flex items-center gap-2 p-1.5 hover:bg-[#f3f2f1] rounded text-xs cursor-pointer"
+                    >
+                      <MessageSquare size={14} className="text-purple-600" />
+                      <span>Bocadillo</span>
+                    </button>
+                  </div>
+                </PortalMenu>
               </div>
               <RibbonGroupFooter
                 label="Ilustraciones"
                 isLight={isLight}
-                onOpenDialog={() =>
-                  notifyAdvancedDialog("Ilustraciones", "Opciones de ajuste de forma, sombras y efectos de imagen.")
-                }
               />
             </div>
 
@@ -873,7 +1118,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                   onClick={onInsertLink}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-14 h-15 border border-transparent cursor-pointer"
                 >
-                  <Link2 size={22} className="text-[#185abd] mb-1" />
+                  <Link2 size={20} className="text-[#185abd] mb-1" />
                   <span className="text-[10px] font-medium">Vínculo</span>
                 </button>
                 <button
@@ -881,16 +1126,13 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                   onClick={() => onExecuteCommand("insertHTML", "<a name='marcador'></a>")}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-14 h-15 border border-transparent cursor-pointer"
                 >
-                  <Bookmark size={22} className="text-indigo-600 mb-1" />
+                  <Bookmark size={20} className="text-indigo-600 mb-1" />
                   <span className="text-[10px] font-medium">Marcador</span>
                 </button>
               </div>
               <RibbonGroupFooter
                 label="Vínculos"
                 isLight={isLight}
-                onOpenDialog={() =>
-                  notifyAdvancedDialog("Vínculos", "Administrador de hipervínculos internos y referencias cruzadas.")
-                }
               />
             </div>
 
@@ -902,7 +1144,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                   onClick={() => onExecuteCommand("insertHorizontalRule")}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-14 h-15 border border-transparent cursor-pointer"
                 >
-                  <Minus size={22} className="text-stone-500 mb-1" />
+                  <Minus size={20} className="text-stone-500 mb-1" />
                   <span className="text-[10px] font-medium">Separador</span>
                 </button>
                 <button
@@ -910,24 +1152,21 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                   onClick={() => onExecuteCommand("formatBlock", "blockquote")}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-14 h-15 border border-transparent cursor-pointer"
                 >
-                  <FileText size={22} className="text-[#185abd] mb-1" />
+                  <FileText size={20} className="text-[#185abd] mb-1" />
                   <span className="text-[10px] font-medium">Cita bloque</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => onExecuteCommand("insertHTML", "&copy; 2026 CoffeWorks Suite")}
+                  onClick={() => onExecuteCommand("insertHTML", "&copy; 2026 CoffeWorks Suite ")}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-14 h-15 border border-transparent cursor-pointer"
                 >
-                  <Type size={22} className="text-purple-600 mb-1" />
+                  <Type size={20} className="text-purple-600 mb-1" />
                   <span className="text-[10px] font-medium">Símbolo</span>
                 </button>
               </div>
               <RibbonGroupFooter
                 label="Texto y Símbolos"
                 isLight={isLight}
-                onOpenDialog={() =>
-                  notifyAdvancedDialog("Texto y Símbolos", "Cuadros de texto flotantes, letra capital y caracteres especiales.")
-                }
               />
             </div>
           </>
@@ -936,7 +1175,6 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
         {/* ===================== PESTAÑA: DIBUJAR ===================== */}
         {activeTab === "dibujar" && (
           <>
-            {/* GRUPO HERRAMIENTAS DE DIBUJO */}
             <div
               className={`flex flex-col justify-between pr-2.5 border-r ${
                 isLight ? "border-[#e1dfdd]" : "border-[#3a3430]"
@@ -946,87 +1184,80 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveDrawingTool("pen")}
-                  className={`flex flex-col items-center justify-center p-1.5 rounded w-14 h-15 border cursor-pointer transition-colors ${
+                  className={`flex flex-col items-center justify-center p-1.5 rounded w-14 h-15 border cursor-pointer ${
                     activeDrawingTool === "pen"
                       ? "bg-[#185abd]/10 border-[#185abd] text-[#185abd]"
                       : "hover:bg-black/5 border-transparent"
                   }`}
                 >
-                  <PenTool size={22} className="text-[#185abd] mb-1" />
+                  <PenTool size={20} className="text-[#185abd] mb-1" />
                   <span className="text-[10px] font-medium">Bolígrafo</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveDrawingTool("pencil")}
-                  className={`flex flex-col items-center justify-center p-1.5 rounded w-14 h-15 border cursor-pointer transition-colors ${
+                  className={`flex flex-col items-center justify-center p-1.5 rounded w-14 h-15 border cursor-pointer ${
                     activeDrawingTool === "pencil"
                       ? "bg-[#185abd]/10 border-[#185abd] text-[#185abd]"
                       : "hover:bg-black/5 border-transparent"
                   }`}
                 >
-                  <Pencil size={22} className="text-stone-600 mb-1" />
+                  <Pencil size={20} className="text-stone-600 mb-1" />
                   <span className="text-[10px] font-medium">Lápiz</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveDrawingTool("marker")}
-                  className={`flex flex-col items-center justify-center p-1.5 rounded w-14 h-15 border cursor-pointer transition-colors ${
+                  className={`flex flex-col items-center justify-center p-1.5 rounded w-14 h-15 border cursor-pointer ${
                     activeDrawingTool === "marker"
                       ? "bg-[#185abd]/10 border-[#185abd] text-[#185abd]"
                       : "hover:bg-black/5 border-transparent"
                   }`}
                 >
-                  <Highlighter size={22} className="text-amber-500 mb-1" />
+                  <Highlighter size={20} className="text-amber-500 mb-1" />
                   <span className="text-[10px] font-medium">Marcador</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveDrawingTool("eraser")}
-                  className={`flex flex-col items-center justify-center p-1.5 rounded w-14 h-15 border cursor-pointer transition-colors ${
+                  className={`flex flex-col items-center justify-center p-1.5 rounded w-14 h-15 border cursor-pointer ${
                     activeDrawingTool === "eraser"
                       ? "bg-[#185abd]/10 border-[#185abd] text-[#185abd]"
                       : "hover:bg-black/5 border-transparent"
                   }`}
                 >
-                  <Eraser size={22} className="text-rose-500 mb-1" />
+                  <Eraser size={20} className="text-rose-500 mb-1" />
                   <span className="text-[10px] font-medium">Borrador</span>
                 </button>
               </div>
               <RibbonGroupFooter
                 label="Herramientas de dibujo"
                 isLight={isLight}
-                onOpenDialog={() =>
-                  notifyAdvancedDialog("Dibujo", "Grosor del trazo, sensibilidad a la presión y paleta de tinta digital.")
-                }
               />
             </div>
 
-            {/* GRUPO CONVERSIÓN */}
             <div className="flex flex-col justify-between px-2.5">
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
                   onClick={() => alert("Entrada de lápiz a texto digital activada")}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 border border-transparent cursor-pointer"
+                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 cursor-pointer"
                 >
-                  <Type size={20} className="text-[#185abd] mb-1" />
+                  <Type size={18} className="text-[#185abd] mb-1" />
                   <span className="text-[10px] font-medium text-center leading-tight">Lápiz a texto</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => alert("Reconocimiento de formas geométricas activo")}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 border border-transparent cursor-pointer"
+                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 cursor-pointer"
                 >
-                  <Sparkles size={20} className="text-emerald-600 mb-1" />
+                  <Sparkles size={18} className="text-emerald-600 mb-1" />
                   <span className="text-[10px] font-medium text-center leading-tight">Lápiz a forma</span>
                 </button>
               </div>
               <RibbonGroupFooter
                 label="Conversión"
                 isLight={isLight}
-                onOpenDialog={() =>
-                  notifyAdvancedDialog("Conversión de trazos", "Configuración del motor OCR y suavizado de curvas Bézier.")
-                }
               />
             </div>
           </>
@@ -1035,7 +1266,6 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
         {/* ===================== PESTAÑA: DISEÑO ===================== */}
         {activeTab === "diseno" && (
           <>
-            {/* GRUPO FORMATO DEL DOCUMENTO */}
             <div
               className={`flex flex-col justify-between pr-2.5 border-r ${
                 isLight ? "border-[#e1dfdd]" : "border-[#3a3430]"
@@ -1061,13 +1291,9 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
               <RibbonGroupFooter
                 label="Formato del documento"
                 isLight={isLight}
-                onOpenDialog={() =>
-                  notifyAdvancedDialog("Temas del Documento", "Paletas de colores HSL, tipografías primarias y secundarias.")
-                }
               />
             </div>
 
-            {/* GRUPO FONDO DE PÁGINA */}
             <div className="flex flex-col justify-between px-2.5">
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
@@ -1081,34 +1307,23 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                       );
                     }
                   }}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 border border-transparent cursor-pointer"
+                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 cursor-pointer"
                 >
-                  <Stamp size={20} className="text-[#185abd] mb-1" />
+                  <Stamp size={18} className="text-[#185abd] mb-1" />
                   <span className="text-[10px] font-medium text-center leading-tight">Marca de agua</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => alert("Color de página personalizado establecido")}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 border border-transparent cursor-pointer"
+                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 cursor-pointer"
                 >
-                  <Droplet size={20} className="text-amber-600 mb-1" />
+                  <Droplet size={18} className="text-amber-600 mb-1" />
                   <span className="text-[10px] font-medium text-center leading-tight">Color de página</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => alert("Bordes de página aplicados al diseño actual")}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 border border-transparent cursor-pointer"
-                >
-                  <Layers size={20} className="text-stone-600 mb-1" />
-                  <span className="text-[10px] font-medium text-center leading-tight">Bordes</span>
                 </button>
               </div>
               <RibbonGroupFooter
                 label="Fondo de página"
                 isLight={isLight}
-                onOpenDialog={() =>
-                  notifyAdvancedDialog("Fondo y Bordes", "Efectos de relleno, textura, tramado y margen de borde.")
-                }
               />
             </div>
           </>
@@ -1117,7 +1332,6 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
         {/* ===================== PESTAÑA: DISPOSICIÓN ===================== */}
         {activeTab === "disposicion" && (
           <>
-            {/* GRUPO CONFIGURAR PÁGINA */}
             <div
               className={`flex flex-col justify-between pr-2.5 border-r ${
                 isLight ? "border-[#e1dfdd]" : "border-[#3a3430]"
@@ -1204,13 +1418,9 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
               <RibbonGroupFooter
                 label="Configurar Página"
                 isLight={isLight}
-                onOpenDialog={() =>
-                  notifyAdvancedDialog("Configurar Página", "Márgenes simétricos, encabezados diferentes en páginas pares/impares y tamaño personalizado.")
-                }
               />
             </div>
 
-            {/* GRUPO PÁRRAFO (CONTROL MILIMÉTRICO) */}
             <div
               className={`flex flex-col justify-between px-2.5 border-r ${
                 isLight ? "border-[#e1dfdd]" : "border-[#3a3430]"
@@ -1268,38 +1478,6 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
               <RibbonGroupFooter
                 label="Párrafo"
                 isLight={isLight}
-                onOpenDialog={() =>
-                  notifyAdvancedDialog("Párrafo", "Control de líneas viudas/huérfanas y mantener con el siguiente.")
-                }
-              />
-            </div>
-
-            {/* GRUPO ORGANIZAR */}
-            <div className="flex flex-col justify-between px-2.5">
-              <div className="flex items-center gap-1.5 flex-1 items-center">
-                <button
-                  type="button"
-                  onClick={() => alert("Ajuste de texto: En línea con el texto, Cuadrado o Detrás del texto.")}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-16 h-15 border border-transparent cursor-pointer"
-                >
-                  <Columns size={20} className="text-[#185abd] mb-1" />
-                  <span className="text-[10px] font-medium text-center leading-tight">Ajustar texto</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => alert("Capas: Traer al frente o Enviar al fondo.")}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-16 h-15 border border-transparent cursor-pointer"
-                >
-                  <Layers size={20} className="text-stone-600 mb-1" />
-                  <span className="text-[10px] font-medium text-center leading-tight">Organizar</span>
-                </button>
-              </div>
-              <RibbonGroupFooter
-                label="Organizar"
-                isLight={isLight}
-                onOpenDialog={() =>
-                  notifyAdvancedDialog("Organizar", "Panel de selección y alineación milimétrica de objetos flotantes.")
-                }
               />
             </div>
           </>
@@ -1308,7 +1486,6 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
         {/* ===================== PESTAÑA: REFERENCIAS ===================== */}
         {activeTab === "referencias" && (
           <>
-            {/* GRUPO TABLA DE CONTENIDO */}
             <div
               className={`flex flex-col justify-between pr-2.5 border-r ${
                 isLight ? "border-[#e1dfdd]" : "border-[#3a3430]"
@@ -1328,22 +1505,18 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                       </div><p></p>`
                     );
                   }}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-20 h-15 border border-transparent cursor-pointer"
+                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-20 h-15 cursor-pointer"
                 >
-                  <BookOpen size={20} className="text-[#185abd] mb-1" />
+                  <BookOpen size={18} className="text-[#185abd] mb-1" />
                   <span className="text-[10px] font-medium text-center leading-tight">Tabla de contenido</span>
                 </button>
               </div>
               <RibbonGroupFooter
                 label="Tabla de contenido"
                 isLight={isLight}
-                onOpenDialog={() =>
-                  notifyAdvancedDialog("Tabla de contenido", "Estilos de tabla, niveles de título a mostrar y caracteres de relleno.")
-                }
               />
             </div>
 
-            {/* GRUPO NOTAS AL PIE */}
             <div
               className={`flex flex-col justify-between px-2.5 border-r ${
                 isLight ? "border-[#e1dfdd]" : "border-[#3a3430]"
@@ -1352,35 +1525,19 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => {
-                    onExecuteCommand("insertHTML", "<sup>[1]</sup>");
-                  }}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 border border-transparent cursor-pointer"
+                  onClick={() => onExecuteCommand("insertHTML", "<sup>[1]</sup>")}
+                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 cursor-pointer"
                 >
-                  <Quote size={20} className="text-emerald-600 mb-1" />
+                  <Quote size={18} className="text-emerald-600 mb-1" />
                   <span className="text-[10px] font-medium text-center leading-tight">Nota al pie</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onExecuteCommand("insertHTML", "<sup>[i]</sup>");
-                  }}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 border border-transparent cursor-pointer"
-                >
-                  <Quote size={20} className="text-amber-600 mb-1" />
-                  <span className="text-[10px] font-medium text-center leading-tight">Nota al final</span>
                 </button>
               </div>
               <RibbonGroupFooter
                 label="Notas al pie"
                 isLight={isLight}
-                onOpenDialog={() =>
-                  notifyAdvancedDialog("Notas al pie", "Formato de número, reiniciar en cada página o sección continua.")
-                }
               />
             </div>
 
-            {/* GRUPO CITAS Y BIBLIOGRAFÍA */}
             <div className="flex flex-col justify-between px-2.5">
               <div className="flex items-center gap-2 flex-1 items-center">
                 <div className="flex flex-col gap-1 text-xs">
@@ -1391,10 +1548,9 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                       onChange={(e) => setCitationStyle(e.target.value)}
                       className="border rounded px-1.5 py-0.5 text-xs bg-transparent cursor-pointer"
                     >
-                      <option value="APA 7ma Edición">APA 7ma Edición</option>
+                      <option value="APA 7ma Edición">APA 7ma</option>
                       <option value="IEEE">IEEE</option>
                       <option value="Chicago">Chicago</option>
-                      <option value="MLA">MLA</option>
                     </select>
                   </div>
                   <button
@@ -1408,7 +1564,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                         </div><p></p>`
                       );
                     }}
-                    className="px-2 py-1 rounded bg-[#185abd] text-white font-medium text-xs hover:bg-[#104896] transition-colors cursor-pointer"
+                    className="px-2 py-1 rounded bg-[#185abd] text-white font-medium text-xs hover:bg-[#104896] cursor-pointer"
                   >
                     Insertar bibliografía
                   </button>
@@ -1417,9 +1573,6 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
               <RibbonGroupFooter
                 label="Citas y bibliografía"
                 isLight={isLight}
-                onOpenDialog={() =>
-                  notifyAdvancedDialog("Citas y Bibliografía", "Administrador de fuentes bibliográficas maestras y lista actual.")
-                }
               />
             </div>
           </>
@@ -1428,7 +1581,6 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
         {/* ===================== PESTAÑA: CORRESPONDENCIA ===================== */}
         {activeTab === "correspondencia" && (
           <>
-            {/* GRUPO INICIAR COMBINACIÓN */}
             <div
               className={`flex flex-col justify-between pr-2.5 border-r ${
                 isLight ? "border-[#e1dfdd]" : "border-[#3a3430]"
@@ -1438,30 +1590,26 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                 <button
                   type="button"
                   onClick={() => alert("Asistente para combinación de correspondencia iniciado")}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-20 h-15 border border-transparent cursor-pointer"
+                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-20 h-15 cursor-pointer"
                 >
-                  <Send size={20} className="text-[#185abd] mb-1" />
+                  <Send size={18} className="text-[#185abd] mb-1" />
                   <span className="text-[10px] font-medium text-center leading-tight">Iniciar combinación</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => alert("Conectado con lista de destinatarios de CoffeCalc (.xlsx)")}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-20 h-15 border border-transparent cursor-pointer"
+                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-20 h-15 cursor-pointer"
                 >
-                  <Users size={20} className="text-emerald-600 mb-1" />
+                  <Users size={18} className="text-emerald-600 mb-1" />
                   <span className="text-[10px] font-medium text-center leading-tight">Destinatarios</span>
                 </button>
               </div>
               <RibbonGroupFooter
                 label="Iniciar combinación"
                 isLight={isLight}
-                onOpenDialog={() =>
-                  notifyAdvancedDialog("Correspondencia", "Configurar origen de datos SQL, CSV o libro de Excel.")
-                }
               />
             </div>
 
-            {/* GRUPO ESCRIBIR E INSERTAR CAMPOS */}
             <div
               className={`flex flex-col justify-between px-2.5 border-r ${
                 isLight ? "border-[#e1dfdd]" : "border-[#3a3430]"
@@ -1473,7 +1621,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                     key={field}
                     type="button"
                     onClick={() => onExecuteCommand("insertHTML", `<strong>${field}</strong> `)}
-                    className="px-2 py-1.5 rounded bg-black/5 hover:bg-[#185abd]/10 hover:text-[#185abd] text-xs font-mono font-bold transition-colors cursor-pointer"
+                    className="px-2 py-1.5 rounded bg-black/5 hover:bg-[#185abd]/10 hover:text-[#185abd] text-xs font-mono font-bold cursor-pointer"
                   >
                     {field}
                   </button>
@@ -1482,22 +1630,18 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
               <RibbonGroupFooter
                 label="Escribir e insertar campos"
                 isLight={isLight}
-                onOpenDialog={() =>
-                  notifyAdvancedDialog("Campos Combinados", "Reglas dinámicas Si... Entonces... Sino, y asignación de campos.")
-                }
               />
             </div>
 
-            {/* GRUPO FINALIZAR */}
             <div className="flex flex-col justify-between px-2.5">
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
                   onClick={() => alert("Generando documentos individuales personalizados para todos los destinatarios.")}
-                  className="flex flex-col items-center justify-center p-1.5 rounded bg-[#185abd] text-white hover:bg-[#104896] w-20 h-15 shadow-xs cursor-pointer"
+                  className="flex flex-col items-center justify-center p-1.5 rounded bg-[#185abd] text-white hover:bg-[#104896] w-20 h-15 shadow-xs cursor-pointer font-bold"
                 >
-                  <Check size={20} className="mb-1" />
-                  <span className="text-[10px] font-bold text-center leading-tight">Finalizar y combinar</span>
+                  <Check size={18} className="mb-1" />
+                  <span className="text-[10px] text-center leading-tight">Finalizar y combinar</span>
                 </button>
               </div>
               <RibbonGroupFooter
@@ -1511,7 +1655,6 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
         {/* ===================== PESTAÑA: REVISAR ===================== */}
         {activeTab === "revisar" && (
           <>
-            {/* GRUPO REVISIÓN */}
             <div
               className={`flex flex-col justify-between pr-2.5 border-r ${
                 isLight ? "border-[#e1dfdd]" : "border-[#3a3430]"
@@ -1521,30 +1664,26 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                 <button
                   type="button"
                   onClick={onOpenWordCount}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 border border-transparent cursor-pointer"
+                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 cursor-pointer"
                 >
-                  <FileText size={20} className="text-[#185abd] mb-1" />
+                  <FileText size={18} className="text-[#185abd] mb-1" />
                   <span className="text-[10px] font-medium text-center leading-tight">Contar palabras</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => alert("Revisión ortográfica y gramatical completa: Cero errores encontrados.")}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 border border-transparent cursor-pointer"
+                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 cursor-pointer"
                 >
-                  <SpellCheck size={20} className="text-emerald-600 mb-1" />
+                  <SpellCheck size={18} className="text-emerald-600 mb-1" />
                   <span className="text-[10px] font-medium text-center leading-tight">Ortografía</span>
                 </button>
               </div>
               <RibbonGroupFooter
                 label="Revisión"
                 isLight={isLight}
-                onOpenDialog={() =>
-                  notifyAdvancedDialog("Ortografía", "Diccionario personalizado, omitir palabras en mayúsculas y corrección automática.")
-                }
               />
             </div>
 
-            {/* GRUPO IDIOMA */}
             <div
               className={`flex flex-col justify-between px-2.5 border-r ${
                 isLight ? "border-[#e1dfdd]" : "border-[#3a3430]"
@@ -1554,77 +1693,40 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                 <button
                   type="button"
                   onClick={() => alert("Traducción inteligente al inglés activada")}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 border border-transparent cursor-pointer"
+                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 cursor-pointer"
                 >
-                  <Languages size={20} className="text-[#185abd] mb-1" />
+                  <Languages size={18} className="text-[#185abd] mb-1" />
                   <span className="text-[10px] font-medium text-center leading-tight">Traducir</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => alert("Idioma activo: Español (Alfabetización internacional)")}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 border border-transparent cursor-pointer"
+                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 cursor-pointer"
                 >
-                  <Globe size={20} className="text-stone-600 mb-1" />
+                  <Globe size={18} className="text-stone-600 mb-1" />
                   <span className="text-[10px] font-medium text-center leading-tight">Idioma</span>
                 </button>
               </div>
               <RibbonGroupFooter
                 label="Idioma"
                 isLight={isLight}
-                onOpenDialog={() =>
-                  notifyAdvancedDialog("Idioma", "Preferencias de idioma de edición, visualización e instalación de paquetes.")
-                }
               />
             </div>
 
-            {/* GRUPO COMENTARIOS */}
-            <div
-              className={`flex flex-col justify-between px-2.5 border-r ${
-                isLight ? "border-[#e1dfdd]" : "border-[#3a3430]"
-              }`}
-            >
-              <div className="flex items-center gap-1.5 flex-1 items-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const comment = prompt("Nuevo comentario para la selección:");
-                    if (comment) {
-                      onExecuteCommand(
-                        "insertHTML",
-                        `<span style="background-color: #fef08a; border-bottom: 2px solid #eab308; cursor: pointer;" title="Comentario: ${comment}">${window.getSelection()?.toString() || "Nota"}</span>`
-                      );
-                    }
-                  }}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 border border-transparent cursor-pointer"
-                >
-                  <MessageSquare size={20} className="text-[#185abd] mb-1" />
-                  <span className="text-[10px] font-medium text-center leading-tight">Nuevo comentario</span>
-                </button>
-              </div>
-              <RibbonGroupFooter
-                label="Comentarios"
-                isLight={isLight}
-              />
-            </div>
-
-            {/* GRUPO PROTEGER */}
             <div className="flex flex-col justify-between px-2.5">
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
-                  onClick={() => alert("Restricción de edición activada con contraseña maestra")}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 border border-transparent cursor-pointer"
+                  onClick={() => alert("Restricción de edición activada con contraseña")}
+                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 cursor-pointer"
                 >
-                  <ShieldCheck size={20} className="text-emerald-600 mb-1" />
+                  <ShieldCheck size={18} className="text-emerald-600 mb-1" />
                   <span className="text-[10px] font-medium text-center leading-tight">Proteger</span>
                 </button>
               </div>
               <RibbonGroupFooter
                 label="Proteger"
                 isLight={isLight}
-                onOpenDialog={() =>
-                  notifyAdvancedDialog("Protección", "Restringir formato, restringir edición solo a comentarios o solo lectura.")
-                }
               />
             </div>
           </>
@@ -1633,7 +1735,6 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
         {/* ===================== PESTAÑA: VISTA ===================== */}
         {activeTab === "vista" && (
           <>
-            {/* GRUPO VISTAS */}
             <div
               className={`flex flex-col justify-between pr-2.5 border-r ${
                 isLight ? "border-[#e1dfdd]" : "border-[#3a3430]"
@@ -1643,12 +1744,12 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                 <button
                   type="button"
                   onClick={onToggleTheme}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 border border-transparent cursor-pointer"
+                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 cursor-pointer"
                 >
                   {theme === "dark-espresso" ? (
-                    <Sun size={20} className="text-amber-500 mb-1" />
+                    <Sun size={18} className="text-amber-500 mb-1" />
                   ) : (
-                    <Moon size={20} className="text-[#185abd] mb-1" />
+                    <Moon size={18} className="text-[#185abd] mb-1" />
                   )}
                   <span className="text-[10px] font-medium text-center leading-tight">
                     {theme === "dark-espresso" ? "Modo Papel" : "Modo Oscuro"}
@@ -1663,7 +1764,7 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                       : "hover:bg-black/5 border-transparent"
                   }`}
                 >
-                  <Maximize2 size={20} className="mb-1" />
+                  <Maximize2 size={18} className="mb-1" />
                   <span className="text-[10px] font-medium text-center leading-tight">Modo Zen</span>
                 </button>
               </div>
@@ -1673,7 +1774,6 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
               />
             </div>
 
-            {/* GRUPO MOSTRAR */}
             <div
               className={`flex flex-col justify-between px-2.5 border-r ${
                 isLight ? "border-[#e1dfdd]" : "border-[#3a3430]"
@@ -1705,7 +1805,6 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
               />
             </div>
 
-            {/* GRUPO ZOOM */}
             <div
               className={`flex flex-col justify-between px-2.5 border-r ${
                 isLight ? "border-[#e1dfdd]" : "border-[#3a3430]"
@@ -1730,21 +1829,17 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
               <RibbonGroupFooter
                 label="Zoom"
                 isLight={isLight}
-                onOpenDialog={() =>
-                  notifyAdvancedDialog("Zoom", "Ajustar al ancho de página, ver varias páginas o porcentaje libre.")
-                }
               />
             </div>
 
-            {/* GRUPO VENTANA */}
             <div className="flex flex-col justify-between px-2.5">
               <div className="flex items-center gap-1.5 flex-1 items-center">
                 <button
                   type="button"
                   onClick={() => window.open(window.location.href, "_blank")}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 border border-transparent cursor-pointer"
+                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 cursor-pointer"
                 >
-                  <Split size={20} className="text-[#185abd] mb-1" />
+                  <Split size={18} className="text-[#185abd] mb-1" />
                   <span className="text-[10px] font-medium text-center leading-tight">Dividir ventana</span>
                 </button>
               </div>
@@ -1764,9 +1859,9 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                 <button
                   type="button"
                   onClick={onOpenHelp}
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 border border-transparent cursor-pointer"
+                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 cursor-pointer"
                 >
-                  <Keyboard size={20} className="text-[#185abd] mb-1" />
+                  <Keyboard size={18} className="text-[#185abd] mb-1" />
                   <span className="text-[10px] font-medium text-center leading-tight">Atajos</span>
                 </button>
                 <button
@@ -1776,9 +1871,9 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                       "CoffeDoc Suite 2026\nProcesador de textos profesional con arquitectura Ribbon de Office.\nCompatible con .cfd, .docx y Markdown."
                     )
                   }
-                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 border border-transparent cursor-pointer"
+                  className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 cursor-pointer"
                 >
-                  <Info size={20} className="text-stone-500 mb-1" />
+                  <Info size={18} className="text-stone-500 mb-1" />
                   <span className="text-[10px] font-medium text-center leading-tight">Acerca de</span>
                 </button>
               </div>

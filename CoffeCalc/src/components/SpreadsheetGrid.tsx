@@ -458,6 +458,8 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                       fontStyle: cell?.italic ? "italic" : undefined,
                       textDecoration: cell?.underline ? "underline" : undefined,
                       textAlign: cell?.align || (typeof cell?.computed === "number" ? "right" : "left"),
+                      fontFamily: cell?.fontFamily || undefined,
+                      fontSize: cell?.fontSize ? `${cell.fontSize}pt` : undefined,
                     }}
                     onMouseDown={(e) => handleCellMouseDown(colIdx, rowIdx, e)}
                     onMouseEnter={() => handleCellMouseEnter(colIdx, rowIdx)}

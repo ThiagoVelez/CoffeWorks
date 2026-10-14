@@ -68,6 +68,25 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
                 fontStyle: el.fontStyle || "normal",
                 textDecoration: el.underline ? "underline" : "none",
                 fontSize: `${el.fontSize || (el.type === "title" ? 36 : 18)}px`,
+                fontFamily: el.fontFamily || undefined,
+                borderRadius:
+                  el.shapeType === "circle"
+                    ? "50%"
+                    : el.shapeType === "rounded"
+                    ? "16px"
+                    : el.shapeType === "callout"
+                    ? "16px 16px 16px 0px"
+                    : undefined,
+                clipPath:
+                  el.shapeType === "triangle"
+                    ? "polygon(50% 0%, 0% 100%, 100% 100%)"
+                    : el.shapeType === "diamond"
+                    ? "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)"
+                    : el.shapeType === "arrow-right"
+                    ? "polygon(0% 25%, 60% 25%, 60% 0%, 100% 50%, 60% 100%, 60% 75%, 0% 75%)"
+                    : el.shapeType === "star"
+                    ? "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)"
+                    : undefined,
               }}
               className={`absolute flex flex-col justify-center p-2 rounded-xs cursor-move transition-shadow ${
                 isSelected

@@ -5,9 +5,10 @@ import { WelcomeBanner } from "./components/WelcomeBanner";
 import { AppGrid } from "./components/AppGrid";
 import { CommandPalette } from "./components/CommandPalette";
 import { CreateDocModal } from "./components/CreateDocModal";
+import { TemplatesView } from "./components/TemplatesView";
 import { tauriBridge } from "./services/tauriBridge";
 import type { SuiteApp, RecentDocument } from "./types";
-import { LayoutTemplate, GitFork, Settings, CheckCircle2 } from "lucide-react";
+import { GitFork, Settings, CheckCircle2 } from "lucide-react";
 
 export const App: React.FC = () => {
   const [apps, setApps] = useState<SuiteApp[]>([]);
@@ -181,15 +182,7 @@ export const App: React.FC = () => {
           )}
 
           {currentTab === "templates" && (
-            <div className="flex flex-col gap-5">
-              <div className="flex items-center gap-3">
-                <LayoutTemplate size={24} className="text-tertiary" />
-                <h1 className="font-display text-2xl font-bold">Plantillas Ejecutivas</h1>
-              </div>
-              <div className="p-8 rounded-2xl bg-surface-container-low border border-outline-variant/30 text-center font-mono text-xs text-outline">
-                Catálogo de más de 45 plantillas locales para CoffeDoc, CoffeSheet y CoffeSlides listo para sincronización.
-              </div>
-            </div>
+            <TemplatesView onNotify={showNotification} />
           )}
 
           {currentTab === "integrations" && (

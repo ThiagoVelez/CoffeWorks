@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
+import { PortalMenu } from "./PortalMenu";
 import {
   FilePlus,
   Play,
@@ -41,6 +42,7 @@ import {
   Scissors,
   Paintbrush,
   Clipboard,
+  Table as TableIcon,
 } from "lucide-react";
 import type {
   PowerPointRibbonTab,
@@ -75,6 +77,8 @@ interface PowerPointRibbonProps {
   onDeleteElement: () => void;
   showNotes: boolean;
   onToggleNotes: () => void;
+  onSetFontFamily?: (font: string) => void;
+  onSetFontSize?: (size: number) => void;
 }
 
 // Componente para la base de cada grupo con etiqueta centrada e iniciador de diálogo ↘
@@ -124,10 +128,32 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
   onDeleteElement,
   showNotes,
   onToggleNotes,
+  onSetFontFamily,
+  onSetFontSize,
 }) => {
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
   const [shapesMenuOpen, setShapesMenuOpen] = useState(false);
+  const [fontMenuOpen, setFontMenuOpen] = useState(false);
+  const [currentFont, setCurrentFont] = useState("Segoe UI");
+  const [currentFontSize, setCurrentFontSize] = useState(24);
+
+  // Referencias para popovers anclados con PortalMenu
+  const layoutButtonRef = useRef<HTMLButtonElement>(null);
+  const shapesButtonRef = useRef<HTMLButtonElement>(null);
+  const fontButtonRef = useRef<HTMLButtonElement>(null);
+
+  const fontLibraries = [
+    { name: "Segoe UI", family: "'Segoe UI', Roboto, sans-serif" },
+    { name: "Calibri", family: "Calibri, Carlito, sans-serif" },
+    { name: "Arial", family: "Arial, Helvetica, sans-serif" },
+    { name: "Georgia", family: "Georgia, serif" },
+    { name: "Times New Roman", family: "'Times New Roman', Times, serif" },
+    { name: "Inter", family: "Inter, sans-serif" },
+    { name: "Montserrat", family: "Montserrat, sans-serif" },
+    { name: "Trebuchet MS", family: "'Trebuchet MS', sans-serif" },
+    { name: "Verdana", family: "Verdana, Geneva, sans-serif" },
+  ];
 
   // Estados interactivos para herramientas avanzadas de PowerPoint
   const [activeDrawingTool, setActiveDrawingTool] = useState<string>("select");
@@ -266,8 +292,9 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
                   <span className="text-[10px] font-bold">Nueva</span>
                 </button>
 
-                <div className="relative">
+                <div>
                   <button
+                    ref={layoutButtonRef}
                     type="button"
                     onClick={() => setLayoutMenuOpen(!layoutMenuOpen)}
                     className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-14 h-15 border border-transparent hover:border-[#d2d0ce] cursor-pointer"
@@ -280,8 +307,16 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
                     </span>
                   </button>
 
-                  {layoutMenuOpen && (
-                    <div className="absolute left-0 top-full mt-1 w-48 bg-white border border-[#d2d0ce] rounded-xl shadow-2xl py-1 z-50">
+                  <PortalMenu
+                    isOpen={layoutMenuOpen}
+                    onClose={() => setLayoutMenuOpen(false)}
+                    triggerRef={layoutButtonRef}
+                    width={200}
+                  >
+                    <div className="px-2.5 py-1 text-[11px] font-bold text-stone-500 border-b border-[#e1dfdd]">
+                      Diseño de diapositiva
+                    </div>
+                    <div className="flex flex-col gap-0.5 mt-1">
                       {[
                         { id: "title" as SlideLayout, label: "Diapositiva de título" },
                         { id: "title-content" as SlideLayout, label: "Título y objetos" },
@@ -295,13 +330,13 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
                             onAddSlide(l.id);
                             setLayoutMenuOpen(false);
                           }}
-                          className="w-full text-left px-3 py-1.5 hover:bg-[#f3f2f1] text-xs cursor-pointer"
+                          className="w-full text-left px-2.5 py-1.5 hover:bg-[#fbe7e1] hover:text-[#c43e1c] rounded text-xs cursor-pointer"
                         >
                           {l.label}
                         </button>
                       ))}
                     </div>
-                  )}
+                  </PortalMenu>
                 </div>
 
                 <div className="flex flex-col gap-0.5">
@@ -376,20 +411,59 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
             <div className="flex flex-col justify-between px-2 border-r border-[#e1dfdd]">
               <div className="flex flex-col gap-1 flex-1 justify-center">
                 <div className="flex items-center gap-1">
+                  <div className="relative">
+                    <button
+                      ref={fontButtonRef}
+                      type="button"
+                      onClick={() => setFontMenuOpen(!fontMenuOpen)}
+                      className="text-xs px-2 py-0.5 rounded border border-[#d2d0ce] font-medium w-28 bg-white flex items-center justify-between cursor-pointer hover:border-[#c43e1c]"
+                      title="Familia tipográfica"
+                    >
+                      <span className="truncate">{currentFont}</span>
+                      <ChevronDown size={11} className="text-stone-500 shrink-0 ml-1" />
+                    </button>
+                    <PortalMenu
+                      isOpen={fontMenuOpen}
+                      onClose={() => setFontMenuOpen(false)}
+                      triggerRef={fontButtonRef}
+                      width={180}
+                    >
+                      <div className="px-2 py-1 text-[11px] font-bold text-stone-500 border-b border-[#e1dfdd]">
+                        Tipografía de diapositiva
+                      </div>
+                      <div className="flex flex-col gap-0.5 mt-1 max-h-48 overflow-y-auto">
+                        {fontLibraries.map((f) => (
+                          <button
+                            key={f.name}
+                            type="button"
+                            onClick={() => {
+                              setCurrentFont(f.name);
+                              if (onSetFontFamily) onSetFontFamily(f.family);
+                              setFontMenuOpen(false);
+                            }}
+                            className={`w-full px-2.5 py-1 text-xs text-left rounded hover:bg-[#fbe7e1] hover:text-[#c43e1c] cursor-pointer flex items-center justify-between ${
+                              currentFont === f.name ? "bg-[#fbe7e1] font-bold text-[#c43e1c]" : ""
+                            }`}
+                            style={{ fontFamily: f.family }}
+                          >
+                            <span>{f.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </PortalMenu>
+                  </div>
+
                   <select
-                    className="text-xs px-2 py-0.5 rounded border border-[#d2d0ce] font-medium w-28 bg-white"
-                    defaultValue="Segoe UI"
+                    className="text-xs px-1 py-0.5 rounded border border-[#d2d0ce] font-medium w-12 bg-white text-center cursor-pointer"
+                    value={currentFontSize}
+                    onChange={(e) => {
+                      const sz = Number(e.target.value);
+                      setCurrentFontSize(sz);
+                      if (onSetFontSize) onSetFontSize(sz);
+                    }}
+                    title="Tamaño de fuente"
                   >
-                    <option value="Segoe UI">Segoe UI</option>
-                    <option value="Calibri">Calibri</option>
-                    <option value="Arial">Arial</option>
-                    <option value="Georgia">Georgia</option>
-                  </select>
-                  <select
-                    className="text-xs px-1 py-0.5 rounded border border-[#d2d0ce] font-medium w-12 bg-white text-center"
-                    defaultValue="24"
-                  >
-                    {[12, 14, 18, 24, 32, 40, 48, 64].map((s) => (
+                    {[12, 14, 18, 20, 24, 28, 32, 36, 44, 54, 64].map((s) => (
                       <option key={s} value={s}>
                         {s}
                       </option>
@@ -491,8 +565,9 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
                   <span className="text-[10px] font-medium">Texto</span>
                 </button>
 
-                <div className="relative">
+                <div>
                   <button
+                    ref={shapesButtonRef}
                     type="button"
                     onClick={() => setShapesMenuOpen(!shapesMenuOpen)}
                     className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-14 h-15 border border-transparent hover:border-[#d2d0ce] cursor-pointer"
@@ -505,54 +580,41 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
                     </span>
                   </button>
 
-                  {shapesMenuOpen && (
-                    <div className="absolute left-0 top-full mt-1 bg-white border border-[#d2d0ce] rounded-xl shadow-2xl p-2 z-50 grid grid-cols-2 gap-1 w-36">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onAddShape("rectangle");
-                          setShapesMenuOpen(false);
-                        }}
-                        className="flex items-center gap-1.5 p-1.5 hover:bg-[#f3f2f1] rounded text-xs cursor-pointer"
-                      >
-                        <Square size={14} />
-                        <span>Rectángulo</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onAddShape("circle");
-                          setShapesMenuOpen(false);
-                        }}
-                        className="flex items-center gap-1.5 p-1.5 hover:bg-[#f3f2f1] rounded text-xs cursor-pointer"
-                      >
-                        <Circle size={14} />
-                        <span>Círculo</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onAddShape("arrow-right");
-                          setShapesMenuOpen(false);
-                        }}
-                        className="flex items-center gap-1.5 p-1.5 hover:bg-[#f3f2f1] rounded text-xs cursor-pointer"
-                      >
-                        <ArrowRight size={14} />
-                        <span>Flecha</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onAddShape("star");
-                          setShapesMenuOpen(false);
-                        }}
-                        className="flex items-center gap-1.5 p-1.5 hover:bg-[#f3f2f1] rounded text-xs cursor-pointer"
-                      >
-                        <Star size={14} />
-                        <span>Estrella</span>
-                      </button>
+                  <PortalMenu
+                    isOpen={shapesMenuOpen}
+                    onClose={() => setShapesMenuOpen(false)}
+                    triggerRef={shapesButtonRef}
+                    width={260}
+                  >
+                    <div className="px-2.5 py-1 text-[11px] font-bold text-stone-500 border-b border-[#e1dfdd]">
+                      Formas y figuras geométricas
                     </div>
-                  )}
+                    <div className="grid grid-cols-2 gap-1 mt-1.5">
+                      {[
+                        { id: "rectangle" as ShapeType, label: "Rectángulo", icon: <Square size={14} /> },
+                        { id: "rounded" as ShapeType, label: "Redondeado", icon: <div className="w-3.5 h-3.5 border border-stone-600 rounded-sm" /> },
+                        { id: "circle" as ShapeType, label: "Círculo", icon: <Circle size={14} /> },
+                        { id: "triangle" as ShapeType, label: "Triángulo", icon: <div className="w-0 h-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-b-[12px] border-b-stone-600" /> },
+                        { id: "arrow-right" as ShapeType, label: "Flecha derecha", icon: <ArrowRight size={14} /> },
+                        { id: "star" as ShapeType, label: "Estrella", icon: <Star size={14} /> },
+                        { id: "diamond" as ShapeType, label: "Diamante", icon: <div className="w-3 h-3 border border-stone-600 rotate-45" /> },
+                        { id: "callout" as ShapeType, label: "Bocadillo", icon: <MessageSquare size={14} /> },
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            onAddShape(item.id);
+                            setShapesMenuOpen(false);
+                          }}
+                          className="flex items-center gap-2 p-1.5 hover:bg-[#fbe7e1] hover:text-[#c43e1c] rounded text-xs cursor-pointer transition-colors"
+                        >
+                          <span className="text-stone-600 flex items-center justify-center w-4 h-4">{item.icon}</span>
+                          <span className="truncate">{item.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </PortalMenu>
                 </div>
 
                 {selectedElementId && (
@@ -601,7 +663,7 @@ export const PowerPointRibbon: React.FC<PowerPointRibbonProps> = ({
                   onClick={() => alert("Cuadrícula de datos estilo Excel incrustada")}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#f3f2f1] w-14 h-15 cursor-pointer"
                 >
-                  <Grid size={20} className="text-[#c43e1c] mb-1" />
+                  <TableIcon size={20} className="text-[#c43e1c] mb-1" />
                   <span className="text-[10px] font-medium">Tabla</span>
                 </button>
                 <button

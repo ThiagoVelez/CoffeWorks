@@ -122,9 +122,22 @@ export const App: React.FC = () => {
     triggerAutoSave(content, updatedMeta);
   };
 
-  // Comandos de formato ricos
+  // Comandos de formato ricos con preservación de foco y sincronización inmediata
   const handleExecuteCommand = (command: string, value?: string) => {
-    document.execCommand(command, false, value);
+    const editor = document.querySelector('[contenteditable="true"]') as HTMLElement;
+    if (editor) {
+      editor.focus();
+    }
+    try {
+      document.execCommand(command, false, value);
+    } catch (err) {
+      console.warn("execCommand warning:", err);
+    }
+    if (editor) {
+      const newHtml = editor.innerHTML;
+      setContent(newHtml);
+      triggerAutoSave(newHtml, metadata);
+    }
   };
 
   const handleNewDocument = () => {

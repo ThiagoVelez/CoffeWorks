@@ -2,7 +2,15 @@
 
 export type ElementType = "title" | "subtitle" | "text" | "shape" | "image";
 
-export type ShapeType = "rectangle" | "circle" | "arrow-right" | "star";
+export type ShapeType =
+  | "rectangle"
+  | "rounded"
+  | "circle"
+  | "triangle"
+  | "arrow-right"
+  | "star"
+  | "diamond"
+  | "callout";
 
 export type TextAlign = "left" | "center" | "right" | "justify";
 
@@ -15,6 +23,7 @@ export interface SlideElement {
   height: number; // Porcentaje de alto (0 - 100)
   content: string; // Texto o URL de imagen
   fontSize?: number;
+  fontFamily?: string;
   fontWeight?: "normal" | "bold";
   fontStyle?: "normal" | "italic";
   underline?: boolean;

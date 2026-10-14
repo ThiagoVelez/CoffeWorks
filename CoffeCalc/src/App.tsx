@@ -230,6 +230,14 @@ export const App: React.FC = () => {
     modifySelectedCells((c) => ({ ...c, color }));
   };
 
+  const handleSetFontFamily = (fontFamily: string) => {
+    modifySelectedCells((c) => ({ ...c, fontFamily }));
+  };
+
+  const handleSetFontSize = (fontSize: number) => {
+    modifySelectedCells((c) => ({ ...c, fontSize }));
+  };
+
   // Funciones de inserción de fórmulas
   const insertFormulaTemplate = (template: string) => {
     setEditingValue(template);
@@ -632,6 +640,8 @@ export const App: React.FC = () => {
         onToggleFormulaBar={() => setShowFormulaBar(!showFormulaBar)}
         zoom={zoom}
         onZoomChange={setZoom}
+        onSetFontFamily={handleSetFontFamily}
+        onSetFontSize={handleSetFontSize}
       />
 
       {/* 3. Barra de Fórmulas fx */}

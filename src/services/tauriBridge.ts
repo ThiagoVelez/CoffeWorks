@@ -23,7 +23,7 @@ const MOCK_APPS: SuiteApp[] = [
   {
     id: "coffecalc",
     name: "CoffeCalc",
-    subtitle: "Hoja de cálculo profesional inspirada en Microsoft Excel",
+    subtitle: "Hoja de cálculo profesional y modelado matricial avanzado",
     description: "Cuadrícula matricial A-Z, cinta Ribbon verde Excel, barra de fórmulas fx, funciones estadísticas y compatibilidad total XLSX/CSV.",
     version: "v1.0",
     installed: true,
@@ -37,7 +37,7 @@ const MOCK_APPS: SuiteApp[] = [
   {
     id: "coffeview",
     name: "CoffeView",
-    subtitle: "Presentaciones visuales inspiradas en Microsoft PowerPoint",
+    subtitle: "Diseño de presentaciones visuales y diapositivas de alto impacto",
     description: "Diseñador de diapositivas interactivas, transiciones cinematográficas, lienzos gráficos, modo orador y exportación universal.",
     version: "v1.0 (Próximamente)",
     installed: true,

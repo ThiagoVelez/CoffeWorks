@@ -22,6 +22,8 @@ export interface CellData {
   bg?: string;
   format?: CellFormat;
   borders?: CellBorders;
+  fontFamily?: string;
+  fontSize?: number;
 }
 
 export interface Sheet {
