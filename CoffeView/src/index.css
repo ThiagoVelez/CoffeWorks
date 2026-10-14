@@ -56,3 +56,58 @@
   border-radius: 1px;
   position: absolute;
 }
+
+/* Transiciones cinematográficas de diapositivas (Estándar SMIL de LibreOffice Impress) */
+@keyframes slide-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-push {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-wipe {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes slide-zoom {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.transition-slide-fade {
+  animation: slide-fade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.transition-slide-push {
+  animation: slide-push 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.transition-slide-wipe {
+  animation: slide-wipe 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.transition-slide-zoom {
+  animation: slide-zoom 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

@@ -67,10 +67,21 @@ export const PresentationMode: React.FC<PresentationModeProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black z-50 flex items-center justify-center select-none overflow-hidden cursor-default">
-      {/* Contenedor de la diapositiva proyectada en 16:9 */}
+      {/* Contenedor de la diapositiva proyectada en 16:9 con transicion SMIL activa */}
       <div
+        key={`${currentSlide.id}_${currentIndex}`}
         style={{ backgroundColor: currentSlide.background || theme.slideBg }}
-        className="w-[96vw] max-w-[177.77vh] aspect-video relative rounded shadow-2xl overflow-hidden transition-all duration-300"
+        className={`w-[96vw] max-w-[177.77vh] aspect-video relative rounded shadow-2xl overflow-hidden ${
+          currentSlide.transition === "fade"
+            ? "transition-slide-fade"
+            : currentSlide.transition === "push"
+            ? "transition-slide-push"
+            : currentSlide.transition === "wipe"
+            ? "transition-slide-wipe"
+            : currentSlide.transition === "zoom"
+            ? "transition-slide-zoom"
+            : ""
+        }`}
       >
         {currentSlide.elements.map((el) => (
           <div

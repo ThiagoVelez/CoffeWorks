@@ -16,6 +16,8 @@ import type {
   DocumentStats,
   DocumentHeading,
   DocumentTheme,
+  PageMargins,
+  ColumnCount,
 } from "./types";
 
 export const App: React.FC = () => {
@@ -33,6 +35,9 @@ export const App: React.FC = () => {
   const [outlineOpen, setOutlineOpen] = useState<boolean>(true);
   const [zoom, setZoom] = useState<number>(100);
   const [lineSpacing, setLineSpacing] = useState<string>("1.5");
+  const [margins, setMargins] = useState<PageMargins>("normal");
+  const [columns, setColumns] = useState<ColumnCount>(1);
+  const [watermark, setWatermark] = useState<string>("");
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [showStartScreen, setShowStartScreen] = useState<boolean>(true);
 
@@ -339,6 +344,16 @@ export const App: React.FC = () => {
           onZoomChange={setZoom}
           lineSpacing={lineSpacing}
           onSetLineSpacing={setLineSpacing}
+          margins={margins}
+          onSetMargins={(m) => {
+            if (m.includes("Estrecho")) setMargins("narrow");
+            else if (m.includes("Ancho")) setMargins("wide");
+            else setMargins("normal");
+          }}
+          columnsCount={columns}
+          onSetColumnsCount={(c) => setColumns(c as ColumnCount)}
+          watermark={watermark}
+          onSetWatermark={setWatermark}
         />
       )}
 
@@ -357,13 +372,16 @@ export const App: React.FC = () => {
           />
         )}
 
-        {/* Lienzo de redacción de página A4 */}
+        {/* Lienzo de redacción de página A4 con diseño dinámico de columnas y márgenes */}
         <DocumentCanvas
           content={content}
           onChange={handleContentChange}
           theme={theme}
           zoom={zoom}
           lineSpacing={lineSpacing}
+          margins={margins}
+          columns={columns}
+          watermark={watermark}
         />
       </div>
 

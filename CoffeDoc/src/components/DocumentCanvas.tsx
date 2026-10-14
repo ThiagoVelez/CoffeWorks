@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import type { DocumentTheme } from "../types";
+import type { DocumentTheme, PageMargins, ColumnCount } from "../types";
 
 interface DocumentCanvasProps {
   content: string;
@@ -7,6 +7,9 @@ interface DocumentCanvasProps {
   theme: DocumentTheme;
   zoom: number;
   lineSpacing: string;
+  margins?: PageMargins;
+  columns?: ColumnCount;
+  watermark?: string;
 }
 
 export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
@@ -15,6 +18,9 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
   theme,
   zoom,
   lineSpacing,
+  margins = "normal",
+  columns = 1,
+  watermark,
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
 
@@ -33,6 +39,13 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
 
   const isDark = theme === "dark-espresso";
 
+  const marginPadding =
+    margins === "narrow"
+      ? "p-8"
+      : margins === "wide"
+      ? "p-24"
+      : "p-16";
+
   return (
     <div
       className={`flex-1 overflow-y-auto py-8 px-4 flex justify-center transition-colors ${
@@ -46,20 +59,33 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
       >
         {/* Hoja de papel A4 física */}
         <div
-          className={`w-[794px] min-h-[1123px] p-16 rounded-sm transition-all border ${
+          className={`w-[794px] min-h-[1123px] ${marginPadding} relative rounded-sm transition-all border ${
             isDark
               ? "bg-[#1f1b19] text-[#eae0dd] border-[#393431]/60 shadow-[0_8px_30px_rgb(0,0,0,0.5)]"
               : "bg-white text-[#111111] border-[#d2d0ce] shadow-[0_4px_24px_rgba(0,0,0,0.12)]"
           }`}
         >
-          {/* Área de edición enriquecida */}
+          {/* Marca de agua de documento (Estilo .uno:WatermarkDialog de LibreOffice Writer) */}
+          {watermark && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden z-0">
+              <span className="text-7xl font-bold tracking-widest uppercase opacity-8 rotate-[-35deg] text-neutral-500">
+                {watermark}
+              </span>
+            </div>
+          )}
+
+          {/* Área de edición enriquecida con columnas dinámicas (.uno:FormatColumns) */}
           <div
             ref={editorRef}
             contentEditable
             onInput={handleInput}
             suppressContentEditableWarning
-            style={{ lineHeight: lineSpacing }}
-            className={`outline-none min-h-[960px] prose max-w-none ${
+            style={{
+              lineHeight: lineSpacing,
+              columnCount: columns || 1,
+              columnGap: "2.5rem",
+            }}
+            className={`outline-none min-h-[960px] prose max-w-none relative z-10 ${
               isDark ? "coffedoc-dark" : "coffedoc-light"
             }`}
           />

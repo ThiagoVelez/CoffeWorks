@@ -28,3 +28,7 @@ export type DocumentTheme = "dark-espresso" | "paper-white";
 export type PageSize = "A4" | "Letter";
 
 export type LineSpacing = "1.0" | "1.15" | "1.5" | "2.0";
+
+export type PageMargins = "normal" | "narrow" | "wide";
+
+export type ColumnCount = 1 | 2 | 3;

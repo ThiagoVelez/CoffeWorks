@@ -402,7 +402,135 @@ export function evaluateExcelFunction(
     return "#N/A";
   }
 
+  // 8. FUNCIONES ANALÍTICAS Y CONDICIONALES AVANZADAS (ESTÁNDAR LIBREOFFICE CALC)
+  if (fn === "COUNTIF" || fn === "CONTAR.SI") {
+    const args = argsStr.split(/[,;]/);
+    const range = args[0]?.trim() || "";
+    const criterion = args[1]?.trim().replace(/^"|"$/g, "") || "";
+    const keys = expandCellRange(range);
+    let count = 0;
+    for (const k of keys) {
+      const val = getCellValue(k, data);
+      if (checkCriterionMatch(val, criterion)) count++;
+    }
+    return count;
+  }
+
+  if (fn === "SUMIF" || fn === "SUMAR.SI") {
+    const args = argsStr.split(/[,;]/);
+    const range = args[0]?.trim() || "";
+    const criterion = args[1]?.trim().replace(/^"|"$/g, "") || "";
+    const sumRange = args[2]?.trim() || range;
+    const condKeys = expandCellRange(range);
+    const sumKeys = expandCellRange(sumRange);
+    let total = 0;
+    for (let i = 0; i < condKeys.length; i++) {
+      const condVal = getCellValue(condKeys[i], data);
+      if (checkCriterionMatch(condVal, criterion)) {
+        const sumVal = i < sumKeys.length ? getNumericCellValue(sumKeys[i], data) : 0;
+        total += sumVal;
+      }
+    }
+    return total;
+  }
+
+  if (fn === "AVERAGEIF" || fn === "PROMEDIO.SI") {
+    const args = argsStr.split(/[,;]/);
+    const range = args[0]?.trim() || "";
+    const criterion = args[1]?.trim().replace(/^"|"$/g, "") || "";
+    const avgRange = args[2]?.trim() || range;
+    const condKeys = expandCellRange(range);
+    const avgKeys = expandCellRange(avgRange);
+    let total = 0;
+    let count = 0;
+    for (let i = 0; i < condKeys.length; i++) {
+      const condVal = getCellValue(condKeys[i], data);
+      if (checkCriterionMatch(condVal, criterion)) {
+        const avgVal = i < avgKeys.length ? getNumericCellValue(avgKeys[i], data) : 0;
+        total += avgVal;
+        count++;
+      }
+    }
+    return count > 0 ? Number((total / count).toFixed(4)) : "#¡DIV/0!";
+  }
+
+  if (fn === "PMT" || fn === "PAGO") {
+    const args = argsStr.split(/[,;]/);
+    const rate = getNumericCellValue(args[0]?.trim() || "", data);
+    const nper = getNumericCellValue(args[1]?.trim() || "", data);
+    const pv = getNumericCellValue(args[2]?.trim() || "", data);
+    if (rate === 0) return nper !== 0 ? -(pv / nper) : 0;
+    const pmt = (rate * pv * Math.pow(1 + rate, nper)) / (1 - Math.pow(1 + rate, nper));
+    return Number(pmt.toFixed(2));
+  }
+
+  if (fn === "INDEX" || fn === "INDICE") {
+    const args = argsStr.split(/[,;]/);
+    const range = args[0]?.trim() || "";
+    const rowNum = parseInt(args[1]?.trim() || "1", 10);
+    const colNum = args[2] ? parseInt(args[2].trim(), 10) : 1;
+    const keys = expandCellRange(range);
+    if (keys.length === 0) return "#¡REF!";
+
+    const rowMap: Record<number, string[]> = {};
+    for (const k of keys) {
+      const p = parseCellKey(k);
+      if (p) {
+        if (!rowMap[p.rowNum]) rowMap[p.rowNum] = [];
+        rowMap[p.rowNum].push(k);
+      }
+    }
+    const sortedRowNums = Object.keys(rowMap).map(Number).sort((a, b) => a - b);
+    const targetRowNum = sortedRowNums[rowNum - 1];
+    if (targetRowNum === undefined) return "#¡REF!";
+    const targetKey = rowMap[targetRowNum]?.[colNum - 1];
+    return targetKey ? getCellValue(targetKey, data) : "#¡REF!";
+  }
+
+  if (fn === "MATCH" || fn === "COINCIDIR") {
+    const args = argsStr.split(/[,;]/);
+    const lookupVal = getCellValue(args[0]?.trim() || "", data);
+    const range = args[1]?.trim() || "";
+    const keys = expandCellRange(range);
+    for (let i = 0; i < keys.length; i++) {
+      const val = getCellValue(keys[i], data);
+      if (String(val).trim().toLowerCase() === String(lookupVal).trim().toLowerCase()) {
+        return i + 1;
+      }
+    }
+    return "#N/A";
+  }
+
   return "#¿NOMBRE?";
+}
+
+// Evalúa si un valor cumple con un criterio tipo ">10", "<=5", "<>0", o igualdad exacta
+function checkCriterionMatch(val: string | number, criterion: string): boolean {
+  const crit = criterion.trim();
+  const match = crit.match(/^(>=|<=|<>|>|<|=)?(.*)$/);
+  if (!match) return String(val).toLowerCase() === crit.toLowerCase();
+  const op = match[1] || "=";
+  const target = match[2].trim();
+
+  const numVal = Number(val);
+  const numTarget = Number(target);
+  const bothNum = !isNaN(numVal) && !isNaN(numTarget) && target !== "";
+
+  switch (op) {
+    case ">":
+      return bothNum ? numVal > numTarget : String(val) > target;
+    case "<":
+      return bothNum ? numVal < numTarget : String(val) < target;
+    case ">=":
+      return bothNum ? numVal >= numTarget : String(val) >= target;
+    case "<=":
+      return bothNum ? numVal <= numTarget : String(val) <= target;
+    case "<>":
+      return bothNum ? numVal !== numTarget : String(val).toLowerCase() !== target.toLowerCase();
+    case "=":
+    default:
+      return bothNum ? numVal === numTarget : String(val).toLowerCase() === target.toLowerCase();
+  }
 }
 
 // Evalúa una condición simple (ej: A1 > 10, B2 = "Café")

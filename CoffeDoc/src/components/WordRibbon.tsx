@@ -104,6 +104,12 @@ interface WordRibbonProps {
   onZoomChange: (newZoom: number) => void;
   lineSpacing: string;
   onSetLineSpacing: (spacing: string) => void;
+  margins?: string;
+  onSetMargins?: (margins: string) => void;
+  columnsCount?: number;
+  onSetColumnsCount?: (cols: number) => void;
+  watermark?: string;
+  onSetWatermark?: (watermark: string) => void;
 }
 
 const RibbonGroupFooter: React.FC<{
@@ -161,6 +167,12 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
   onZoomChange,
   lineSpacing,
   onSetLineSpacing,
+  margins: externalMargins,
+  onSetMargins,
+  columnsCount: externalColumnsCount,
+  onSetColumnsCount,
+  watermark,
+  onSetWatermark,
 }) => {
   const [activeTab, setActiveTab] = useState<RibbonTab>("inicio");
   const [fileMenuOpen, setFileMenuOpen] = useState<boolean>(false);
@@ -185,10 +197,20 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
 
   const [activeDrawingTool, setActiveDrawingTool] = useState<string>("select");
   const [activeThemeName, setActiveThemeName] = useState<string>("Office");
-  const [margins, setMargins] = useState<string>("Normal (2.5 cm)");
+  const [localMargins, setLocalMargins] = useState<string>("Normal (2.5 cm)");
+  const margins = externalMargins || localMargins;
+  const setMargins = (val: string) => {
+    setLocalMargins(val);
+    if (onSetMargins) onSetMargins(val);
+  };
   const [orientation, setOrientation] = useState<"vertical" | "horizontal">("vertical");
   const [paperSize, setPaperSize] = useState<string>("A4 (21 x 29.7 cm)");
-  const [columnsCount, setColumnsCount] = useState<number>(1);
+  const [localColumnsCount, setLocalColumnsCount] = useState<number>(1);
+  const columnsCount = externalColumnsCount !== undefined ? externalColumnsCount : localColumnsCount;
+  const setColumnsCount = (cols: number) => {
+    setLocalColumnsCount(cols);
+    if (onSetColumnsCount) onSetColumnsCount(cols);
+  };
   const [indentLeft, setIndentLeft] = useState<number>(0);
   const [indentRight, setIndentRight] = useState<number>(0);
   const [spaceBefore, setSpaceBefore] = useState<number>(0);
@@ -1299,12 +1321,9 @@ export const WordRibbon: React.FC<WordRibbonProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    const watermark = prompt("Texto de la marca de agua:", "CONFIDENCIAL");
-                    if (watermark) {
-                      onExecuteCommand(
-                        "insertHTML",
-                        `<div style="opacity: 0.12; font-size: 42px; font-weight: bold; text-align: center; letter-spacing: 6px; margin: 20px 0; user-select: none;">${watermark}</div>`
-                      );
+                    const nextWatermark = prompt("Texto de la marca de agua:", watermark || "CONFIDENCIAL");
+                    if (nextWatermark !== null) {
+                      if (onSetWatermark) onSetWatermark(nextWatermark);
                     }
                   }}
                   className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-black/5 w-18 h-15 cursor-pointer"
