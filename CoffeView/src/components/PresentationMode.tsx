@@ -101,12 +101,35 @@ export const PresentationMode: React.FC<PresentationModeProps> = ({
             }}
             className="absolute flex flex-col justify-center p-4 break-words leading-snug"
           >
-            <div
-              className="w-full h-full whitespace-pre-wrap"
-              style={{ textAlign: el.align || "left" }}
-            >
-              {el.content}
-            </div>
+            {el.type === "image" ? (
+              <img
+                src={el.content}
+                alt="Elemento"
+                className="w-full h-full object-contain pointer-events-none"
+              />
+            ) : el.type === "video" ? (
+              el.content.includes("youtube.com") || el.content.includes("youtu.be") ? (
+                <iframe
+                  src={el.content.replace("watch?v=", "embed/")}
+                  title="Video"
+                  className="w-full h-full border-0 rounded"
+                  allowFullScreen
+                />
+              ) : (
+                <video
+                  src={el.content}
+                  controls
+                  className="w-full h-full rounded object-contain"
+                />
+              )
+            ) : (
+              <div
+                className="w-full h-full whitespace-pre-wrap"
+                style={{ textAlign: el.align || "left" }}
+              >
+                {el.content}
+              </div>
+            )}
           </div>
         ))}
       </div>

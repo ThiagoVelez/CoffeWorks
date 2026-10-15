@@ -1,6 +1,6 @@
 // Tipos de datos para CoffeView (Herramienta de Presentaciones estilo Microsoft PowerPoint)
 
-export type ElementType = "title" | "subtitle" | "text" | "shape" | "image" | "table";
+export type ElementType = "title" | "subtitle" | "text" | "shape" | "image" | "table" | "video";
 
 export type ShapeType =
   | "rectangle"

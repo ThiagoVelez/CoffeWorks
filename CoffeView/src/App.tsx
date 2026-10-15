@@ -462,8 +462,10 @@ export const App: React.FC = () => {
     setSelectedElementId(newEl.id);
   };
 
-  const handleAddImage = () => {
-    const sampleImage = "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80";
+  const handleAddImage = (customUrl?: string) => {
+    const sampleImage =
+      customUrl ||
+      "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80";
     const newEl: SlideElement = {
       id: `el_${Date.now()}`,
       type: "image",
@@ -479,6 +481,97 @@ export const App: React.FC = () => {
     });
     updateSlides(updatedSlides);
     setSelectedElementId(newEl.id);
+  };
+
+  const handleAddMedia = (url?: string) => {
+    const defaultMedia =
+      url || "https://www.w3schools.com/html/mov_bbb.mp4";
+    const newEl: SlideElement = {
+      id: `el_${Date.now()}`,
+      type: "video",
+      x: 20,
+      y: 20,
+      width: 60,
+      height: 55,
+      content: defaultMedia,
+    };
+    const updatedSlides = slides.map((s) => {
+      if (s.id !== activeSlideId) return s;
+      return { ...s, elements: [...s.elements, newEl] };
+    });
+    updateSlides(updatedSlides);
+    setSelectedElementId(newEl.id);
+  };
+
+  const handleTransformSlide = (type: "bullets" | "align" | "contrast" | "invert" | "title") => {
+    const current = activeSlide;
+    if (!current) return;
+
+    if (type === "bullets") {
+      const updatedElements = current.elements.map((el) => {
+        if (el.type === "text" || el.type === "subtitle") {
+          const lines = el.content.split("\n").filter(Boolean);
+          const bulleted = lines.map((l) => (l.trim().startsWith("•") ? l : `• ${l.trim()}`)).join("\n");
+          return { ...el, content: bulleted, align: "left" as const };
+        }
+        return el;
+      });
+      const updatedSlides = slides.map((s) =>
+        s.id === activeSlideId ? { ...s, elements: updatedElements } : s
+      );
+      updateSlides(updatedSlides);
+    } else if (type === "align") {
+      const updatedElements = current.elements.map((el, idx) => {
+        if (el.type === "title") {
+          return { ...el, x: 10, y: 14, width: 80, height: 18, align: "center" as const };
+        }
+        if (el.type === "subtitle" || el.type === "text") {
+          return { ...el, x: 15, y: 38 + idx * 16, width: 70, height: 20, align: "center" as const };
+        }
+        return el;
+      });
+      const updatedSlides = slides.map((s) =>
+        s.id === activeSlideId ? { ...s, elements: updatedElements } : s
+      );
+      updateSlides(updatedSlides);
+    } else if (type === "contrast") {
+      const isDark = (current.background || currentTheme.slideBg).toLowerCase() < "#888888";
+      const newTextColor = isDark ? "#ffffff" : "#1f1f1f";
+      const newTitleColor = isDark ? "#ffd54f" : "#1a73e8";
+      const updatedElements = current.elements.map((el) => ({
+        ...el,
+        color: el.type === "title" ? newTitleColor : newTextColor,
+      }));
+      const updatedSlides = slides.map((s) =>
+        s.id === activeSlideId ? { ...s, elements: updatedElements } : s
+      );
+      updateSlides(updatedSlides);
+    } else if (type === "invert") {
+      const currentBg = current.background || currentTheme.slideBg;
+      const isLight = currentBg.toLowerCase().startsWith("#f") || currentBg.toLowerCase() === "#ffffff";
+      const newBg = isLight ? "#202124" : "#ffffff";
+      const newTextColor = isLight ? "#e8eaed" : "#1f1f1f";
+      const newTitleColor = isLight ? "#fbc02d" : "#1a73e8";
+      const updatedElements = current.elements.map((el) => ({
+        ...el,
+        color: el.type === "title" ? newTitleColor : newTextColor,
+      }));
+      const updatedSlides = slides.map((s) =>
+        s.id === activeSlideId ? { ...s, background: newBg, elements: updatedElements } : s
+      );
+      updateSlides(updatedSlides);
+    } else if (type === "title") {
+      const updatedElements = current.elements.map((el) => {
+        if (el.type === "title") {
+          return { ...el, fontSize: 44, fontWeight: "bold" as const, color: "#1a73e8" };
+        }
+        return el;
+      });
+      const updatedSlides = slides.map((s) =>
+        s.id === activeSlideId ? { ...s, elements: updatedElements } : s
+      );
+      updateSlides(updatedSlides);
+    }
   };
 
   // Revisión, idioma y notas
@@ -672,6 +765,17 @@ export const App: React.FC = () => {
             onUpdateElement={handleUpdateElement}
             aspectRatio={aspectRatio}
             showGridlines={showGridlines}
+            onAddSlide={(layout) => handleAddSlide(layout || "title-content")}
+            onDuplicateSlide={() => handleDuplicateSlide(activeSlideId)}
+            onDeleteSlide={() => handleDeleteSlide(activeSlideId)}
+            onToggleHideSlide={handleToggleHideSlide}
+            onAddImage={handleAddImage}
+            onAddMedia={handleAddMedia}
+            onChangeLayout={handleChangeSlideLayout}
+            onSetSlideBackground={handleSetSlideBackground}
+            onTransformSlide={handleTransformSlide}
+            slidesCount={slides.length}
+            currentSlideIndex={slides.findIndex((s) => s.id === activeSlideId)}
           />
 
           {/* Panel inferior de notas del orador */}
