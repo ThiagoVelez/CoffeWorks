@@ -346,6 +346,34 @@ export const App: React.FC = () => {
     updateSlides(updatedSlides);
   };
 
+  const handleApplyTransitionToAll = (transition: SlideTransition) => {
+    const updated = slides.map((s) => ({ ...s, transition }));
+    updateSlides(updated);
+  };
+
+  const handleSetSlideBackground = (color: string, applyToAll = false) => {
+    const updated = slides.map((s) => {
+      if (applyToAll || s.id === activeSlideId) {
+        return { ...s, background: color };
+      }
+      return s;
+    });
+    updateSlides(updated);
+  };
+
+  const handleChangeSlideLayout = (layout: SlideLayout) => {
+    const template = createSlideForLayout(layout, activeSlide.slideNumber);
+    const updated = slides.map((s) => {
+      if (s.id !== activeSlideId) return s;
+      return {
+        ...s,
+        layout,
+        elements: template.elements,
+      };
+    });
+    updateSlides(updated);
+  };
+
   const handleToggleHideSlide = () => {
     const updated = slides.map((s) =>
       s.id === activeSlideId ? { ...s, hidden: !s.hidden } : s
@@ -591,6 +619,9 @@ export const App: React.FC = () => {
         onFormatPainter={handleFormatPainter}
         isFormatPainterActive={isFormatPainterActive}
         onAddSlide={handleAddSlide}
+        onChangeSlideLayout={handleChangeSlideLayout}
+        onSetSlideBackground={handleSetSlideBackground}
+        currentSlideBackground={activeSlide.background || currentTheme.slideBg}
         onAddText={handleAddText}
         onAddShape={handleAddShape}
         onInsertImage={handleAddImage}
@@ -601,6 +632,7 @@ export const App: React.FC = () => {
         }}
         currentTransition={activeSlide.transition}
         onSelectTransition={handleSelectTransition}
+        onApplyTransitionToAll={handleApplyTransitionToAll}
         selectedElementId={selectedElementId}
         onToggleBold={handleToggleBold}
         onToggleItalic={handleToggleItalic}

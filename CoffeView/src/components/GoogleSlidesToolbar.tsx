@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Search,
   Plus,
@@ -23,6 +23,7 @@ import {
   Trash2,
   Table as TableIcon,
   MessageSquarePlus,
+  X,
 } from "lucide-react";
 import type { SlideTheme, SlideTransition, SlideLayout, ShapeType } from "../types";
 import { SLIDE_THEMES } from "../services/presentationVault";
@@ -34,6 +35,9 @@ interface GoogleSlidesToolbarProps {
   onFormatPainter: () => void;
   isFormatPainterActive: boolean;
   onAddSlide: (layout?: SlideLayout) => void;
+  onChangeSlideLayout?: (layout: SlideLayout) => void;
+  onSetSlideBackground?: (color: string, applyToAll?: boolean) => void;
+  currentSlideBackground?: string;
   onAddText: () => void;
   onAddShape: (shape: ShapeType) => void;
   onInsertImage: () => void;
@@ -41,6 +45,7 @@ interface GoogleSlidesToolbarProps {
   onSelectTheme: (themeId: string) => void;
   currentTransition: SlideTransition;
   onSelectTransition: (tr: SlideTransition) => void;
+  onApplyTransitionToAll?: (tr: SlideTransition) => void;
   selectedElementId?: string | null;
   onToggleBold?: () => void;
   onToggleItalic?: () => void;
@@ -60,6 +65,9 @@ export const GoogleSlidesToolbar: React.FC<GoogleSlidesToolbarProps> = ({
   onFormatPainter,
   isFormatPainterActive,
   onAddSlide,
+  onChangeSlideLayout,
+  onSetSlideBackground,
+  currentSlideBackground,
   onAddText,
   onAddShape,
   onInsertImage,
@@ -67,6 +75,7 @@ export const GoogleSlidesToolbar: React.FC<GoogleSlidesToolbarProps> = ({
   onSelectTheme,
   currentTransition,
   onSelectTransition,
+  onApplyTransitionToAll,
   selectedElementId,
   onToggleBold,
   onToggleItalic,
@@ -85,11 +94,19 @@ export const GoogleSlidesToolbar: React.FC<GoogleSlidesToolbarProps> = ({
   const [themeOpen, setThemeOpen] = useState(false);
   const [transitionOpen, setTransitionOpen] = useState(false);
   const [layoutOpen, setLayoutOpen] = useState(false);
+  const [bgModalOpen, setBgModalOpen] = useState(false);
+  const [selectedBgColor, setSelectedBgColor] = useState(
+    currentSlideBackground || currentTheme.slideBg
+  );
+
+  useEffect(() => {
+    setSelectedBgColor(currentSlideBackground || currentTheme.slideBg);
+  }, [currentSlideBackground, currentTheme.slideBg]);
 
   return (
     <div className="w-full px-4 py-1 flex items-center justify-between select-none bg-white">
-      {/* Contenedor tipo píldora flotante de Google Slides */}
-      <div className="bg-[#edf2fa] rounded-full px-3 py-1 flex items-center gap-1 shadow-xs text-[#444746] text-xs flex-wrap max-w-full">
+      {/* Contenedor tipo píldora flotante de Google Slides sin saltos de línea */}
+      <div className="bg-[#edf2fa] rounded-full px-2.5 py-1 flex items-center gap-0.5 shadow-xs text-[#444746] text-xs flex-nowrap overflow-x-auto max-w-full">
         {/* 1. Botón de búsqueda de menús (Menús) */}
         <button
           type="button"
@@ -422,47 +439,87 @@ export const GoogleSlidesToolbar: React.FC<GoogleSlidesToolbarProps> = ({
 
         <div className="h-4 w-px bg-gray-300 mx-0.5" />
 
-        {/* 5. Botones contextuales verbatim de Google Slides: Fondo, Diseño, Tema, Transición */}
-        <button
-          type="button"
-          onClick={() => {
-            const color = window.prompt("Color de fondo de diapositiva (ej: #ffffff o #f0f4f9):", "#ffffff");
-            if (color) alert(`Fondo de diapositiva cambiado a ${color}`);
-          }}
-          className="px-2.5 py-1 rounded-full hover:bg-gray-200/70 text-[#444746] font-medium text-xs transition-colors"
-          title="Cambiar fondo"
-        >
-          Fondo
-        </button>
+        {/* 5. Botones contextuales completamente programados de Google Slides: Fondo, Diseño, Tema, Transición */}
+        {/* Fondo */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setBgModalOpen(true)}
+            className="px-2 py-0.5 rounded-full hover:bg-gray-200/70 text-[#444746] font-medium text-xs whitespace-nowrap transition-colors"
+            title="Cambiar fondo de diapositiva"
+          >
+            Fondo
+          </button>
+        </div>
 
         {/* Diseño */}
         <div className="relative">
           <button
             type="button"
             onClick={() => setLayoutOpen(!layoutOpen)}
-            className="px-2.5 py-1 rounded-full hover:bg-gray-200/70 text-[#444746] font-medium text-xs transition-colors"
-            title="Aplicar diseño"
+            className="px-2 py-0.5 rounded-full hover:bg-gray-200/70 text-[#444746] font-medium text-xs whitespace-nowrap transition-colors"
+            title="Aplicar diseño a la diapositiva actual"
           >
             Diseño
           </button>
           {layoutOpen && (
-            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl py-1 z-50 min-w-[150px]">
+            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl py-2 z-50 min-w-[200px] text-[#1f1f1f]">
+              <div className="px-3 py-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                Diseños disponibles
+              </div>
               {[
-                { id: "title", label: "Diapositiva de título" },
-                { id: "title-content", label: "Título y contenido" },
-                { id: "section-header", label: "Encabezado de sección" },
-                { id: "blank", label: "En blanco" },
+                {
+                  id: "title",
+                  label: "Diapositiva de título",
+                  preview: (
+                    <div className="w-8 h-5 border border-gray-300 rounded-xs flex flex-col items-center justify-center gap-0.5 bg-gray-50 p-0.5">
+                      <div className="w-5 h-1 bg-gray-700 rounded-xs" />
+                      <div className="w-3 h-0.5 bg-gray-400 rounded-xs" />
+                    </div>
+                  ),
+                },
+                {
+                  id: "title-content",
+                  label: "Título y contenido",
+                  preview: (
+                    <div className="w-8 h-5 border border-gray-300 rounded-xs flex flex-col gap-0.5 bg-gray-50 p-0.5">
+                      <div className="w-6 h-1 bg-gray-700 rounded-xs" />
+                      <div className="w-6 h-2.5 bg-gray-300 rounded-xs" />
+                    </div>
+                  ),
+                },
+                {
+                  id: "two-columns",
+                  label: "Dos columnas",
+                  preview: (
+                    <div className="w-8 h-5 border border-gray-300 rounded-xs flex flex-col gap-0.5 bg-gray-50 p-0.5">
+                      <div className="w-6 h-1 bg-gray-700 rounded-xs" />
+                      <div className="flex gap-0.5 flex-1">
+                        <div className="flex-1 bg-gray-300 rounded-xs" />
+                        <div className="flex-1 bg-gray-300 rounded-xs" />
+                      </div>
+                    </div>
+                  ),
+                },
+                {
+                  id: "blank",
+                  label: "En blanco",
+                  preview: (
+                    <div className="w-8 h-5 border border-gray-300 rounded-xs bg-white" />
+                  ),
+                },
               ].map((l) => (
                 <button
                   key={l.id}
                   type="button"
                   onClick={() => {
-                    onAddSlide(l.id as SlideLayout);
+                    onChangeSlideLayout?.(l.id as SlideLayout);
                     setLayoutOpen(false);
                   }}
-                  className="w-full text-left px-3 py-1.5 text-xs hover:bg-[#f0f4f9] text-[#1f1f1f]"
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-[#f0f4f9] text-[#1f1f1f] flex items-center gap-2.5 transition-colors cursor-pointer"
                 >
-                  {l.label}
+                  {l.preview}
+                  <span className="font-medium">{l.label}</span>
                 </button>
               ))}
             </div>
@@ -474,29 +531,61 @@ export const GoogleSlidesToolbar: React.FC<GoogleSlidesToolbarProps> = ({
           <button
             type="button"
             onClick={() => setThemeOpen(!themeOpen)}
-            className="px-2.5 py-1 rounded-full hover:bg-gray-200/70 text-[#444746] font-medium text-xs transition-colors"
-            title="Cambiar tema"
+            className="px-2 py-0.5 rounded-full hover:bg-gray-200/70 text-[#444746] font-medium text-xs whitespace-nowrap transition-colors"
+            title="Cambiar tema de la presentación"
           >
             Tema
           </button>
           {themeOpen && (
-            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl py-1 z-50 min-w-[160px]">
-              {SLIDE_THEMES.map((th) => (
-                <button
-                  key={th.id}
-                  type="button"
-                  onClick={() => {
-                    onSelectTheme(th.id);
-                    setThemeOpen(false);
-                  }}
-                  className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[#f0f4f9] flex items-center justify-between ${
-                    currentTheme.id === th.id ? "font-bold text-[#F4B400]" : "text-[#1f1f1f]"
-                  }`}
-                >
-                  <span>{th.name}</span>
-                  {currentTheme.id === th.id && <Check size={12} />}
-                </button>
-              ))}
+            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl p-2 z-50 min-w-[220px] text-[#1f1f1f]">
+              <div className="px-2 py-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                Temas de presentación
+              </div>
+              <div className="flex flex-col gap-1.5 mt-1">
+                {SLIDE_THEMES.map((th) => {
+                  const isActive = currentTheme.id === th.id;
+                  return (
+                    <button
+                      key={th.id}
+                      type="button"
+                      onClick={() => {
+                        onSelectTheme(th.id);
+                        setThemeOpen(false);
+                      }}
+                      className={`w-full text-left p-2 rounded-lg border transition-all flex items-center gap-2.5 cursor-pointer ${
+                        isActive
+                          ? "border-[#1a73e8] bg-blue-50/50 ring-1 ring-[#1a73e8]"
+                          : "border-gray-200 hover:border-gray-300 hover:bg-[#f0f4f9]"
+                      }`}
+                    >
+                      {/* Miniatura del tema */}
+                      <div
+                        style={{ backgroundColor: th.slideBg }}
+                        className="w-10 h-7 rounded-sm border border-gray-300 shadow-2xs flex flex-col justify-center px-1 shrink-0"
+                      >
+                        <div
+                          style={{ color: th.titleColor }}
+                          className="text-[7px] font-bold leading-none truncate"
+                        >
+                          Aa
+                        </div>
+                        <div
+                          style={{ backgroundColor: th.accentColor }}
+                          className="h-0.5 w-4 mt-0.5 rounded-full"
+                        />
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-medium text-[#1f1f1f] truncate">
+                          {th.name}
+                        </div>
+                      </div>
+
+                      {isActive && <Check size={14} className="text-[#1a73e8] shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
@@ -506,35 +595,53 @@ export const GoogleSlidesToolbar: React.FC<GoogleSlidesToolbarProps> = ({
           <button
             type="button"
             onClick={() => setTransitionOpen(!transitionOpen)}
-            className="px-2.5 py-1 rounded-full hover:bg-gray-200/70 text-[#444746] font-medium text-xs transition-colors"
+            className="px-2 py-0.5 rounded-full hover:bg-gray-200/70 text-[#444746] font-medium text-xs whitespace-nowrap transition-colors"
             title="Transición de diapositiva"
           >
             Transición
           </button>
           {transitionOpen && (
-            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl py-1 z-50 min-w-[140px]">
-              {[
-                { id: "none", label: "Sin transición" },
-                { id: "fade", label: "Disolver" },
-                { id: "slide-left", label: "Deslizar izquierda" },
-                { id: "zoom", label: "Zoom" },
-                { id: "flip", label: "Voltear" },
-              ].map((tr) => (
-                <button
-                  key={tr.id}
-                  type="button"
-                  onClick={() => {
-                    onSelectTransition(tr.id as SlideTransition);
-                    setTransitionOpen(false);
-                  }}
-                  className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[#f0f4f9] flex items-center justify-between ${
-                    currentTransition === tr.id ? "font-bold text-[#F4B400]" : "text-[#1f1f1f]"
-                  }`}
-                >
-                  <span>{tr.label}</span>
-                  {currentTransition === tr.id && <Check size={12} />}
-                </button>
-              ))}
+            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl p-3 z-50 min-w-[210px] text-[#1f1f1f]">
+              <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">
+                Transición de diapositiva
+              </div>
+              <div className="flex flex-col gap-1">
+                {[
+                  { id: "none", label: "Sin transición" },
+                  { id: "fade", label: "Disolver" },
+                  { id: "slide-left", label: "Deslizar izquierda" },
+                  { id: "zoom", label: "Zoom" },
+                  { id: "flip", label: "Voltear" },
+                ].map((tr) => (
+                  <button
+                    key={tr.id}
+                    type="button"
+                    onClick={() => {
+                      onSelectTransition(tr.id as SlideTransition);
+                    }}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-md text-xs hover:bg-[#f0f4f9] flex items-center justify-between transition-colors cursor-pointer ${
+                      currentTransition === tr.id
+                        ? "font-bold text-[#1a73e8] bg-blue-50"
+                        : "text-[#1f1f1f]"
+                    }`}
+                  >
+                    <span>{tr.label}</span>
+                    {currentTransition === tr.id && <Check size={14} />}
+                  </button>
+                ))}
+              </div>
+
+              {/* Botón Aplicar a todas las diapositivas */}
+              <button
+                type="button"
+                onClick={() => {
+                  onApplyTransitionToAll?.(currentTransition);
+                  setTransitionOpen(false);
+                }}
+                className="w-full mt-2.5 pt-2 border-t border-gray-200 text-center text-xs font-semibold text-[#1a73e8] hover:text-[#1557b0] hover:underline cursor-pointer py-1"
+              >
+                Aplicar a todas las diapositivas
+              </button>
             </div>
           )}
         </div>
@@ -548,6 +655,115 @@ export const GoogleSlidesToolbar: React.FC<GoogleSlidesToolbarProps> = ({
       >
         <ChevronUp size={15} />
       </button>
+
+      {/* Modal flotante de Fondo */}
+      {bgModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs select-none">
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-96 p-5 flex flex-col gap-4 text-[#1f1f1f] animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="font-semibold text-sm text-[#1f1f1f]">Fondo de diapositiva</h3>
+              <button
+                type="button"
+                onClick={() => setBgModalOpen(false)}
+                className="p-1 hover:bg-gray-100 rounded-full text-gray-500 transition-colors"
+                title="Cerrar"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Muestra de color y selector libre */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-medium text-[#444746]">Color de fondo:</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={selectedBgColor}
+                  onChange={(e) => setSelectedBgColor(e.target.value)}
+                  className="w-9 h-9 rounded cursor-pointer border border-gray-300 p-0.5"
+                  title="Elegir color personalizado"
+                />
+                <span className="text-xs font-mono font-medium text-[#444746] uppercase">
+                  {selectedBgColor}
+                </span>
+              </div>
+
+              {/* Paleta rápida de 16 colores */}
+              <div className="grid grid-cols-8 gap-1.5 mt-2">
+                {[
+                  "#ffffff",
+                  "#f8f9fa",
+                  "#e8eaed",
+                  "#dadce0",
+                  "#fce8e6",
+                  "#fef7e0",
+                  "#e6f4ea",
+                  "#e8f0fe",
+                  "#202124",
+                  "#1e140f",
+                  "#2b2523",
+                  "#3c4043",
+                  "#ea4335",
+                  "#fbbc04",
+                  "#34a853",
+                  "#1a73e8",
+                ].map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setSelectedBgColor(c)}
+                    style={{ backgroundColor: c }}
+                    className={`w-6 h-6 rounded-full border border-gray-300 transition-transform hover:scale-110 shadow-2xs cursor-pointer ${
+                      selectedBgColor.toLowerCase() === c.toLowerCase()
+                        ? "ring-2 ring-[#1a73e8] scale-110"
+                        : ""
+                    }`}
+                    title={c}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Acciones del Modal */}
+            <div className="flex items-center justify-between pt-3 border-t mt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedBgColor(currentTheme.slideBg);
+                  onSetSlideBackground?.(currentTheme.slideBg, false);
+                }}
+                className="px-3 py-1.5 text-xs text-[#1a73e8] hover:bg-blue-50 rounded-lg font-medium transition-colors"
+              >
+                Restablecer
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSetSlideBackground?.(selectedBgColor, true);
+                    setBgModalOpen(false);
+                  }}
+                  className="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-[#1f1f1f] rounded-lg font-medium transition-colors"
+                  title="Aplicar a todas las diapositivas"
+                >
+                  Agregar al tema
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSetSlideBackground?.(selectedBgColor, false);
+                    setBgModalOpen(false);
+                  }}
+                  className="px-4 py-1.5 text-xs bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-lg font-medium shadow-xs transition-colors"
+                >
+                  Listo
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
