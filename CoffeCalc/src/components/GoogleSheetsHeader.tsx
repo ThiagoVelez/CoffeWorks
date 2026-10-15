@@ -1,10 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
   Star,
-  Cloud,
-  MessageSquare,
-  Video,
-  Lock,
+  ArrowUpRight,
   Minus,
   Square,
   X,
@@ -16,12 +13,10 @@ import {
   Undo2,
   Redo2,
   CheckSquare,
-  Sparkles,
   HelpCircle,
   Shield,
   Filter,
   BarChart3,
-  ChevronDown,
 } from "lucide-react";
 
 const isTauri =
@@ -38,7 +33,7 @@ interface GoogleSheetsHeaderProps {
   onImport: () => void;
   onNewWorkbook: () => void;
   onPrint: () => void;
-  isSaving: boolean;
+  isSaving?: boolean;
   showGridlines: boolean;
   onToggleGridlines: () => void;
   showFormulaBar: boolean;
@@ -77,7 +72,7 @@ export const GoogleSheetsHeader: React.FC<GoogleSheetsHeaderProps> = ({
   onImport,
   onNewWorkbook,
   onPrint,
-  isSaving,
+  isSaving: _isSaving,
   showGridlines,
   onToggleGridlines,
   showFormulaBar,
@@ -258,22 +253,6 @@ export const GoogleSheetsHeader: React.FC<GoogleSheetsHeaderProps> = ({
       ],
     },
     {
-      id: "gemini",
-      label: "Gemini",
-      items: [
-        {
-          label: "Generar fórmulas con IA...",
-          icon: Sparkles,
-          action: () => {
-            const prompt = window.prompt("¿Qué cálculo deseas automatizar en esta hoja?");
-            if (prompt) {
-              alert(`Gemini sugiere la fórmula matricial correspondiente a: ${prompt}`);
-            }
-          },
-        },
-      ],
-    },
-    {
       id: "extensiones",
       label: "Extensiones",
       items: [
@@ -419,77 +398,46 @@ export const GoogleSheetsHeader: React.FC<GoogleSheetsHeaderProps> = ({
           </div>
         </div>
 
-        {/* Lado derecho: Estado de guardado + Comentarios + Meet + Compartir + Avatar */}
+        {/* Lado derecho: Botón Exportar + Controles de ventana de aplicación */}
         <div className="flex items-center gap-2 shrink-0 pb-1">
-          <div
-            className="flex items-center gap-1.5 text-xs text-[#444746] px-2 py-1"
-            title={isSaving ? "Guardando cambios..." : "Guardado en la nube"}
-          >
-            <Cloud size={16} className={isSaving ? "animate-pulse text-[#0F9D58]" : "text-[#444746]"} />
-          </div>
-
-          <button
-            type="button"
-            className="p-2 rounded-full hover:bg-gray-200/60 text-[#444746] transition-colors"
-            title="Historial de comentarios"
-          >
-            <MessageSquare size={18} />
-          </button>
-
-          <button
-            type="button"
-            className="flex items-center gap-1 p-2 rounded-full hover:bg-gray-200/60 text-[#444746] transition-colors"
-            title="Videollamada con Google Meet"
-          >
-            <Video size={18} />
-            <ChevronDown size={12} />
-          </button>
-
+          {/* Botón Exportar con icono de flecha */}
           <button
             type="button"
             onClick={onExport}
-            className="bg-[#c2e7ff] hover:bg-[#b3dcfa] text-[#001d35] font-semibold text-xs px-5 py-2 rounded-full flex items-center gap-2 transition-all shadow-none"
-            title="Compartir o exportar libro"
+            className="bg-[#c2e7ff] hover:bg-[#b3dcfa] text-[#001d35] font-semibold text-xs px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-all shadow-none"
+            title="Exportar libro"
           >
-            <Lock size={14} className="text-[#001d35]" />
-            <span>Compartir</span>
+            <ArrowUpRight size={15} className="text-[#001d35]" />
+            <span>Exportar</span>
           </button>
 
-          <div
-            className="w-8 h-8 rounded-full bg-[#0F9D58] text-white flex items-center justify-center font-bold text-xs ring-2 ring-white shadow-xs ml-1"
-            title="Cuenta de Google / CoffeWorks"
-          >
-            U
+          {/* Controles de ventana de la aplicación */}
+          <div className="flex items-center ml-2 border-l border-gray-300 pl-2">
+            <button
+              type="button"
+              onClick={handleMinimize}
+              className="p-1 hover:bg-gray-200 rounded text-gray-500 transition-colors"
+              title="Minimizar"
+            >
+              <Minus size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={handleMaximize}
+              className="p-1 hover:bg-gray-200 rounded text-gray-500 transition-colors"
+              title="Ventana / Maximizar"
+            >
+              <Square size={12} />
+            </button>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="p-1 hover:bg-red-500 hover:text-white rounded text-gray-500 transition-colors"
+              title="Cerrar"
+            >
+              <X size={14} />
+            </button>
           </div>
-
-          {isTauri && (
-            <div className="flex items-center ml-2 border-l border-gray-300 pl-2">
-              <button
-                type="button"
-                onClick={handleMinimize}
-                className="p-1 hover:bg-gray-200 rounded text-gray-500"
-                title="Minimizar"
-              >
-                <Minus size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={handleMaximize}
-                className="p-1 hover:bg-gray-200 rounded text-gray-500"
-                title="Maximizar"
-              >
-                <Square size={12} />
-              </button>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="p-1 hover:bg-red-500 hover:text-white rounded text-gray-500 transition-colors"
-                title="Cerrar"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </header>

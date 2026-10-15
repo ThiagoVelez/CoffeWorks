@@ -1,10 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
   Star,
-  Cloud,
-  MessageSquare,
-  Video,
-  Lock,
+  ArrowUpRight,
   Minus,
   Square,
   X,
@@ -16,11 +13,9 @@ import {
   Redo2,
   Search,
   CheckSquare,
-  Sparkles,
   HelpCircle,
   Shield,
   FileText,
-  ChevronDown,
 } from "lucide-react";
 
 const isTauri =
@@ -30,7 +25,7 @@ const isTauri =
 interface GoogleDocsHeaderProps {
   title: string;
   onTitleChange: (newTitle: string) => void;
-  isSaving: boolean;
+  isSaving?: boolean;
   onNewDocument: () => void;
   onSave: () => void;
   onOpenExportModal: () => void;
@@ -54,7 +49,7 @@ interface GoogleDocsHeaderProps {
 export const GoogleDocsHeader: React.FC<GoogleDocsHeaderProps> = ({
   title,
   onTitleChange,
-  isSaving,
+  isSaving: _isSaving,
   onNewDocument,
   onSave,
   onOpenExportModal,
@@ -218,39 +213,10 @@ export const GoogleDocsHeader: React.FC<GoogleDocsHeaderProps> = ({
       ],
     },
     {
-      id: "gemini",
-      label: "Gemini",
-      items: [
-        {
-          label: "Ayúdame a redactar...",
-          icon: Sparkles,
-          action: () => {
-            const prompt = window.prompt("¿Sobre qué tema deseas generar contenido?");
-            if (prompt) {
-              document.execCommand(
-                "insertHTML",
-                false,
-                `<p><em>Generado con Gemini:</em> En respuesta a "<strong>${prompt}</strong>", se presenta este contenido estructurado para el documento.</p>`
-              );
-            }
-          },
-        },
-      ],
-    },
-    {
       id: "extensiones",
       label: "Extensiones",
       items: [
         { label: "Complementos de CoffeWorks", action: () => {} },
-        { label: "Integración Zotero", action: () => {} },
-      ],
-    },
-    {
-      id: "zotero",
-      label: "Zotero",
-      items: [
-        { label: "Añadir / editar cita", action: () => {} },
-        { label: "Añadir bibliografía", action: () => {} },
       ],
     },
     {
@@ -392,83 +358,46 @@ export const GoogleDocsHeader: React.FC<GoogleDocsHeaderProps> = ({
           </div>
         </div>
 
-        {/* Lado derecho: Estado de guardado + Historial + Meet + Compartir + Avatar */}
+        {/* Lado derecho: Botón Exportar + Controles de ventana de aplicación */}
         <div className="flex items-center gap-2 shrink-0 pb-1">
-          {/* Indicador de estado de guardado en la nube/bóveda */}
-          <div
-            className="flex items-center gap-1.5 text-xs text-[#444746] px-2 py-1"
-            title={isSaving ? "Guardando cambios..." : "Guardado en la bóveda"}
-          >
-            <Cloud size={16} className={isSaving ? "animate-pulse text-[#1a73e8]" : "text-[#444746]"} />
-          </div>
-
-          {/* Historial de comentarios */}
-          <button
-            type="button"
-            className="p-2 rounded-full hover:bg-gray-200/60 text-[#444746] transition-colors"
-            title="Abrir historial de comentarios"
-          >
-            <MessageSquare size={18} />
-          </button>
-
-          {/* Icono de Meet / Videollamada */}
-          <button
-            type="button"
-            className="flex items-center gap-1 p-2 rounded-full hover:bg-gray-200/60 text-[#444746] transition-colors"
-            title="Unirse a una videollamada aquí o presentar esta pestaña"
-          >
-            <Video size={18} />
-            <ChevronDown size={12} />
-          </button>
-
-          {/* Botón oficial de Compartir de Google Workspace */}
+          {/* Botón Exportar con icono de flecha */}
           <button
             type="button"
             onClick={onOpenExportModal}
-            className="bg-[#c2e7ff] hover:bg-[#b3dcfa] text-[#001d35] font-semibold text-xs px-5 py-2 rounded-full flex items-center gap-2 transition-all shadow-none"
-            title="Compartir o exportar documento"
+            className="bg-[#c2e7ff] hover:bg-[#b3dcfa] text-[#001d35] font-semibold text-xs px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-all shadow-none"
+            title="Exportar documento"
           >
-            <Lock size={14} className="text-[#001d35]" />
-            <span>Compartir</span>
+            <ArrowUpRight size={15} className="text-[#001d35]" />
+            <span>Exportar</span>
           </button>
 
-          {/* Avatar del usuario de Google */}
-          <div
-            className="w-8 h-8 rounded-full bg-[#1a73e8] text-white flex items-center justify-center font-bold text-xs ring-2 ring-white shadow-xs ml-1"
-            title="Cuenta de Google / CoffeWorks"
-          >
-            U
+          {/* Controles de ventana de la aplicación */}
+          <div className="flex items-center ml-2 border-l border-gray-300 pl-2">
+            <button
+              type="button"
+              onClick={handleMinimize}
+              className="p-1 hover:bg-gray-200 rounded text-gray-500 transition-colors"
+              title="Minimizar"
+            >
+              <Minus size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={handleMaximize}
+              className="p-1 hover:bg-gray-200 rounded text-gray-500 transition-colors"
+              title="Ventana / Maximizar"
+            >
+              <Square size={12} />
+            </button>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="p-1 hover:bg-red-500 hover:text-white rounded text-gray-500 transition-colors"
+              title="Cerrar"
+            >
+              <X size={14} />
+            </button>
           </div>
-
-          {/* Controles de ventana si se ejecuta dentro de Tauri */}
-          {isTauri && (
-            <div className="flex items-center ml-2 border-l border-gray-300 pl-2">
-              <button
-                type="button"
-                onClick={handleMinimize}
-                className="p-1 hover:bg-gray-200 rounded text-gray-500"
-                title="Minimizar"
-              >
-                <Minus size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={handleMaximize}
-                className="p-1 hover:bg-gray-200 rounded text-gray-500"
-                title="Maximizar"
-              >
-                <Square size={12} />
-              </button>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="p-1 hover:bg-red-500 hover:text-white rounded text-gray-500 transition-colors"
-                title="Cerrar"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </header>

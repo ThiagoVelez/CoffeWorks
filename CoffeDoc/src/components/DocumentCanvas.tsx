@@ -1,12 +1,9 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   FileText,
   Calendar,
   Mail,
   MoreHorizontal,
-  Plus,
-  Sparkles,
-  ArrowUp,
 } from "lucide-react";
 import type { DocumentTheme, PageMargins, ColumnCount } from "../types";
 
@@ -35,7 +32,6 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
   isProtected = false,
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
-  const [geminiPrompt, setGeminiPrompt] = useState("");
 
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== content) {
@@ -64,21 +60,6 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
       document.execCommand("insertHTML", false, templateHtml);
       onChange(editorRef.current.innerHTML);
     }
-  };
-
-  const handleGeminiSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!geminiPrompt.trim() || !editorRef.current) return;
-
-    const generated = `<div style="background-color: #f0f4f9; border-left: 4px solid #1a73e8; padding: 12px 16px; margin: 16px 0; border-radius: 4px;">
-      <p style="color: #1a73e8; font-weight: bold; margin: 0 0 6px 0;">Respuesta redactada con Gemini</p>
-      <p style="margin: 0; color: #1f1f1f;">En relación con "<strong>${geminiPrompt}</strong>": Hemos estructurado los puntos esenciales para enriquecer este documento con claridad ejecutiva y estilo formal.</p>
-    </div><p></p>`;
-
-    editorRef.current.focus();
-    document.execCommand("insertHTML", false, generated);
-    onChange(editorRef.current.innerHTML);
-    setGeminiPrompt("");
   };
 
   const marginPadding =
@@ -169,36 +150,6 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                 <span>Más</span>
               </button>
             </div>
-
-            {/* Barra flotante 'Escribir con Gemini...' */}
-            <form
-              onSubmit={handleGeminiSubmit}
-              className="w-full max-w-lg bg-[#edf2fa] hover:bg-[#e8edf5] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#1a73e8] rounded-full px-4 py-2 flex items-center gap-2.5 shadow-sm transition-all border border-gray-200"
-            >
-              <button
-                type="button"
-                className="p-1 hover:bg-gray-200 rounded-full text-[#444746]"
-                title="Insertar"
-              >
-                <Plus size={16} />
-              </button>
-              <Sparkles size={16} className="text-[#1a73e8] shrink-0" />
-              <input
-                type="text"
-                value={geminiPrompt}
-                onChange={(e) => setGeminiPrompt(e.target.value)}
-                placeholder="Escribir con Gemini..."
-                className="flex-1 bg-transparent border-none outline-none text-xs text-[#1f1f1f] placeholder:text-[#444746]"
-              />
-              <button
-                type="submit"
-                disabled={!geminiPrompt.trim()}
-                className="w-7 h-7 rounded-full bg-[#1a73e8] disabled:bg-gray-300 text-white flex items-center justify-center transition-colors"
-                title="Generar texto con IA"
-              >
-                <ArrowUp size={14} />
-              </button>
-            </form>
           </div>
         </div>
       </div>

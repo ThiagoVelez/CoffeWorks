@@ -1,11 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
   Star,
-  Cloud,
-  MessageSquare,
-  Video,
   Play,
-  Lock,
+  ArrowUpRight,
   Minus,
   Square,
   X,
@@ -18,7 +15,6 @@ import {
   Copy,
   Trash2,
   HelpCircle,
-  ChevronDown,
 } from "lucide-react";
 
 import type { SlideLayout } from "../types";
@@ -40,7 +36,7 @@ interface GoogleSlidesHeaderProps {
   onDuplicateSlide: () => void;
   onDeleteSlide: () => void;
   onPrint: () => void;
-  isSaving: boolean;
+  isSaving?: boolean;
   onToggleHideSlide?: () => void;
   isSlideHidden?: boolean;
   onAddText?: () => void;
@@ -72,7 +68,7 @@ export const GoogleSlidesHeader: React.FC<GoogleSlidesHeaderProps> = ({
   onDuplicateSlide,
   onDeleteSlide,
   onPrint,
-  isSaving,
+  isSaving: _isSaving,
   onToggleHideSlide,
   isSlideHidden,
   onAddText,
@@ -369,90 +365,57 @@ export const GoogleSlidesHeader: React.FC<GoogleSlidesHeaderProps> = ({
           </div>
         </div>
 
-        {/* Lado derecho: Guardado + Comentarios + Meet + Presentación diapositivas + Compartir + Avatar */}
+        {/* Lado derecho: Presentación + Botón Exportar + Controles de ventana de aplicación */}
         <div className="flex items-center gap-2 shrink-0 pb-1">
-          <div
-            className="flex items-center gap-1.5 text-xs text-[#444746] px-2 py-1"
-            title={isSaving ? "Guardando cambios..." : "Guardado en Drive"}
-          >
-            <Cloud size={16} className={isSaving ? "animate-pulse text-[#F4B400]" : "text-[#444746]"} />
-          </div>
-
-          <button
-            type="button"
-            className="p-2 rounded-full hover:bg-gray-200/60 text-[#444746] transition-colors"
-            title="Historial de comentarios"
-          >
-            <MessageSquare size={18} />
-          </button>
-
-          <button
-            type="button"
-            className="flex items-center gap-1 p-2 rounded-full hover:bg-gray-200/60 text-[#444746] transition-colors"
-            title="Videollamada con Google Meet"
-          >
-            <Video size={18} />
-            <ChevronDown size={12} />
-          </button>
-
-          {/* Botón Presentación de diapositivas (Google Slides signature button) */}
+          {/* Botón Presentación de diapositivas */}
           <button
             type="button"
             onClick={onStartPresentation}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-gray-300 hover:bg-gray-100 text-[#1f1f1f] font-medium text-xs bg-white shadow-2xs transition-colors"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-gray-300 hover:bg-gray-100 text-[#1f1f1f] font-medium text-xs bg-white shadow-2xs transition-colors"
             title="Presentación de diapositivas (F5)"
           >
             <Play size={13} className="fill-[#1f1f1f] text-[#1f1f1f]" />
             <span>Presentación de diapositivas</span>
-            <ChevronDown size={12} className="text-gray-500 ml-0.5" />
           </button>
 
-          {/* Botón Compartir */}
+          {/* Botón Exportar con icono de flecha */}
           <button
             type="button"
             onClick={onExport}
-            className="bg-[#c2e7ff] hover:bg-[#b3dcfa] text-[#001d35] font-semibold text-xs px-5 py-2 rounded-full flex items-center gap-2 transition-all shadow-none"
-            title="Compartir o exportar presentación"
+            className="bg-[#c2e7ff] hover:bg-[#b3dcfa] text-[#001d35] font-semibold text-xs px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-all shadow-none"
+            title="Exportar presentación"
           >
-            <Lock size={14} className="text-[#001d35]" />
-            <span>Compartir</span>
+            <ArrowUpRight size={15} className="text-[#001d35]" />
+            <span>Exportar</span>
           </button>
 
-          <div
-            className="w-8 h-8 rounded-full bg-[#F4B400] text-white flex items-center justify-center font-bold text-xs ring-2 ring-white shadow-xs ml-1"
-            title="Cuenta de Google / CoffeWorks"
-          >
-            U
+          {/* Controles de ventana de la aplicación */}
+          <div className="flex items-center ml-2 border-l border-gray-300 pl-2">
+            <button
+              type="button"
+              onClick={handleMinimize}
+              className="p-1 hover:bg-gray-200 rounded text-gray-500 transition-colors"
+              title="Minimizar"
+            >
+              <Minus size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={handleMaximize}
+              className="p-1 hover:bg-gray-200 rounded text-gray-500 transition-colors"
+              title="Ventana / Maximizar"
+            >
+              <Square size={12} />
+            </button>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="p-1 hover:bg-red-500 hover:text-white rounded text-gray-500 transition-colors"
+              title="Cerrar"
+            >
+              <X size={14} />
+            </button>
           </div>
-
-          {isTauri && (
-            <div className="flex items-center ml-2 border-l border-gray-300 pl-2">
-              <button
-                type="button"
-                onClick={handleMinimize}
-                className="p-1 hover:bg-gray-200 rounded text-gray-500"
-                title="Minimizar"
-              >
-                <Minus size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={handleMaximize}
-                className="p-1 hover:bg-gray-200 rounded text-gray-500"
-                title="Maximizar"
-              >
-                <Square size={12} />
-              </button>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="p-1 hover:bg-red-500 hover:text-white rounded text-gray-500 transition-colors"
-                title="Cerrar"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </header>
