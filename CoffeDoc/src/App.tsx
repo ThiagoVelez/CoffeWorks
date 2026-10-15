@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { TitleBar } from "./components/TitleBar";
-import { WordRibbon } from "./components/WordRibbon";
+import { GoogleDocsHeader } from "./components/GoogleDocsHeader";
+import { GoogleDocsToolbar } from "./components/GoogleDocsToolbar";
 import { Ruler } from "./components/Ruler";
 import { DocumentCanvas } from "./components/DocumentCanvas";
 import { StatusBar } from "./components/StatusBar";
@@ -29,16 +29,16 @@ export const App: React.FC = () => {
     updatedAt: new Date().toISOString(),
   });
   const [content, setContent] = useState<string>("");
-  const [theme, setTheme] = useState<DocumentTheme>("paper-white");
+  const [theme] = useState<DocumentTheme>("paper-white");
   const [zenMode, setZenMode] = useState<boolean>(false);
   const [showRuler, setShowRuler] = useState<boolean>(true);
   const [outlineOpen, setOutlineOpen] = useState<boolean>(true);
   const [zoom, setZoom] = useState<number>(100);
   const [lineSpacing, setLineSpacing] = useState<string>("1.5");
-  const [margins, setMargins] = useState<PageMargins>("normal");
-  const [columns, setColumns] = useState<ColumnCount>(1);
-  const [watermark, setWatermark] = useState<string>("");
-  const [pageColor, setPageColor] = useState<string>("#ffffff");
+  const [margins] = useState<PageMargins>("normal");
+  const [columns] = useState<ColumnCount>(1);
+  const [watermark] = useState<string>("");
+  const [pageColor] = useState<string>("#ffffff");
   const [isProtected, setIsProtected] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [showStartScreen, setShowStartScreen] = useState<boolean>(true);
@@ -299,67 +299,43 @@ export const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen bg-surface text-on-surface overflow-hidden">
-      {/* 1. Barra de título nativa con acceso rápido de Word */}
-      <TitleBar
+      {/* 1. Encabezado oficial estilo Google Docs */}
+      <GoogleDocsHeader
         title={metadata.title}
         onTitleChange={handleTitleChange}
         isSaving={isSaving}
-        theme={theme}
-        onToggleTheme={() =>
-          setTheme((prev) => (prev === "dark-espresso" ? "paper-white" : "dark-espresso"))
-        }
-        zenMode={zenMode}
-        onToggleZenMode={() => setZenMode((prev) => !prev)}
-        outlineOpen={outlineOpen}
-        onToggleOutline={() => setOutlineOpen((prev) => !prev)}
-        onOpenExportModal={() => setExportModalOpen(true)}
+        onNewDocument={handleNewDocument}
         onSave={handleSaveDocument}
+        onOpenExportModal={() => setExportModalOpen(true)}
+        onPrint={() => window.print()}
         onUndo={() => handleExecuteCommand("undo")}
         onRedo={() => handleExecuteCommand("redo")}
+        onOpenFindReplace={() => setFindReplaceOpen(true)}
+        onOpenWordCount={() => setWordCountOpen(true)}
+        onOpenHelp={() => setHelpOpen(true)}
+        zenMode={zenMode}
+        onToggleZenMode={() => setZenMode((prev) => !prev)}
+        showRuler={showRuler}
+        onToggleRuler={() => setShowRuler((prev) => !prev)}
+        outlineOpen={outlineOpen}
+        onToggleOutline={() => setOutlineOpen((prev) => !prev)}
+        isProtected={isProtected}
+        onToggleProtected={() => setIsProtected((prev) => !prev)}
+        onInsertTable={handleInsertTable}
       />
 
-      {/* 2. Cinta Ribbon completa de Microsoft Word */}
+      {/* 2. Barra de herramientas flotante en forma de píldora estilo Google Docs */}
       {!zenMode && (
-        <WordRibbon
+        <GoogleDocsToolbar
           onExecuteCommand={handleExecuteCommand}
-          onNewDocument={handleNewDocument}
-          onSave={handleSaveDocument}
-          onOpenExport={() => setExportModalOpen(true)}
           onPrint={() => window.print()}
-          onInsertTable={handleInsertTable}
           onInsertLink={handleInsertLink}
           onInsertImage={handleInsertImage}
-          onOpenFindReplace={() => setFindReplaceOpen(true)}
-          onOpenWordCount={() => setWordCountOpen(true)}
-          onOpenHelp={() => setHelpOpen(true)}
-          zenMode={zenMode}
-          onToggleZenMode={() => setZenMode((prev) => !prev)}
-          showRuler={showRuler}
-          onToggleRuler={() => setShowRuler((prev) => !prev)}
-          outlineOpen={outlineOpen}
-          onToggleOutline={() => setOutlineOpen((prev) => !prev)}
-          theme={theme}
-          onToggleTheme={() =>
-            setTheme((prev) => (prev === "dark-espresso" ? "paper-white" : "dark-espresso"))
-          }
           zoom={zoom}
           onZoomChange={setZoom}
           lineSpacing={lineSpacing}
           onSetLineSpacing={setLineSpacing}
-          margins={margins}
-          onSetMargins={(m) => {
-            if (m.includes("Estrecho")) setMargins("narrow");
-            else if (m.includes("Ancho")) setMargins("wide");
-            else setMargins("normal");
-          }}
-          columnsCount={columns}
-          onSetColumnsCount={(c) => setColumns(c as ColumnCount)}
-          watermark={watermark}
-          onSetWatermark={setWatermark}
-          pageColor={pageColor}
-          onSetPageColor={setPageColor}
-          isProtected={isProtected}
-          onToggleProtected={() => setIsProtected((prev) => !prev)}
+          onOpenFindReplace={() => setFindReplaceOpen(true)}
         />
       )}
 

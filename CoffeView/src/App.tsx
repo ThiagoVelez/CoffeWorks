@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { TitleBar } from "./components/TitleBar";
-import { PowerPointRibbon } from "./components/PowerPointRibbon";
+import { GoogleSlidesHeader } from "./components/GoogleSlidesHeader";
+import { GoogleSlidesToolbar } from "./components/GoogleSlidesToolbar";
 import { SlideThumbnails } from "./components/SlideThumbnails";
 import { SlideCanvas } from "./components/SlideCanvas";
 import { SpeakerNotes } from "./components/SpeakerNotes";
@@ -17,7 +17,6 @@ import type {
   PresentationMetadata,
   Slide,
   SlideTheme,
-  PowerPointRibbonTab,
   SlideLayout,
   SlideTransition,
   SlideElement,
@@ -37,7 +36,6 @@ export const App: React.FC = () => {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [activeSlideId, setActiveSlideId] = useState<string>("slide_1");
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<PowerPointRibbonTab>("inicio");
   const [showNotes, setShowNotes] = useState<boolean>(true);
   const [isPresentationMode, setIsPresentationMode] = useState<boolean>(false);
   const [exportModalOpen, setExportModalOpen] = useState<boolean>(false);
@@ -348,24 +346,11 @@ export const App: React.FC = () => {
     updateSlides(updatedSlides);
   };
 
-  const handleApplyTransitionToAll = (transition: SlideTransition) => {
-    const updated = slides.map((s) => ({ ...s, transition }));
-    updateSlides(updated);
-  };
-
   const handleToggleHideSlide = () => {
     const updated = slides.map((s) =>
       s.id === activeSlideId ? { ...s, hidden: !s.hidden } : s
     );
     updateSlides(updated);
-  };
-
-  const handleSetElementAnimation = (animation: string) => {
-    if (!selectedElementId) return;
-    modifySelectedElement((el) => ({
-      ...el,
-      animation: animation as SlideElement["animation"],
-    }));
   };
 
   // Portapapeles y copiado de formato
@@ -561,8 +546,8 @@ export const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-white select-none">
-      {/* 1. Barra de título estilo PowerPoint */}
-      <TitleBar
+      {/* 1. Encabezado de Google Slides */}
+      <GoogleSlidesHeader
         title={metadata.title}
         onTitleChange={(title) => {
           const next = { ...metadata, title };
@@ -572,26 +557,48 @@ export const App: React.FC = () => {
         onSave={handleManualSave}
         onUndo={handleUndo}
         onRedo={handleRedo}
-        onStartPresentation={() => setIsPresentationMode(true)}
-        onOpenExport={() => setExportModalOpen(true)}
-        isSaving={isSaving}
-      />
-
-      {/* 2. Cinta Ribbon completa de Microsoft PowerPoint */}
-      <PowerPointRibbon
-        activeTab={activeTab}
-        onSelectTab={setActiveTab}
+        onExport={() => setExportModalOpen(true)}
         onNewPresentation={handleStartNewPresentation}
-        onSave={handleManualSave}
-        onOpenExport={() => setExportModalOpen(true)}
         onStartPresentation={() => setIsPresentationMode(true)}
         onAddSlide={handleAddSlide}
-        onDeleteSlide={() => handleDeleteSlide(activeSlideId)}
         onDuplicateSlide={() => handleDuplicateSlide(activeSlideId)}
+        onDeleteSlide={() => handleDeleteSlide(activeSlideId)}
+        onPrint={() => window.print()}
+        isSaving={isSaving}
+        onToggleHideSlide={handleToggleHideSlide}
+        isSlideHidden={Boolean(activeSlide.hidden)}
+        onAddText={handleAddText}
+        onAddImage={handleAddImage}
+        onAddTable={handleAddTable}
+        onToggleBold={handleToggleBold}
+        onToggleItalic={handleToggleItalic}
+        onToggleUnderline={handleToggleUnderline}
+        onSpellCheck={handleSpellCheck}
+        onToggleNotes={() => setShowNotes(!showNotes)}
+        onCut={handleCutElement}
+        onCopy={handleCopyElement}
+        onPaste={handlePasteElement}
+        onToggleGridlines={() => setShowGridlines((prev) => !prev)}
+        onTranslate={handleTranslateSlide}
+        onChangeAspectRatio={setAspectRatio}
+      />
+
+      {/* 2. Barra de herramientas flotante de Google Slides */}
+      <GoogleSlidesToolbar
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onPrint={() => window.print()}
+        onFormatPainter={handleFormatPainter}
+        isFormatPainterActive={isFormatPainterActive}
+        onAddSlide={handleAddSlide}
         onAddText={handleAddText}
         onAddShape={handleAddShape}
+        onInsertImage={handleAddImage}
         currentTheme={currentTheme}
-        onSelectTheme={handleSelectTheme}
+        onSelectTheme={(themeId) => {
+          const found = SLIDE_THEMES.find((th) => th.id === themeId);
+          if (found) handleSelectTheme(found);
+        }}
         currentTransition={activeSlide.transition}
         onSelectTransition={handleSelectTransition}
         selectedElementId={selectedElementId}
@@ -599,30 +606,11 @@ export const App: React.FC = () => {
         onToggleItalic={handleToggleItalic}
         onToggleUnderline={handleToggleUnderline}
         onSetAlign={handleSetAlign}
-        onDeleteElement={handleDeleteElement}
-        showNotes={showNotes}
-        onToggleNotes={() => setShowNotes(!showNotes)}
-        onSetFontFamily={handleSetFontFamily}
         onSetFontSize={handleSetFontSize}
-        onCutElement={handleCutElement}
-        onCopyElement={handleCopyElement}
-        onPasteElement={handlePasteElement}
-        onFormatPainter={handleFormatPainter}
-        isFormatPainterActive={isFormatPainterActive}
-        onInsertTable={handleAddTable}
-        onInsertImage={handleAddImage}
-        aspectRatio={aspectRatio}
-        onSetAspectRatio={setAspectRatio}
-        showGridlines={showGridlines}
-        onToggleGridlines={() => setShowGridlines((prev) => !prev)}
-        onApplyTransitionToAll={handleApplyTransitionToAll}
-        onToggleHideSlide={handleToggleHideSlide}
-        isSlideHidden={Boolean(activeSlide.hidden)}
-        onSetElementAnimation={handleSetElementAnimation}
-        selectedAnimation={activeSlide.elements.find((el) => el.id === selectedElementId)?.animation}
-        onSpellCheck={handleSpellCheck}
-        onTranslateSlide={handleTranslateSlide}
+        onSetFontFamily={handleSetFontFamily}
+        onDeleteElement={handleDeleteElement}
         onAddComment={handleAddComment}
+        onAddTable={handleAddTable}
       />
 
       {/* 3. Área de trabajo principal */}

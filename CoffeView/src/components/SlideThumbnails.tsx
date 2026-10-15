@@ -1,12 +1,12 @@
 import React from "react";
-import { Plus, Copy, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { Copy, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import type { Slide, SlideTheme } from "../types";
 
 interface SlideThumbnailsProps {
   slides: Slide[];
   activeSlideId: string;
   onSelectSlide: (id: string) => void;
-  onAddSlide: () => void;
+  onAddSlide?: () => void;
   onDuplicateSlide: (id: string) => void;
   onDeleteSlide: (id: string) => void;
   onMoveSlide: (index: number, direction: "up" | "down") => void;
@@ -17,49 +17,32 @@ export const SlideThumbnails: React.FC<SlideThumbnailsProps> = ({
   slides,
   activeSlideId,
   onSelectSlide,
-  onAddSlide,
   onDuplicateSlide,
   onDeleteSlide,
   onMoveSlide,
   currentTheme,
 }) => {
   return (
-    <aside className="w-64 bg-[#f3f2f1] border-r border-[#d2d0ce] flex flex-col shrink-0 select-none overflow-hidden">
-      {/* Encabezado del panel de diapositivas */}
-      <div className="h-9 px-3 border-b border-[#e1dfdd] flex items-center justify-between bg-[#edebe9]">
-        <span className="font-bold text-[11px] text-[#323130] uppercase tracking-wider font-mono">
-          Diapositivas ({slides.length})
-        </span>
-        <button
-          type="button"
-          onClick={onAddSlide}
-          title="Agregar diapositiva"
-          className="flex items-center gap-1 text-[11px] font-semibold text-[#c43e1c] hover:text-[#a93217] transition-colors"
-        >
-          <Plus size={14} />
-          <span>Nueva</span>
-        </button>
-      </div>
-
-      {/* Lista scrollable de miniaturas */}
+    <aside className="w-56 bg-white border-r border-[#e1dfdd] flex flex-col shrink-0 select-none overflow-hidden">
+      {/* Lista scrollable de miniaturas con numeración como en Google Slides */}
       <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
         {slides.map((slide, index) => {
           const isActive = slide.id === activeSlideId;
 
           return (
             <div key={slide.id} className="flex items-start gap-2 group">
-              {/* Número de diapositiva */}
-              <span className="font-mono text-xs text-[#605e5c] w-4 pt-1 text-right shrink-0">
+              {/* Número de diapositiva (1, 2, 3...) */}
+              <span className="font-sans text-xs text-[#444746] font-medium w-4 pt-1 text-right shrink-0">
                 {index + 1}
               </span>
 
               {/* Contenedor de la miniatura 16:9 */}
               <div
                 onClick={() => onSelectSlide(slide.id)}
-                className={`flex-1 aspect-video rounded border-2 transition-all cursor-pointer relative overflow-hidden shadow-xs ${
+                className={`flex-1 aspect-video rounded-sm border-2 transition-all cursor-pointer relative overflow-hidden shadow-xs ${
                   isActive
-                    ? "border-[#c43e1c] ring-2 ring-[#c43e1c]/30 shadow-md scale-[1.02]"
-                    : "border-[#d2d0ce] hover:border-gray-400 bg-white"
+                    ? "border-[#1a73e8] ring-1 ring-[#1a73e8]"
+                    : "border-gray-300 hover:border-gray-400 bg-white"
                 }`}
                 style={{ backgroundColor: slide.background || currentTheme.slideBg }}
               >
@@ -73,7 +56,7 @@ export const SlideThumbnails: React.FC<SlideThumbnailsProps> = ({
                           className="font-bold truncate text-[8px] leading-tight"
                           style={{ color: el.color || currentTheme.titleColor }}
                         >
-                          {el.content || "Título"}
+                          {el.content || "Haz clic para agregar un título"}
                         </div>
                       );
                     }
@@ -84,7 +67,7 @@ export const SlideThumbnails: React.FC<SlideThumbnailsProps> = ({
                           className="truncate text-[6px] opacity-75 mt-0.5 leading-none"
                           style={{ color: el.color || currentTheme.textColor }}
                         >
-                          {el.content.split("\n")[0] || "Contenido"}
+                          {el.content.split("\n")[0] || "Haz clic para agregar un subtítulo"}
                         </div>
                       );
                     }
@@ -101,10 +84,10 @@ export const SlideThumbnails: React.FC<SlideThumbnailsProps> = ({
                         e.stopPropagation();
                         onMoveSlide(index, "up");
                       }}
-                      title="Mover arriba"
-                      className="p-1 hover:bg-white/20 rounded"
+                      title="Subir"
+                      className="p-0.5 hover:bg-white/20 rounded"
                     >
-                      <ArrowUp size={11} />
+                      <ArrowUp size={10} />
                     </button>
                   )}
                   {index < slides.length - 1 && (
@@ -114,10 +97,10 @@ export const SlideThumbnails: React.FC<SlideThumbnailsProps> = ({
                         e.stopPropagation();
                         onMoveSlide(index, "down");
                       }}
-                      title="Mover abajo"
-                      className="p-1 hover:bg-white/20 rounded"
+                      title="Bajar"
+                      className="p-0.5 hover:bg-white/20 rounded"
                     >
-                      <ArrowDown size={11} />
+                      <ArrowDown size={10} />
                     </button>
                   )}
                   <button
@@ -127,9 +110,9 @@ export const SlideThumbnails: React.FC<SlideThumbnailsProps> = ({
                       onDuplicateSlide(slide.id);
                     }}
                     title="Duplicar"
-                    className="p-1 hover:bg-white/20 rounded"
+                    className="p-0.5 hover:bg-white/20 rounded"
                   >
-                    <Copy size={11} />
+                    <Copy size={10} />
                   </button>
                   {slides.length > 1 && (
                     <button
@@ -139,9 +122,9 @@ export const SlideThumbnails: React.FC<SlideThumbnailsProps> = ({
                         onDeleteSlide(slide.id);
                       }}
                       title="Eliminar"
-                      className="p-1 hover:bg-red-600 rounded"
+                      className="p-0.5 hover:bg-red-500/80 rounded"
                     >
-                      <Trash2 size={11} />
+                      <Trash2 size={10} />
                     </button>
                   )}
                 </div>

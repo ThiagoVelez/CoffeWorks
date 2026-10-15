@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { TitleBar } from "./components/TitleBar";
-import { ExcelRibbon } from "./components/ExcelRibbon";
+import { GoogleSheetsHeader } from "./components/GoogleSheetsHeader";
+import { GoogleSheetsToolbar } from "./components/GoogleSheetsToolbar";
 import { FormulaBar } from "./components/FormulaBar";
 import { SpreadsheetGrid } from "./components/SpreadsheetGrid";
 import { SheetTabsBar } from "./components/SheetTabsBar";
@@ -969,72 +969,72 @@ export const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-white select-none">
-      {/* 1. Barra de título estilo Excel */}
-      <TitleBar
+      {/* 1. Encabezado oficial estilo Google Sheets */}
+      <GoogleSheetsHeader
         title={metadata.title}
-        onTitleChange={(title) => setMetadata((m) => ({ ...m, title }))}
+        onTitleChange={(newTitle: string) => setMetadata((m) => ({ ...m, title: newTitle }))}
         onSave={handleSave}
         onUndo={handleUndo}
         onRedo={handleRedo}
         onExport={() => setExportModalOpen(true)}
-        isSaving={isSaving}
-      />
-
-      {/* 2. Cinta Ribbon completa de Excel */}
-      <ExcelRibbon
+        onImport={() => setImportModalOpen(true)}
         onNewWorkbook={handleStartNewWorkbook}
-        onSave={handleSave}
-        onOpenExport={() => setExportModalOpen(true)}
-        onOpenImport={() => setImportModalOpen(true)}
         onPrint={() => window.print()}
-        onToggleBold={handleToggleBold}
-        onToggleItalic={handleToggleItalic}
-        onToggleUnderline={handleToggleUnderline}
-        onSetAlign={handleSetAlign}
-        onSetFormat={handleSetFormat}
-        onSetBgColor={handleSetBgColor}
-        onSetTextColor={handleSetTextColor}
-        onInsertAutoSum={handleInsertAutoSum}
-        onInsertAverage={handleInsertAverage}
-        onInsertCount={handleInsertCount}
-        onInsertMax={handleInsertMax}
-        onInsertMin={handleInsertMin}
-        onClearCell={handleClearSelection}
-        onSortAsc={() => handleSort(true)}
-        onSortDesc={() => handleSort(false)}
+        isSaving={isSaving}
         showGridlines={showGridlines}
         onToggleGridlines={() => setShowGridlines(!showGridlines)}
         showFormulaBar={showFormulaBar}
         onToggleFormulaBar={() => setShowFormulaBar(!showFormulaBar)}
-        zoom={zoom}
-        onZoomChange={setZoom}
-        onSetFontFamily={handleSetFontFamily}
-        onSetFontSize={handleSetFontSize}
-        onCut={handleCut}
-        onCopy={handleCopy}
-        onPaste={handlePaste}
-        onFormatPainter={handleFormatPainter}
-        isFormatPainterActive={isFormatPainterActive}
-        onToggleBorders={handleToggleBorders}
-        onToggleWrapText={handleToggleWrapText}
-        onMergeAndCenter={handleMergeAndCenter}
-        onAdjustDecimals={handleAdjustDecimals}
-        onConditionalFormatting={handleConditionalFormatting}
-        onFormatAsTable={handleFormatAsTable}
+        isSheetProtected={isSheetProtected}
+        onToggleProtectSheet={() => setIsSheetProtected(!isSheetProtected)}
+        isFilterActive={isFilterActive}
+        onToggleFilter={() => setIsFilterActive(!isFilterActive)}
+        onInsertChart={() => handleInsertChart("bar")}
+        onSpellCheck={handleSpellCheck}
+        onSortAsc={() => handleSort(true)}
+        onSortDesc={() => handleSort(false)}
         onInsertRowOrCol={handleInsertRowOrCol}
         onDeleteRowOrCol={handleDeleteRowOrCol}
-        onInsertChart={handleInsertChart}
+        onCut={handleCut}
+        onPaste={handlePaste}
         onToggleRawFormulas={() => setShowRawFormulas(!showRawFormulas)}
-        showRawFormulas={showRawFormulas}
-        onToggleFilter={() => setIsFilterActive(!isFilterActive)}
-        isFilterActive={isFilterActive}
+        onToggleFreezePanes={() => setIsFrozenPanes(!isFrozenPanes)}
+        onConditionalFormatting={handleConditionalFormatting}
+        onFormatAsTable={handleFormatAsTable}
         onTextToColumns={handleTextToColumns}
         onRemoveDuplicates={handleRemoveDuplicates}
-        onToggleFreezePanes={() => setIsFrozenPanes(!isFrozenPanes)}
-        isFrozenPanes={isFrozenPanes}
-        onSpellCheck={handleSpellCheck}
-        onToggleProtectSheet={() => setIsSheetProtected(!isSheetProtected)}
-        isSheetProtected={isSheetProtected}
+        onInsertAverage={handleInsertAverage}
+        onInsertCount={handleInsertCount}
+        onInsertMax={handleInsertMax}
+        onInsertMin={handleInsertMin}
+      />
+
+      {/* 2. Barra de herramientas flotante en forma de píldora estilo Google Sheets */}
+      <GoogleSheetsToolbar
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onPrint={() => window.print()}
+        onFormatPainter={handleFormatPainter}
+        isFormatPainterActive={isFormatPainterActive}
+        zoom={zoom}
+        onZoomChange={setZoom}
+        onSetFormat={handleSetFormat}
+        onSetFontFamily={handleSetFontFamily}
+        onSetFontSize={handleSetFontSize}
+        onToggleBold={handleToggleBold}
+        onToggleItalic={handleToggleItalic}
+        onToggleUnderline={handleToggleUnderline}
+        onSetTextColor={handleSetTextColor}
+        onSetBgColor={handleSetBgColor}
+        onToggleBorders={handleToggleBorders}
+        onMergeAndCenter={handleMergeAndCenter}
+        onSetAlign={handleSetAlign}
+        onToggleWrapText={handleToggleWrapText}
+        onInsertChart={() => handleInsertChart("bar")}
+        onToggleFilter={() => setIsFilterActive(!isFilterActive)}
+        isFilterActive={isFilterActive}
+        onInsertAutoSum={handleInsertAutoSum}
+        onAdjustDecimals={handleAdjustDecimals}
       />
 
       {/* 3. Barra de Fórmulas fx */}

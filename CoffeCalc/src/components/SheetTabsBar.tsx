@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus, ChevronLeft, ChevronRight, Minus } from "lucide-react";
+import { Plus, Menu, ChevronDown, Minus } from "lucide-react";
 import type { Sheet, SelectionStats } from "../types";
 
 interface SheetTabsBarProps {
@@ -36,28 +36,31 @@ export const SheetTabsBar: React.FC<SheetTabsBarProps> = ({
   };
 
   return (
-    <footer className="h-8 bg-[#f3f2f1] border-t border-[#d2d0ce] flex items-center justify-between px-2 select-none text-xs z-40 shadow-xs">
-      {/* 1. Selector de Hojas de cálculo de Excel */}
-      <div className="flex items-center gap-1 overflow-x-auto max-w-xl">
-        {/* Controles de desplazamiento de hojas */}
-        <div className="flex items-center text-gray-500 mr-1">
-          <button
-            type="button"
-            className="p-1 hover:bg-[#edebe9] rounded transition-colors"
-            title="Primera hoja"
-          >
-            <ChevronLeft size={13} />
-          </button>
-          <button
-            type="button"
-            className="p-1 hover:bg-[#edebe9] rounded transition-colors"
-            title="Última hoja"
-          >
-            <ChevronRight size={13} />
-          </button>
-        </div>
+    <footer className="h-9 bg-[#f0f4f9] border-t border-[#e1dfdd] flex items-center justify-between px-3 select-none text-xs z-40">
+      {/* 1. Selector de Hojas estilo Google Sheets (+, Hamburguesa, Pestañas) */}
+      <div className="flex items-center gap-1.5 overflow-x-auto max-w-xl py-1">
+        {/* Botón Añadir hoja (+) */}
+        <button
+          type="button"
+          onClick={onAddSheet}
+          title="Añadir hoja"
+          className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-200/80 text-[#444746] transition-colors cursor-pointer"
+        >
+          <Plus size={16} />
+        </button>
 
-        {/* Pestañas de hojas */}
+        {/* Botón Todas las hojas (Menú hamburguesa) */}
+        <button
+          type="button"
+          title="Todas las hojas"
+          className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-200/80 text-[#444746] transition-colors cursor-pointer"
+        >
+          <Menu size={15} />
+        </button>
+
+        <div className="h-4 w-px bg-gray-300 mx-1" />
+
+        {/* Pestañas de hojas con píldora de Google Sheets */}
         {sheets.map((sheet) => {
           const isActive = sheet.id === activeSheetId;
           const isRenaming = editingSheetId === sheet.id;
@@ -70,10 +73,10 @@ export const SheetTabsBar: React.FC<SheetTabsBarProps> = ({
                 setEditingSheetId(sheet.id);
                 setTempName(sheet.name);
               }}
-              className={`h-7 px-3.5 flex items-center gap-1.5 font-medium cursor-pointer transition-all border-r border-[#d2d0ce] relative ${
+              className={`h-7 px-3.5 flex items-center gap-1.5 font-medium cursor-pointer transition-all rounded-t-md relative text-xs ${
                 isActive
-                  ? "bg-white text-[#107c41] font-bold border-b-2 border-b-white border-t-2 border-t-[#107c41] shadow-xs"
-                  : "bg-[#f3f2f1] text-[#605e5c] hover:bg-[#edebe9] hover:text-[#201f1e]"
+                  ? "bg-white text-[#1f1f1f] font-semibold border-t-2 border-t-[#0F9D58] shadow-xs"
+                  : "bg-transparent text-[#444746] hover:bg-white/60"
               }`}
             >
               {isRenaming ? (
@@ -87,70 +90,61 @@ export const SheetTabsBar: React.FC<SheetTabsBarProps> = ({
                     if (e.key === "Escape") setEditingSheetId(null);
                   }}
                   autoFocus
-                  className="w-16 px-1 py-0.5 text-xs bg-white border border-[#107c41] focus:outline-none"
+                  className="w-16 px-1 py-0.5 text-xs bg-white border border-[#0F9D58] focus:outline-none rounded"
                 />
               ) : (
-                <span className="truncate">{sheet.name}</span>
+                <>
+                  <span className="truncate">{sheet.name}</span>
+                  {isActive && <ChevronDown size={11} className="text-[#444746]" />}
+                </>
               )}
             </div>
           );
         })}
-
-        {/* Botón agregar nueva hoja (+) */}
-        <button
-          type="button"
-          onClick={onAddSheet}
-          title="Nueva hoja"
-          className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-[#dff6dd] text-gray-600 hover:text-[#107c41] transition-colors ml-1"
-        >
-          <Plus size={14} />
-        </button>
       </div>
 
-      {/* 2. Barra de Estado y Métricas Automáticas de Excel (SUMA, PROMEDIO, RECUENTO) */}
-      <div className="flex items-center gap-4 text-[11px] font-mono text-[#595959]">
-        {/* Indicador de estado */}
-        <span className="font-bold text-[#107c41] uppercase tracking-wider text-[10px] px-2 py-0.5 rounded bg-[#dff6dd]">
-          {isEditing ? "Modo Edición" : "Listo"}
-        </span>
-
-        {/* Estadísticas en vivo */}
+      {/* 2. Estadísticas automáticas (Suma, Promedio, Recuento) */}
+      <div className="flex items-center gap-4 text-[11px] text-[#444746]">
+        {isEditing && (
+          <span className="text-[10px] bg-emerald-100 text-[#0F9D58] px-2 py-0.5 rounded font-medium">
+            Modo Edición
+          </span>
+        )}
         {stats.numericCount > 0 && (
-          <div className="hidden md:flex items-center gap-3 border-l border-gray-300 pl-3">
+          <div className="flex items-center gap-3">
             <span>
-              PROMEDIO:{" "}
-              <strong className="text-[#201f1e]">
+              Promedio:{" "}
+              <strong className="text-[#1f1f1f]">
                 {new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 }).format(stats.average)}
               </strong>
             </span>
             <span>
-              RECUENTO: <strong className="text-[#201f1e]">{stats.count}</strong>
+              Recuento: <strong className="text-[#1f1f1f]">{stats.count}</strong>
             </span>
             <span>
-              SUMA:{" "}
-              <strong className="text-[#201f1e]">
+              Suma:{" "}
+              <strong className="text-[#1f1f1f]">
                 {new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 }).format(stats.sum)}
               </strong>
             </span>
           </div>
         )}
 
-        {/* Controles de Zoom */}
-        <div className="flex items-center gap-1 border-l border-gray-300 pl-3">
+        <div className="flex items-center gap-1 ml-2 text-gray-500">
           <button
             type="button"
             onClick={() => onZoomChange(Math.max(50, zoom - 10))}
-            className="p-1 hover:bg-[#edebe9] rounded transition-colors"
-            title="Reducir zoom"
+            className="p-1 hover:bg-gray-200 rounded"
+            title="Alejar"
           >
             <Minus size={11} />
           </button>
-          <span className="w-9 text-center font-bold text-[10px]">{zoom}%</span>
+          <span className="text-[10px] font-mono">{zoom}%</span>
           <button
             type="button"
             onClick={() => onZoomChange(Math.min(200, zoom + 10))}
-            className="p-1 hover:bg-[#edebe9] rounded transition-colors"
-            title="Aumentar zoom"
+            className="p-1 hover:bg-gray-200 rounded"
+            title="Acercar"
           >
             <Plus size={11} />
           </button>

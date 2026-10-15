@@ -43,29 +43,29 @@
   background: #8a8886;
 }
 
-/* Borde de la celda activa estilo Excel con tirador de esquina */
+/* Borde de la celda activa estilo Google Sheets con tirador de esquina azul */
 .excel-cell-active {
-  outline: 2px solid #107c41 !important;
+  outline: 2px solid #1a73e8 !important;
   outline-offset: -1px;
   z-index: 20;
 }
 
-/* Tirador de autollenado (fill handle) de Excel en la esquina inferior derecha */
+/* Tirador de autollenado (fill handle) de Google Sheets en la esquina inferior derecha */
 .excel-fill-handle {
   position: absolute;
   bottom: -4px;
   right: -4px;
   width: 7px;
   height: 7px;
-  background-color: #107c41;
+  background-color: #1a73e8;
   border: 1px solid #ffffff;
   cursor: crosshair;
   z-index: 25;
 }
 
-/* Rango de selección */
+/* Rango de selección estilo Google Sheets */
 .excel-cell-selected {
-  background-color: rgba(16, 124, 65, 0.08) !important;
+  background-color: rgba(26, 115, 232, 0.1) !important;
 }
 
 /* Animación de guardado */

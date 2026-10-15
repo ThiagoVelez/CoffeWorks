@@ -513,7 +513,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                 style={{ width: `${w}px` }}
                 className={`h-6 flex items-center justify-between px-1.5 font-mono text-[11px] font-semibold border-r border-[#c8c6c4] shrink-0 transition-colors ${
                   isColInSelection
-                    ? "bg-[#dff6dd] text-[#0e6b37] border-b-2 border-b-[#107c41]"
+                    ? "bg-[#e8f0fe] text-[#1a73e8] border-b-2 border-b-[#1a73e8]"
                     : "text-[#595959] hover:bg-[#edebe9]"
                 }`}
               >
@@ -546,8 +546,8 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
               <div
                 className={`w-12 h-6 flex items-center justify-center font-mono text-[11px] font-semibold border-r border-b border-[#c8c6c4] shrink-0 sticky left-0 z-20 transition-colors ${
                   isRowInSelection
-                    ? "bg-[#dff6dd] text-[#0e6b37] border-r-2 border-r-[#107c41]"
-                    : "bg-[#f3f2f1] text-[#595959] hover:bg-[#edebe9]"
+                    ? "bg-[#e8f0fe] text-[#1a73e8] border-r-2 border-r-[#1a73e8]"
+                    : "bg-[#f8f9fa] text-[#595959] hover:bg-[#edebe9]"
                 }`}
               >
                 {rowNum}
@@ -592,10 +592,10 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                       textAlign: cell?.align || (typeof cell?.computed === "number" ? "right" : "left"),
                       fontFamily: cell?.fontFamily || undefined,
                       fontSize: cell?.fontSize ? `${cell.fontSize}pt` : undefined,
-                      borderTop: cell?.borders?.top ? "1px solid #107c41" : undefined,
-                      borderBottom: cell?.borders?.bottom ? "1px solid #107c41" : undefined,
-                      borderLeft: cell?.borders?.left ? "1px solid #107c41" : undefined,
-                      borderRight: cell?.borders?.right ? "1px solid #107c41" : undefined,
+                      borderTop: cell?.borders?.top ? "1px solid #1a73e8" : undefined,
+                      borderBottom: cell?.borders?.bottom ? "1px solid #1a73e8" : undefined,
+                      borderLeft: cell?.borders?.left ? "1px solid #1a73e8" : undefined,
+                      borderRight: cell?.borders?.right ? "1px solid #1a73e8" : undefined,
                     }}
                     onMouseDown={(e) => handleCellMouseDown(colIdx, rowIdx, e)}
                     onMouseEnter={() => handleCellMouseEnter(colIdx, rowIdx)}
@@ -610,14 +610,14 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                       isActive && !isMultiCellRange
                         ? "excel-cell-active bg-white"
                         : inRange
-                        ? "bg-[#107c41]/10"
+                        ? "bg-[#e8f0fe]/70"
                         : "hover:bg-[#fbf9f6]"
                     } ${
                       isMultiCellRange && inRange
-                        ? `${isTopEdge ? "border-t-2 border-t-[#107c41] -mt-[1px]" : ""} ${
-                            isBottomEdge ? "border-b-2 border-b-[#107c41]" : ""
-                          } ${isLeftEdge ? "border-l-2 border-l-[#107c41] -ml-[1px]" : ""} ${
-                            isRightEdge ? "border-r-2 border-r-[#107c41]" : ""
+                        ? `${isTopEdge ? "border-t-2 border-t-[#1a73e8] -mt-[1px]" : ""} ${
+                            isBottomEdge ? "border-b-2 border-b-[#1a73e8]" : ""
+                          } ${isLeftEdge ? "border-l-2 border-l-[#1a73e8] -ml-[1px]" : ""} ${
+                            isRightEdge ? "border-r-2 border-r-[#1a73e8]" : ""
                           }`
                         : ""
                     }`}
