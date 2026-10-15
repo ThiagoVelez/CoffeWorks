@@ -3,28 +3,36 @@ import type { PresentationMetadata, Slide, SlideTheme, SlideLayout } from "../ty
 
 export const SLIDE_THEMES: SlideTheme[] = [
   {
+    id: "theme_light",
+    name: "Estándar Blanco",
+    slideBg: "#ffffff",
+    titleColor: "#1f1f1f",
+    textColor: "#444746",
+    accentColor: "#1a73e8",
+  },
+  {
+    id: "theme_paper",
+    name: "Papel Minimalista",
+    slideBg: "#f8f9fa",
+    titleColor: "#202124",
+    textColor: "#3c4043",
+    accentColor: "#1a73e8",
+  },
+  {
+    id: "theme_latte",
+    name: "Latte Moderno",
+    slideBg: "#fef7e0",
+    titleColor: "#3e2723",
+    textColor: "#5f6368",
+    accentColor: "#d35400",
+  },
+  {
     id: "theme_espresso",
     name: "Espresso Ejecutivo",
     slideBg: "#1e140f",
     titleColor: "#ffffff",
     textColor: "#dfd3c7",
     accentColor: "#c43e1c",
-  },
-  {
-    id: "theme_paper",
-    name: "Papel Minimalista",
-    slideBg: "#ffffff",
-    titleColor: "#2c1b12",
-    textColor: "#5c3a21",
-    accentColor: "#c43e1c",
-  },
-  {
-    id: "theme_latte",
-    name: "Latte Moderno",
-    slideBg: "#fbf8f5",
-    titleColor: "#3e2723",
-    textColor: "#6f4e37",
-    accentColor: "#d35400",
   },
   {
     id: "theme_corporate",
@@ -36,19 +44,56 @@ export const SLIDE_THEMES: SlideTheme[] = [
   },
 ];
 
-export const createDefaultSlides = (): Slide[] => [
+export const createDefaultSlides = (theme?: SlideTheme): Slide[] => [
   {
     id: "slide_1",
     slideNumber: 1,
-    layout: "blank",
+    layout: "title",
+    background: theme?.slideBg || "#ffffff",
     transition: "fade",
     notes: "",
-    elements: [],
+    elements: [
+      {
+        id: "el_s1_title",
+        type: "title",
+        x: 10,
+        y: 28,
+        width: 80,
+        height: 22,
+        content: "",
+        fontSize: 44,
+        fontWeight: "bold",
+        align: "center",
+        color: theme?.titleColor || "#1f1f1f",
+      },
+      {
+        id: "el_s1_sub",
+        type: "subtitle",
+        x: 15,
+        y: 54,
+        width: 70,
+        height: 16,
+        content: "",
+        fontSize: 22,
+        fontWeight: "normal",
+        align: "center",
+        color: theme?.textColor || "#444746",
+      },
+    ],
   },
 ];
 
-export const createSlideForLayout = (layout: SlideLayout, slideNumber: number): Slide => {
+export const createSlideForLayout = (
+  layout: SlideLayout,
+  slideNumber: number,
+  theme?: SlideTheme,
+  inheritedBg?: string
+): Slide => {
   const baseId = `slide_${Date.now()}`;
+  const bg = inheritedBg || theme?.slideBg || "#ffffff";
+  const isDark = bg.toLowerCase() < "#888888" && !bg.toLowerCase().startsWith("#f");
+  const titleColor = theme?.titleColor || (isDark ? "#ffffff" : "#1f1f1f");
+  const textColor = theme?.textColor || (isDark ? "#dfd3c7" : "#444746");
 
   switch (layout) {
     case "title":
@@ -56,6 +101,7 @@ export const createSlideForLayout = (layout: SlideLayout, slideNumber: number): 
         id: baseId,
         slideNumber,
         layout,
+        background: bg,
         transition: "fade",
         notes: "",
         elements: [
@@ -63,14 +109,14 @@ export const createSlideForLayout = (layout: SlideLayout, slideNumber: number): 
             id: `el_${baseId}_1`,
             type: "title",
             x: 10,
-            y: 32,
+            y: 28,
             width: 80,
-            height: 18,
-            content: "Haga clic para agregar título",
-            fontSize: 42,
+            height: 22,
+            content: "",
+            fontSize: 44,
             fontWeight: "bold",
             align: "center",
-            color: "#ffffff",
+            color: titleColor,
           },
           {
             id: `el_${baseId}_2`,
@@ -78,12 +124,12 @@ export const createSlideForLayout = (layout: SlideLayout, slideNumber: number): 
             x: 15,
             y: 54,
             width: 70,
-            height: 12,
-            content: "Haga clic para agregar subtítulo",
+            height: 16,
+            content: "",
             fontSize: 22,
             fontWeight: "normal",
             align: "center",
-            color: "#dfd3c7",
+            color: textColor,
           },
         ],
       };
@@ -92,6 +138,7 @@ export const createSlideForLayout = (layout: SlideLayout, slideNumber: number): 
         id: baseId,
         slideNumber,
         layout,
+        background: bg,
         transition: "push",
         notes: "",
         elements: [
@@ -101,12 +148,12 @@ export const createSlideForLayout = (layout: SlideLayout, slideNumber: number): 
             x: 8,
             y: 10,
             width: 84,
-            height: 12,
-            content: "Título de la diapositiva",
+            height: 14,
+            content: "",
             fontSize: 32,
             fontWeight: "bold",
             align: "left",
-            color: "#ffffff",
+            color: titleColor,
           },
           {
             id: `el_${baseId}_c1`,
@@ -114,12 +161,12 @@ export const createSlideForLayout = (layout: SlideLayout, slideNumber: number): 
             x: 8,
             y: 28,
             width: 40,
-            height: 55,
+            height: 58,
             content: "• Primer punto de la columna 1\n• Segundo punto clave",
             fontSize: 18,
             fontWeight: "normal",
             align: "left",
-            color: "#dfd3c7",
+            color: textColor,
           },
           {
             id: `el_${baseId}_c2`,
@@ -127,12 +174,12 @@ export const createSlideForLayout = (layout: SlideLayout, slideNumber: number): 
             x: 52,
             y: 28,
             width: 40,
-            height: 55,
+            height: 58,
             content: "• Primer punto de la columna 2\n• Segundo punto clave",
             fontSize: 18,
             fontWeight: "normal",
             align: "left",
-            color: "#dfd3c7",
+            color: textColor,
           },
         ],
       };
@@ -141,6 +188,7 @@ export const createSlideForLayout = (layout: SlideLayout, slideNumber: number): 
         id: baseId,
         slideNumber,
         layout,
+        background: bg,
         transition: "none",
         notes: "",
         elements: [],
@@ -151,6 +199,7 @@ export const createSlideForLayout = (layout: SlideLayout, slideNumber: number): 
         id: baseId,
         slideNumber,
         layout: "title-content",
+        background: bg,
         transition: "push",
         notes: "",
         elements: [
@@ -160,12 +209,12 @@ export const createSlideForLayout = (layout: SlideLayout, slideNumber: number): 
             x: 8,
             y: 10,
             width: 84,
-            height: 12,
-            content: "Haga clic para agregar título",
+            height: 14,
+            content: "",
             fontSize: 32,
             fontWeight: "bold",
             align: "left",
-            color: "#ffffff",
+            color: titleColor,
           },
           {
             id: `el_${baseId}_body`,
@@ -173,12 +222,12 @@ export const createSlideForLayout = (layout: SlideLayout, slideNumber: number): 
             x: 8,
             y: 28,
             width: 84,
-            height: 55,
-            content: "• Haga clic para agregar texto\n• Segundo punto principal\n• Tercer elemento relevante",
+            height: 58,
+            content: "",
             fontSize: 20,
             fontWeight: "normal",
             align: "left",
-            color: "#dfd3c7",
+            color: textColor,
           },
         ],
       };
@@ -198,11 +247,11 @@ export const presentationVault = {
       return {
         metadata: {
           id: "pres_1",
-          title: "Presentación1",
+          title: "Nueva Presentación",
           author: "Usuario CoffeWorks",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          themeId: "theme_espresso",
+          themeId: "theme_light",
         },
         slides,
         activeSlideId: slides[0].id,
@@ -214,17 +263,68 @@ export const presentationVault = {
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed.slides && Array.isArray(parsed.slides) && parsed.slides.length > 0) {
+          // Normalizar diapositivas existentes para asegurar consistencia de fondo blanco y elementos editables
+          const normalizedSlides: Slide[] = parsed.slides.map((s: Slide, idx: number) => {
+            const hasNoElements = !s.elements || s.elements.length === 0;
+            // Si la diapositiva no tiene elementos o es la primera, inyectar los elementos editables
+            if (hasNoElements && (s.layout === "title" || idx === 0)) {
+              return {
+                ...s,
+                layout: "title" as SlideLayout,
+                background: s.background || "#ffffff",
+                elements: [
+                  {
+                    id: `el_${s.id}_title`,
+                    type: "title" as const,
+                    x: 10,
+                    y: 28,
+                    width: 80,
+                    height: 22,
+                    content: "",
+                    fontSize: 44,
+                    fontWeight: "bold" as const,
+                    align: "center" as const,
+                    color: "#1f1f1f",
+                  },
+                  {
+                    id: `el_${s.id}_sub`,
+                    type: "subtitle" as const,
+                    x: 15,
+                    y: 54,
+                    width: 70,
+                    height: 16,
+                    content: "",
+                    fontSize: 22,
+                    fontWeight: "normal" as const,
+                    align: "center" as const,
+                    color: "#444746",
+                  },
+                ],
+              };
+            }
+            return {
+              ...s,
+              background: s.background || "#ffffff",
+            };
+          });
+
+          const currentThemeId =
+            parsed.metadata?.themeId && parsed.metadata.themeId !== "theme_espresso"
+              ? parsed.metadata.themeId
+              : "theme_light";
+
           return {
-            metadata: parsed.metadata || {
-              id: "pres_1",
-              title: "Presentación1",
-              author: "Usuario CoffeWorks",
-              createdAt: new Date().toISOString(),
+            metadata: {
+              ...(parsed.metadata || {}),
+              id: parsed.metadata?.id || "pres_1",
+              title: parsed.metadata?.title || "Nueva Presentación",
+              author: parsed.metadata?.author || "Usuario CoffeWorks",
+              createdAt: parsed.metadata?.createdAt || new Date().toISOString(),
               updatedAt: new Date().toISOString(),
-              themeId: "theme_espresso",
+              themeId: currentThemeId,
             },
-            slides: parsed.slides,
-            activeSlideId: parsed.activeSlideId || parsed.slides[0].id,
+            slides: normalizedSlides,
+            activeSlideId: parsed.activeSlideId || normalizedSlides[0].id,
           };
         }
       }
@@ -236,11 +336,11 @@ export const presentationVault = {
     const initData = {
       metadata: {
         id: "pres_1",
-        title: "Presentación1",
+        title: "Nueva Presentación",
         author: "Usuario CoffeWorks",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        themeId: "theme_espresso",
+        themeId: "theme_light",
       },
       slides: defaultSlides,
       activeSlideId: defaultSlides[0].id,

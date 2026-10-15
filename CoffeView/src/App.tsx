@@ -30,7 +30,7 @@ export const App: React.FC = () => {
     author: "Usuario CoffeWorks",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    themeId: "theme_espresso",
+    themeId: "theme_light",
   });
 
   const [slides, setSlides] = useState<Slide[]>([]);
@@ -155,7 +155,8 @@ export const App: React.FC = () => {
 
   // Gestión de diapositivas
   const handleAddSlide = (layout: SlideLayout = "title-content") => {
-    const newSlide = createSlideForLayout(layout, slides.length + 1);
+    const inheritedBg = activeSlide?.background || currentTheme.slideBg || "#ffffff";
+    const newSlide = createSlideForLayout(layout, slides.length + 1, currentTheme, inheritedBg);
     const updated = [...slides, newSlide].map((s, idx) => ({
       ...s,
       slideNumber: idx + 1,
@@ -163,6 +164,49 @@ export const App: React.FC = () => {
     updateSlides(updated);
     setActiveSlideId(newSlide.id);
     setSelectedElementId(null);
+  };
+
+  const handleInitDefaultElements = (target: "title" | "subtitle" = "title") => {
+    const titleColor = currentTheme.titleColor || "#1f1f1f";
+    const textColor = currentTheme.textColor || "#444746";
+    const baseId = `el_${Date.now()}`;
+    const titleEl: SlideElement = {
+      id: `${baseId}_title`,
+      type: "title",
+      x: 10,
+      y: 28,
+      width: 80,
+      height: 22,
+      content: "",
+      fontSize: 44,
+      fontWeight: "bold",
+      align: "center",
+      color: titleColor,
+    };
+    const subEl: SlideElement = {
+      id: `${baseId}_sub`,
+      type: "subtitle",
+      x: 15,
+      y: 54,
+      width: 70,
+      height: 16,
+      content: "",
+      fontSize: 22,
+      fontWeight: "normal",
+      align: "center",
+      color: textColor,
+    };
+    const targetId = target === "title" ? titleEl.id : subEl.id;
+    const updatedSlides = slides.map((s) => {
+      if (s.id !== activeSlideId) return s;
+      return {
+        ...s,
+        layout: "title" as SlideLayout,
+        elements: [titleEl, subEl],
+      };
+    });
+    updateSlides(updatedSlides);
+    setSelectedElementId(targetId);
   };
 
   const handleDuplicateSlide = (id: string = activeSlideId) => {
@@ -623,7 +667,7 @@ export const App: React.FC = () => {
       author: "Usuario CoffeWorks",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      themeId: "theme_espresso",
+      themeId: "theme_light",
     };
     setMetadata(newMeta);
     setSlides(defaultSlides);
@@ -646,7 +690,7 @@ export const App: React.FC = () => {
           author: "Usuario CoffeWorks",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          themeId: "theme_espresso",
+          themeId: "theme_light",
         };
         setMetadata(loadedMeta);
         setSlides(parsed.slides);
@@ -774,6 +818,7 @@ export const App: React.FC = () => {
             onChangeLayout={handleChangeSlideLayout}
             onSetSlideBackground={handleSetSlideBackground}
             onTransformSlide={handleTransformSlide}
+            onInitDefaultElements={handleInitDefaultElements}
             slidesCount={slides.length}
             currentSlideIndex={slides.findIndex((s) => s.id === activeSlideId)}
           />

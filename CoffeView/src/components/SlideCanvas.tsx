@@ -48,6 +48,7 @@ interface SlideCanvasProps {
   onChangeLayout?: (layout: SlideLayout) => void;
   onSetSlideBackground?: (color: string, applyToAll: boolean) => void;
   onTransformSlide?: (type: "bullets" | "align" | "contrast" | "invert" | "title") => void;
+  onInitDefaultElements?: (target: "title" | "subtitle") => void;
   slidesCount?: number;
   currentSlideIndex?: number;
 }
@@ -71,6 +72,7 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
   onChangeLayout,
   onSetSlideBackground,
   onTransformSlide,
+  onInitDefaultElements,
   slidesCount = 1,
   currentSlideIndex: _currentSlideIndex = 0,
 }) => {
@@ -287,13 +289,27 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
 
               {/* Elementos dentro de la Diapositiva */}
               {slide.elements.length === 0 ? (
-                <div className="w-full h-full flex flex-col items-center justify-center p-12 gap-6 pointer-events-none">
-                  <div className="border border-dashed border-gray-300 hover:border-[#1a73e8] p-6 w-full max-w-2xl text-center rounded">
+                <div className="w-full h-full flex flex-col items-center justify-center p-12 gap-6 select-none">
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onInitDefaultElements?.("title");
+                    }}
+                    className="border border-dashed border-gray-300 hover:border-[#1a73e8] hover:bg-blue-50/20 p-6 w-full max-w-2xl text-center rounded cursor-pointer transition-colors"
+                    title="Haz clic para agregar un título"
+                  >
                     <h1 className="text-4xl font-bold text-[#1f1f1f] tracking-tight">
                       Haz clic para agregar un título
                     </h1>
                   </div>
-                  <div className="border border-dashed border-gray-300 hover:border-[#1a73e8] p-4 w-full max-w-xl text-center rounded">
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onInitDefaultElements?.("subtitle");
+                    }}
+                    className="border border-dashed border-gray-300 hover:border-[#1a73e8] hover:bg-blue-50/20 p-4 w-full max-w-xl text-center rounded cursor-pointer transition-colors"
+                    title="Haz clic para agregar un subtítulo"
+                  >
                     <p className="text-lg text-[#444746] font-normal">
                       Haz clic para agregar un subtítulo
                     </p>
@@ -317,6 +333,9 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
                       onClick={(e) => {
                         e.stopPropagation();
                         onSelectElement(el.id);
+                        if (isSelected || !el.content) {
+                          setEditingId(el.id);
+                        }
                       }}
                       onDoubleClick={(e) => {
                         e.stopPropagation();
