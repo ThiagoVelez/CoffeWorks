@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Search,
   Undo2,
   Redo2,
   Printer,
-  CheckCheck,
+  SpellCheck,
   Paintbrush,
   ChevronDown,
   ChevronUp,
@@ -13,6 +13,7 @@ import {
   Bold,
   Italic,
   Underline,
+  Strikethrough,
   Highlighter,
   Link,
   MessageSquarePlus,
@@ -27,157 +28,245 @@ import {
   IndentIncrease,
   RemoveFormatting,
   Pencil,
+  Eye,
   Check,
+  Table,
 } from "lucide-react";
+import type { FormatState } from "../types";
+import { applyFontSize, exec } from "../services/editor";
 
 interface GoogleDocsToolbarProps {
-  onExecuteCommand: (command: string, value?: string) => void;
+  format: FormatState;
+  readOnly: boolean;
+  onSetReadOnly: (readOnly: boolean) => void;
+  zoom: number;
+  onZoomChange: (zoom: number) => void;
+  lineSpacing: string;
+  onSetLineSpacing: (spacing: string) => void;
+  onUndo: () => void;
+  onRedo: () => void;
   onPrint: () => void;
+  spellcheck: boolean;
+  onToggleSpellcheck: () => void;
+  painterActive: boolean;
+  onTogglePainter: () => void;
+  onOpenCommandSearch: () => void;
   onInsertLink: () => void;
   onInsertImage: () => void;
-  zoom: number;
-  onZoomChange: (z: number) => void;
-  lineSpacing: string;
-  onSetLineSpacing: (s: string) => void;
-  onOpenFindReplace: () => void;
+  onInsertTable: () => void;
+  onAddComment: () => void;
+  compact: boolean;
+  onToggleCompact: () => void;
 }
 
+const FONTS = [
+  "Arial",
+  "Calibri",
+  "Cambria",
+  "Georgia",
+  "Times New Roman",
+  "Verdana",
+  "Tahoma",
+  "Trebuchet MS",
+  "Courier New",
+  "Hanken Grotesk",
+  "JetBrains Mono",
+];
+
+const BLOCK_STYLES: Array<{ tag: string; label: string; className: string }> = [
+  { tag: "p", label: "Texto normal", className: "text-xs" },
+  { tag: "h1", label: "Título 1", className: "text-lg font-bold" },
+  { tag: "h2", label: "Título 2", className: "text-base font-bold" },
+  { tag: "h3", label: "Título 3", className: "text-sm font-bold text-[#434343]" },
+  { tag: "blockquote", label: "Cita", className: "text-xs italic text-[#5f6368]" },
+  { tag: "pre", label: "Código", className: "text-xs font-mono" },
+];
+
+const FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 36, 48, 72];
+
+export const TEXT_COLORS = [
+  "#000000", "#434343", "#666666", "#999999", "#b7b7b7", "#cccccc", "#efefef", "#ffffff",
+  "#980000", "#ff0000", "#ff9900", "#ffff00", "#00ff00", "#00ffff", "#4a86e8", "#0000ff",
+  "#9900ff", "#ff00ff", "#e6b8af", "#f4cccc", "#fce5cd", "#fff2cc", "#d9ead3", "#d0e0e3",
+  "#c9daf8", "#cfe2f3", "#d9d2e9", "#ead1dc", "#a61c00", "#cc0000", "#e69138", "#f1c232",
+  "#6aa84f", "#45818e", "#3c78d8", "#3d85c6", "#674ea7", "#a64d79", "#5b0f00", "#660000",
+  "#783f04", "#7f6000", "#274e13", "#0c343d", "#1c4587", "#073763", "#20124d", "#4c1130",
+];
+
+const HIGHLIGHT_COLORS = [
+  "#fff59d", "#ffe082", "#ffccbc", "#f8bbd0", "#e1bee7", "#c5cae9", "#b3e5fc", "#b2dfdb",
+  "#c8e6c9", "#dcedc8", "#f0f4c3", "#d7ccc8", "#ffffff", "#eeeeee", "#bdbdbd", "#fdd835",
+];
+
+type DropdownId = "zoom" | "style" | "font" | "size" | "color" | "highlight" | "align" | "spacing" | "mode";
+
+/** Botón de la barra que no roba el foco al editor. */
+const ToolButton: React.FC<{
+  title: string;
+  onClick: () => void;
+  active?: boolean;
+  disabled?: boolean;
+  children: React.ReactNode;
+  className?: string;
+}> = ({ title, onClick, active, disabled, children, className = "" }) => (
+  <button
+    type="button"
+    title={title}
+    disabled={disabled}
+    onMouseDown={(e) => e.preventDefault()}
+    onClick={onClick}
+    className={`p-1.5 rounded-full transition-colors disabled:opacity-35 disabled:hover:bg-transparent ${
+      active ? "bg-[#d3e3fd] text-[#041e49]" : "text-[#444746] hover:bg-gray-200/70"
+    } ${className}`}
+  >
+    {children}
+  </button>
+);
+
+const Separator = () => <div className="h-4 w-px bg-gray-300 mx-0.5 shrink-0" />;
+
 export const GoogleDocsToolbar: React.FC<GoogleDocsToolbarProps> = ({
-  onExecuteCommand,
-  onPrint,
-  onInsertLink,
-  onInsertImage,
+  format,
+  readOnly,
+  onSetReadOnly,
   zoom,
   onZoomChange,
   lineSpacing,
   onSetLineSpacing,
-  onOpenFindReplace,
+  onUndo,
+  onRedo,
+  onPrint,
+  spellcheck,
+  onToggleSpellcheck,
+  painterActive,
+  onTogglePainter,
+  onOpenCommandSearch,
+  onInsertLink,
+  onInsertImage,
+  onInsertTable,
+  onAddComment,
+  compact,
+  onToggleCompact,
 }) => {
-  const [fontSize, setFontSize] = useState<number>(11);
-  const [fontFamily, setFontFamily] = useState<string>("Arial");
-  const [styleName, setStyleName] = useState<string>("Texto normal");
-  const mode = "Edición";
-  const [collapsed, setCollapsed] = useState<boolean>(false);
+  const [open, setOpen] = useState<DropdownId | null>(null);
+  const [sizeDraft, setSizeDraft] = useState<string | null>(null);
+  const [lastHighlight, setLastHighlight] = useState("#fff59d");
+  const rootRef = useRef<HTMLDivElement>(null);
 
-  // Estados de dropdowns
-  const [zoomOpen, setZoomOpen] = useState(false);
-  const [styleOpen, setStyleOpen] = useState(false);
-  const [fontOpen, setFontOpen] = useState(false);
-  const [alignOpen, setAlignOpen] = useState(false);
-  const [spacingOpen, setSpacingOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const handleMouseDown = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(null);
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(null);
+    };
+    document.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open]);
 
-  const handleFontSizeChange = (delta: number) => {
-    const next = Math.max(6, Math.min(96, fontSize + delta));
-    setFontSize(next);
-    onExecuteCommand("fontSize", String(Math.min(7, Math.max(1, Math.round(next / 6)))));
+  const toggle = (id: DropdownId) => setOpen((current) => (current === id ? null : id));
+  const run = (command: string, value?: string) => {
+    setOpen(null);
+    exec(command, value);
   };
 
-  const handleFontSelect = (font: string) => {
-    setFontFamily(font);
-    setFontOpen(false);
-    onExecuteCommand("fontName", font);
+  const setFontSize = (points: number) => {
+    const clamped = Math.max(6, Math.min(400, Math.round(points * 2) / 2));
+    setSizeDraft(null);
+    setOpen(null);
+    applyFontSize(clamped);
   };
 
-  const handleStyleSelect = (tag: string, label: string) => {
-    setStyleName(label);
-    setStyleOpen(false);
-    if (tag === "p") {
-      onExecuteCommand("formatBlock", "<p>");
-    } else {
-      onExecuteCommand("formatBlock", `<${tag}>`);
-    }
-  };
+  const blockLabel = BLOCK_STYLES.find((s) => s.tag === format.block)?.label || "Texto normal";
+  const AlignIcon =
+    format.align === "center"
+      ? AlignCenter
+      : format.align === "right"
+      ? AlignRight
+      : format.align === "justify"
+      ? AlignJustify
+      : AlignLeft;
 
-  const handleSpacingSelect = (val: string) => {
-    onSetLineSpacing(val);
-    setSpacingOpen(false);
-  };
+  const dropdownClass =
+    "absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50";
+  const optionClass = (selected: boolean) =>
+    `w-full text-left px-3 py-1.5 hover:bg-[#f0f4f9] flex items-center justify-between gap-3 ${
+      selected ? "text-[#0b57d0]" : "text-[#444746]"
+    }`;
 
   return (
-    <div className="w-full px-4 py-1 flex items-center justify-between select-none bg-white">
-      {/* Contenedor tipo píldora flotante de Google Docs (Material You) */}
-      <div className="bg-[#edf2fa] rounded-full px-3 py-1 flex items-center gap-1 shadow-xs text-[#444746] text-xs flex-wrap max-w-full">
-        {/* 1. Botón de búsqueda de menús (Menús) */}
+    <div
+      ref={rootRef}
+      className="w-full px-4 py-1 flex items-center justify-between select-none bg-white print:hidden"
+    >
+      <div
+        className="bg-[#edf2fa] rounded-full px-3 py-1 flex items-center gap-1 shadow-xs text-[#444746] text-xs flex-wrap max-w-full"
+      >
         <button
           type="button"
-          onClick={onOpenFindReplace}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={onOpenCommandSearch}
           className="flex items-center gap-1.5 bg-white hover:bg-gray-50 border border-gray-200/80 rounded-full px-2.5 py-1 text-xs text-[#444746] shadow-xs cursor-pointer mr-1"
-          title="Buscar en los menús (Ctrl+F)"
+          title="Buscar en los menús (Alt+/)"
         >
           <Search size={14} className="text-[#444746]" />
           <span className="font-medium text-[11px]">Menús</span>
         </button>
 
-        {/* 2. Acciones rápidas: Deshacer, Rehacer, Imprimir, Ortografía, Copiar formato */}
-        <button
-          type="button"
-          onClick={() => onExecuteCommand("undo")}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Deshacer (Ctrl+Z)"
-        >
+        <ToolButton title="Deshacer (Ctrl+Z)" onClick={onUndo} disabled={readOnly}>
           <Undo2 size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onExecuteCommand("redo")}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Rehacer (Ctrl+Y)"
-        >
+        </ToolButton>
+        <ToolButton title="Rehacer (Ctrl+Y)" onClick={onRedo} disabled={readOnly}>
           <Redo2 size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={onPrint}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Imprimir (Ctrl+P)"
-        >
+        </ToolButton>
+        <ToolButton title="Imprimir (Ctrl+P)" onClick={onPrint}>
           <Printer size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => alert("Comprobación ortográfica: No se detectaron errores ortográficos.")}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Ortografía y gramática"
+        </ToolButton>
+        <ToolButton
+          title={spellcheck ? "Desactivar el corrector ortográfico" : "Activar el corrector ortográfico"}
+          onClick={onToggleSpellcheck}
+          active={spellcheck}
         >
-          <CheckCheck size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => alert("Copiar formato: selecciona texto para aplicar estilo.")}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Copiar formato"
+          <SpellCheck size={15} />
+        </ToolButton>
+        <ToolButton
+          title="Copiar formato: pulsa y después selecciona el texto de destino"
+          onClick={onTogglePainter}
+          active={painterActive}
+          disabled={readOnly}
         >
           <Paintbrush size={15} />
-        </button>
+        </ToolButton>
 
-        {/* 3. Selector de Zoom */}
+        {/* Zoom */}
         <div className="relative">
           <button
             type="button"
-            onClick={() => setZoomOpen(!zoomOpen)}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => toggle("zoom")}
             className="flex items-center gap-1 px-2 py-1 rounded-full hover:bg-gray-200/70 text-[#444746] text-xs font-medium cursor-pointer"
             title="Zoom"
           >
             <span>{zoom}%</span>
             <ChevronDown size={12} />
           </button>
-          {zoomOpen && (
-            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 min-w-[90px]">
+          {open === "zoom" && (
+            <div className={`${dropdownClass} min-w-[90px]`}>
               {[50, 75, 90, 100, 125, 150, 200].map((z) => (
                 <button
                   key={z}
                   type="button"
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     onZoomChange(z);
-                    setZoomOpen(false);
+                    setOpen(null);
                   }}
-                  className={`w-full text-left px-3 py-1 text-xs hover:bg-[#f0f4f9] flex items-center justify-between ${
-                    zoom === z ? "font-bold text-[#1a73e8]" : "text-[#444746]"
-                  }`}
+                  className={`${optionClass(zoom === z)} text-xs py-1`}
                 >
                   <span>{z}%</span>
                   {zoom === z && <Check size={12} />}
@@ -187,340 +276,399 @@ export const GoogleDocsToolbar: React.FC<GoogleDocsToolbarProps> = ({
           )}
         </div>
 
-        <div className="h-4 w-px bg-gray-300 mx-0.5" />
+        <Separator />
 
-        {/* 4. Estilos de texto (Texto normal, Título 1, 2, 3) */}
+        {/* Estilo de párrafo */}
         <div className="relative">
           <button
             type="button"
-            onClick={() => setStyleOpen(!styleOpen)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:bg-gray-200/70 text-[#444746] text-xs font-medium cursor-pointer max-w-[120px] truncate"
-            title="Estilos de párrafo"
+            disabled={readOnly}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => toggle("style")}
+            className="flex items-center justify-between gap-1.5 px-2.5 py-1 rounded-full hover:bg-gray-200/70 text-[#444746] text-xs font-medium cursor-pointer w-[112px] disabled:opacity-35"
+            title="Estilo de párrafo"
           >
-            <span className="truncate">{styleName}</span>
-            <ChevronDown size={12} />
+            <span className="truncate">{blockLabel}</span>
+            <ChevronDown size={12} className="shrink-0" />
           </button>
-          {styleOpen && (
-            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 min-w-[160px]">
-              {[
-                { tag: "p", label: "Texto normal" },
-                { tag: "h1", label: "Título 1" },
-                { tag: "h2", label: "Título 2" },
-                { tag: "h3", label: "Título 3" },
-              ].map((st) => (
+          {open === "style" && (
+            <div className={`${dropdownClass} min-w-[190px]`}>
+              {BLOCK_STYLES.map((style) => (
                 <button
-                  key={st.tag}
+                  key={style.tag}
                   type="button"
-                  onClick={() => handleStyleSelect(st.tag, st.label)}
-                  className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[#f0f4f9] flex items-center justify-between ${
-                    styleName === st.label ? "font-bold text-[#1a73e8]" : "text-[#444746]"
-                  }`}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => run("formatBlock", `<${style.tag}>`)}
+                  className={optionClass(format.block === style.tag)}
                 >
-                  <span>{st.label}</span>
-                  {styleName === st.label && <Check size={12} />}
+                  <span className={style.className}>{style.label}</span>
+                  {format.block === style.tag && <Check size={12} />}
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        {/* 5. Selector de Fuente (Arial por defecto de Google Docs) */}
+        {/* Fuente */}
         <div className="relative">
           <button
             type="button"
-            onClick={() => setFontOpen(!fontOpen)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:bg-gray-200/70 text-[#444746] text-xs font-medium cursor-pointer max-w-[110px] truncate"
+            disabled={readOnly}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => toggle("font")}
+            className="flex items-center justify-between gap-1.5 px-2.5 py-1 rounded-full hover:bg-gray-200/70 text-[#444746] text-xs font-medium cursor-pointer w-[104px] disabled:opacity-35"
             title="Fuente"
           >
-            <span className="truncate">{fontFamily}</span>
-            <ChevronDown size={12} />
+            <span className="truncate">{format.fontFamily || "Arial"}</span>
+            <ChevronDown size={12} className="shrink-0" />
           </button>
-          {fontOpen && (
-            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 min-w-[170px]">
-              {["Arial", "Roboto", "Times New Roman", "Georgia", "Courier New", "Hanken Grotesk"].map((f) => (
+          {open === "font" && (
+            <div className={`${dropdownClass} min-w-[180px] max-h-72 overflow-y-auto`}>
+              {FONTS.map((font) => (
                 <button
-                  key={f}
+                  key={font}
                   type="button"
-                  onClick={() => handleFontSelect(f)}
-                  style={{ fontFamily: f }}
-                  className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[#f0f4f9] flex items-center justify-between ${
-                    fontFamily === f ? "font-bold text-[#1a73e8]" : "text-[#444746]"
-                  }`}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => run("fontName", font)}
+                  style={{ fontFamily: font }}
+                  className={`${optionClass(format.fontFamily === font)} text-xs`}
                 >
-                  <span>{f}</span>
-                  {fontFamily === f && <Check size={12} />}
+                  <span>{font}</span>
+                  {format.fontFamily === font && <Check size={12} />}
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        <div className="h-4 w-px bg-gray-300 mx-0.5" />
+        <Separator />
 
-        {/* 6. Tamaño de fuente: [-] 11 [+] */}
-        <div className="flex items-center bg-transparent rounded-full px-1">
-          <button
-            type="button"
-            onClick={() => handleFontSizeChange(-1)}
-            className="p-1 rounded-full hover:bg-gray-200/70 text-[#444746]"
+        {/* Tamaño de fuente */}
+        <div className="flex items-center relative">
+          <ToolButton
             title="Reducir tamaño de fuente"
+            disabled={readOnly}
+            onClick={() => setFontSize(format.fontSize - 1)}
+            className="!p-1"
           >
             <Minus size={12} />
-          </button>
-          <span className="w-6 text-center text-xs font-medium text-[#1f1f1f]">
-            {fontSize}
-          </span>
-          <button
-            type="button"
-            onClick={() => handleFontSizeChange(1)}
-            className="p-1 rounded-full hover:bg-gray-200/70 text-[#444746]"
+          </ToolButton>
+          <input
+            type="text"
+            inputMode="decimal"
+            disabled={readOnly}
+            title="Tamaño de fuente"
+            value={sizeDraft ?? String(format.fontSize)}
+            onFocus={() => setOpen("size")}
+            onChange={(e) => setSizeDraft(e.target.value.replace(/[^\d.,]/g, ""))}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                const value = Number((sizeDraft ?? "").replace(",", "."));
+                if (value > 0) setFontSize(value);
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+            onBlur={() => setSizeDraft(null)}
+            className="w-8 text-center text-xs font-medium text-[#1f1f1f] bg-transparent border border-[#c4c7c5] rounded px-0.5 py-0.5 outline-none focus:border-[#0b57d0] disabled:opacity-35"
+          />
+          <ToolButton
             title="Aumentar tamaño de fuente"
+            disabled={readOnly}
+            onClick={() => setFontSize(format.fontSize + 1)}
+            className="!p-1"
           >
             <Plus size={12} />
-          </button>
+          </ToolButton>
+          {open === "size" && (
+            <div className={`${dropdownClass} left-5 min-w-[56px] max-h-64 overflow-y-auto`}>
+              {FONT_SIZES.map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => setFontSize(size)}
+                  className={`${optionClass(format.fontSize === size)} text-xs py-1 justify-center`}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        <div className="h-4 w-px bg-gray-300 mx-0.5" />
+        <Separator />
 
-        {/* 7. Formato: Negrita, Cursiva, Subrayado, Color de texto, Resaltado */}
-        <button
-          type="button"
-          onClick={() => onExecuteCommand("bold")}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Negrita (Ctrl+B)"
-        >
+        <ToolButton title="Negrita (Ctrl+B)" onClick={() => run("bold")} active={format.bold} disabled={readOnly}>
           <Bold size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onExecuteCommand("italic")}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Cursiva (Ctrl+I)"
-        >
+        </ToolButton>
+        <ToolButton title="Cursiva (Ctrl+I)" onClick={() => run("italic")} active={format.italic} disabled={readOnly}>
           <Italic size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onExecuteCommand("underline")}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Subrayado (Ctrl+U)"
-        >
+        </ToolButton>
+        <ToolButton title="Subrayado (Ctrl+U)" onClick={() => run("underline")} active={format.underline} disabled={readOnly}>
           <Underline size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            const color = window.prompt("Introduce un color hex (ej: #1a73e8):", "#1a73e8");
-            if (color) onExecuteCommand("foreColor", color);
-          }}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors flex flex-col items-center"
-          title="Color de texto"
+        </ToolButton>
+        <ToolButton
+          title="Tachado"
+          onClick={() => run("strikeThrough")}
+          active={format.strikethrough}
+          disabled={readOnly}
         >
-          <span className="font-bold text-xs leading-none">A</span>
-          <span className="w-3 h-0.5 bg-[#1f1f1f] rounded-full mt-0.5" />
-        </button>
+          <Strikethrough size={15} />
+        </ToolButton>
 
-        <button
-          type="button"
-          onClick={() => onExecuteCommand("hiliteColor", "#fff59d")}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Color de resaltado"
-        >
-          <Highlighter size={15} />
-        </button>
-
-        <div className="h-4 w-px bg-gray-300 mx-0.5" />
-
-        {/* 8. Enlace, Comentario, Imagen */}
-        <button
-          type="button"
-          onClick={onInsertLink}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Insertar enlace (Ctrl+K)"
-        >
-          <Link size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => alert("Comentario añadido a la selección.")}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Añadir comentario"
-        >
-          <MessageSquarePlus size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={onInsertImage}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Insertar imagen"
-        >
-          <ImageIcon size={15} />
-        </button>
-
-        <div className="h-4 w-px bg-gray-300 mx-0.5" />
-
-        {/* 9. Alineación de párrafo */}
+        {/* Color de texto */}
         <div className="relative">
-          <button
-            type="button"
-            onClick={() => setAlignOpen(!alignOpen)}
-            className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors flex items-center gap-0.5"
-            title="Alinear"
-          >
-            <AlignLeft size={15} />
-            <ChevronDown size={11} />
-          </button>
-          {alignOpen && (
-            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-1 z-50 flex items-center gap-1">
+          <ToolButton title="Color del texto" onClick={() => toggle("color")} disabled={readOnly}>
+            <span className="flex flex-col items-center w-[15px]">
+              <span className="font-bold text-xs leading-none">A</span>
+              <span className="w-3.5 h-[3px] rounded-full mt-0.5" style={{ backgroundColor: format.textColor }} />
+            </span>
+          </ToolButton>
+          {open === "color" && (
+            <div className={`${dropdownClass} p-2 w-[196px]`}>
+              <div className="grid grid-cols-8 gap-1">
+                {TEXT_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    title={color}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => run("foreColor", color)}
+                    style={{ backgroundColor: color }}
+                    className="w-5 h-5 rounded-full border border-black/10 hover:scale-110 transition-transform"
+                  />
+                ))}
+              </div>
+              <label className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-200 text-[11px] text-[#444746] cursor-pointer">
+                <input
+                  type="color"
+                  defaultValue={format.textColor.startsWith("#") ? format.textColor : "#000000"}
+                  onChange={(e) => exec("foreColor", e.target.value)}
+                  className="w-6 h-6 p-0 border border-gray-300 rounded cursor-pointer"
+                />
+                <span>Color personalizado</span>
+              </label>
+            </div>
+          )}
+        </div>
+
+        {/* Resaltado */}
+        <div className="relative">
+          <ToolButton title="Color de resaltado" onClick={() => toggle("highlight")} disabled={readOnly}>
+            <span className="flex flex-col items-center w-[15px]">
+              <Highlighter size={13} />
+              <span className="w-3.5 h-[3px] rounded-full mt-px" style={{ backgroundColor: lastHighlight }} />
+            </span>
+          </ToolButton>
+          {open === "highlight" && (
+            <div className={`${dropdownClass} p-2 w-[196px]`}>
+              <div className="grid grid-cols-8 gap-1">
+                {HIGHLIGHT_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    title={color}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setLastHighlight(color);
+                      run("hiliteColor", color);
+                    }}
+                    style={{ backgroundColor: color }}
+                    className="w-5 h-5 rounded-full border border-black/10 hover:scale-110 transition-transform"
+                  />
+                ))}
+              </div>
               <button
                 type="button"
-                onClick={() => {
-                  onExecuteCommand("justifyLeft");
-                  setAlignOpen(false);
-                }}
-                className="p-1.5 rounded hover:bg-gray-100"
-                title="Alinear a la izquierda"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => run("hiliteColor", "transparent")}
+                className="w-full mt-2 pt-2 border-t border-gray-200 text-[11px] text-left text-[#444746] hover:text-[#0b57d0]"
               >
-                <AlignLeft size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onExecuteCommand("justifyCenter");
-                  setAlignOpen(false);
-                }}
-                className="p-1.5 rounded hover:bg-gray-100"
-                title="Centrar"
-              >
-                <AlignCenter size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onExecuteCommand("justifyRight");
-                  setAlignOpen(false);
-                }}
-                className="p-1.5 rounded hover:bg-gray-100"
-                title="Alinear a la derecha"
-              >
-                <AlignRight size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onExecuteCommand("justifyFull");
-                  setAlignOpen(false);
-                }}
-                className="p-1.5 rounded hover:bg-gray-100"
-                title="Justificar"
-              >
-                <AlignJustify size={14} />
+                Sin resaltado
               </button>
             </div>
           )}
         </div>
 
-        {/* 10. Interlineado */}
+        <Separator />
+
+        <ToolButton title="Insertar enlace (Ctrl+K)" onClick={onInsertLink} disabled={readOnly}>
+          <Link size={15} />
+        </ToolButton>
+        <ToolButton title="Añadir comentario a la selección" onClick={onAddComment} disabled={readOnly}>
+          <MessageSquarePlus size={15} />
+        </ToolButton>
+        <ToolButton title="Insertar imagen" onClick={onInsertImage} disabled={readOnly}>
+          <ImageIcon size={15} />
+        </ToolButton>
+        <ToolButton title="Insertar tabla" onClick={onInsertTable} disabled={readOnly}>
+          <Table size={15} />
+        </ToolButton>
+
+        <Separator />
+
+        {/* Alineación */}
         <div className="relative">
           <button
             type="button"
-            onClick={() => setSpacingOpen(!spacingOpen)}
-            className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors flex items-center gap-0.5"
-            title="Interlineado y espaciado entre párrafos"
+            disabled={readOnly}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => toggle("align")}
+            className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors flex items-center gap-0.5 disabled:opacity-35"
+            title="Alinear"
+          >
+            <AlignIcon size={15} />
+            <ChevronDown size={11} />
+          </button>
+          {open === "align" && (
+            <div className={`${dropdownClass} !p-1 flex items-center gap-1`}>
+              {(
+                [
+                  ["justifyLeft", "left", "Alinear a la izquierda", AlignLeft],
+                  ["justifyCenter", "center", "Centrar", AlignCenter],
+                  ["justifyRight", "right", "Alinear a la derecha", AlignRight],
+                  ["justifyFull", "justify", "Justificar", AlignJustify],
+                ] as const
+              ).map(([command, value, title, Icon]) => (
+                <ToolButton
+                  key={command}
+                  title={title}
+                  active={format.align === value}
+                  onClick={() => run(command)}
+                  className="!rounded"
+                >
+                  <Icon size={14} />
+                </ToolButton>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Interlineado */}
+        <div className="relative">
+          <button
+            type="button"
+            disabled={readOnly}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => toggle("spacing")}
+            className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors flex items-center gap-0.5 disabled:opacity-35"
+            title="Interlineado del documento"
           >
             <span className="text-[11px] font-mono font-medium">{lineSpacing}</span>
             <ChevronDown size={11} />
           </button>
-          {spacingOpen && (
-            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 min-w-[120px]">
-              {["1.0", "1.15", "1.5", "2.0"].map((sp) => (
+          {open === "spacing" && (
+            <div className={`${dropdownClass} min-w-[120px]`}>
+              {[
+                ["1.0", "Sencillo"],
+                ["1.15", "1,15"],
+                ["1.5", "1,5"],
+                ["2.0", "Doble"],
+              ].map(([value, label]) => (
                 <button
-                  key={sp}
+                  key={value}
                   type="button"
-                  onClick={() => handleSpacingSelect(sp)}
-                  className={`w-full text-left px-3 py-1 text-xs hover:bg-[#f0f4f9] flex items-center justify-between ${
-                    lineSpacing === sp ? "font-bold text-[#1a73e8]" : "text-[#444746]"
-                  }`}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    onSetLineSpacing(value);
+                    setOpen(null);
+                  }}
+                  className={`${optionClass(lineSpacing === value)} text-xs py-1`}
                 >
-                  <span>{sp}</span>
-                  {lineSpacing === sp && <Check size={12} />}
+                  <span>{label}</span>
+                  {lineSpacing === value && <Check size={12} />}
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        {/* 11. Listas y Sangrías */}
-        <button
-          type="button"
-          onClick={() => onExecuteCommand("insertUnorderedList")}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
+        <ToolButton
           title="Lista con viñetas"
+          onClick={() => run("insertUnorderedList")}
+          active={format.unorderedList}
+          disabled={readOnly}
         >
           <List size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onExecuteCommand("insertOrderedList")}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
+        </ToolButton>
+        <ToolButton
           title="Lista numerada"
+          onClick={() => run("insertOrderedList")}
+          active={format.orderedList}
+          disabled={readOnly}
         >
           <ListOrdered size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onExecuteCommand("outdent")}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Reducir sangría"
-        >
+        </ToolButton>
+        <ToolButton title="Reducir sangría" onClick={() => run("outdent")} disabled={readOnly}>
           <IndentDecrease size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onExecuteCommand("indent")}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Aumentar sangría"
-        >
+        </ToolButton>
+        <ToolButton title="Aumentar sangría" onClick={() => run("indent")} disabled={readOnly}>
           <IndentIncrease size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onExecuteCommand("removeFormat")}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
+        </ToolButton>
+        <ToolButton
           title="Borrar formato"
+          disabled={readOnly}
+          onClick={() => {
+            run("removeFormat");
+            exec("formatBlock", "<p>");
+          }}
         >
           <RemoveFormatting size={15} />
-        </button>
+        </ToolButton>
       </div>
 
-      {/* Lado derecho de la barra: Modo "Edición" + Ocultar barra */}
-      <div className="flex items-center gap-1 shrink-0 ml-2">
+      {/* Modo de edición y vista compacta */}
+      <div className="flex items-center gap-1 shrink-0 ml-2 relative">
         <button
           type="button"
+          onClick={() => setOpen((current) => (current === "mode" ? null : "mode"))}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-[#edf2fa] text-[#444746] font-medium text-xs transition-colors"
-          title="Modo de edición"
+          title="Modo del documento"
         >
-          <Pencil size={14} className="text-[#1a73e8]" />
-          <span>{mode}</span>
+          {readOnly ? (
+            <Eye size={14} className="text-[#1a73e8]" />
+          ) : (
+            <Pencil size={14} className="text-[#1a73e8]" />
+          )}
+          <span>{readOnly ? "Lectura" : "Edición"}</span>
           <ChevronDown size={12} />
         </button>
+        {open === "mode" && (
+          <div className="absolute right-8 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 min-w-[230px]">
+            {[
+              { value: false, label: "Edición", hint: "Modificar el documento", Icon: Pencil },
+              { value: true, label: "Lectura", hint: "Ver sin riesgo de cambios", Icon: Eye },
+            ].map(({ value, label, hint, Icon }) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => {
+                  onSetReadOnly(value);
+                  setOpen(null);
+                }}
+                className={`${optionClass(readOnly === value)} text-xs`}
+              >
+                <span className="flex items-center gap-2">
+                  <Icon size={14} />
+                  <span className="flex flex-col">
+                    <span className="font-medium">{label}</span>
+                    <span className="text-[10px] text-[#747775]">{hint}</span>
+                  </span>
+                </span>
+                {readOnly === value && <Check size={12} />}
+              </button>
+            ))}
+          </div>
+        )}
 
         <button
           type="button"
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={onToggleCompact}
           className="p-1.5 rounded-full hover:bg-gray-100 text-[#444746] transition-colors"
-          title="Ocultar los menús"
+          title={compact ? "Mostrar la regla y el esquema" : "Vista compacta: ocultar la regla y el esquema"}
         >
-          <ChevronUp size={15} />
+          {compact ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
         </button>
       </div>
     </div>

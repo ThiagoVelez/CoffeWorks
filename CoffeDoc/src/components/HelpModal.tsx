@@ -10,21 +10,29 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   const shortcuts = [
-    { key: "Ctrl + S", action: "Guardar documento en la bóveda" },
+    { key: "Ctrl + N", action: "Nuevo documento" },
+    { key: "Ctrl + O", action: "Abrir un archivo" },
+    { key: "Ctrl + S", action: "Guardar el documento" },
+    { key: "Ctrl + Mayús + S", action: "Guardar como…" },
     { key: "Ctrl + P", action: "Imprimir / Guardar como PDF" },
-    { key: "Ctrl + Z", action: "Deshacer cambio" },
-    { key: "Ctrl + Y", action: "Rehacer cambio" },
-    { key: "Ctrl + F", action: "Buscar y reemplazar texto" },
-    { key: "Ctrl + B", action: "Aplicar negrita a selección" },
-    { key: "Ctrl + I", action: "Aplicar cursiva a selección" },
-    { key: "Ctrl + U", action: "Subrayar selección" },
-    { key: "Ctrl + A", action: "Seleccionar todo el texto" },
-    { key: "Escape", action: "Salir de Modo Zen / Cerrar modales" },
+    { key: "Ctrl + Z", action: "Deshacer" },
+    { key: "Ctrl + Y", action: "Rehacer" },
+    { key: "Ctrl + F", action: "Buscar y reemplazar" },
+    { key: "Ctrl + K", action: "Insertar o editar un enlace" },
+    { key: "Ctrl + B / I / U", action: "Negrita, cursiva y subrayado" },
+    { key: "Ctrl + Alt + 0…3", action: "Texto normal y títulos 1 a 3" },
+    { key: "Ctrl + Mayús + V", action: "Pegar sin formato" },
+    { key: "Tab / Mayús + Tab", action: "Sangría de listas y moverse entre celdas" },
+    { key: "Ctrl + clic", action: "Abrir un enlace del documento" },
+    { key: "Alt + /", action: "Buscar en los menús" },
+    { key: "F11", action: "Pantalla completa (modo sin distracciones)" },
+    { key: "Escape", action: "Cerrar paneles y salir de pantalla completa" },
   ];
+
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 select-none"
+      className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 select-none print:hidden"
       onClick={onClose}
     >
       <div
