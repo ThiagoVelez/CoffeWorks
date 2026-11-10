@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Search,
   Undo2,
@@ -11,14 +11,17 @@ import {
   Plus,
   Bold,
   Italic,
+  Underline,
   Strikethrough,
   PaintBucket,
-  Grid,
-  Merge,
+  Grid3x3,
+  TableCellsMerge,
   AlignLeft,
   AlignCenter,
   AlignRight,
+  AlignVerticalJustifyStart,
   AlignVerticalJustifyCenter,
+  AlignVerticalJustifyEnd,
   WrapText,
   Link,
   MessageSquarePlus,
@@ -27,162 +30,247 @@ import {
   Sigma,
   Check,
 } from "lucide-react";
-import type { CellFormat } from "../types";
+import type { CellData, CellFormat } from "../types";
+
+export type BorderPreset = "all" | "outer" | "bottom" | "none";
 
 interface GoogleSheetsToolbarProps {
+  /** Celda activa: su formato se refleja en los botones. */
+  active: CellData | undefined;
+  readOnly: boolean;
   onUndo: () => void;
   onRedo: () => void;
   onPrint: () => void;
-  onFormatPainter: () => void;
-  isFormatPainterActive: boolean;
+  painterActive: boolean;
+  onTogglePainter: () => void;
   zoom: number;
-  onZoomChange: (z: number) => void;
-  onSetFormat: (format: CellFormat) => void;
-  onSetFontFamily: (font: string) => void;
-  onSetFontSize: (size: number) => void;
-  onToggleBold: () => void;
-  onToggleItalic: () => void;
-  onToggleUnderline: () => void;
-  onSetTextColor: (color: string) => void;
-  onSetBgColor: (color: string) => void;
-  onToggleBorders: () => void;
-  onMergeAndCenter: () => void;
-  onSetAlign: (align: "left" | "center" | "right") => void;
-  onToggleWrapText: () => void;
+  onZoomChange: (zoom: number) => void;
+  onStyle: (patch: Partial<CellData>) => void;
+  onToggle: (key: "bold" | "italic" | "underline" | "strike" | "wrapText") => void;
+  onDecimals: (delta: number) => void;
+  onBorders: (preset: BorderPreset) => void;
+  onMerge: () => void;
+  isMerged: boolean;
+  onInsertLink: () => void;
+  onInsertNote: () => void;
   onInsertChart: () => void;
   onToggleFilter: () => void;
   isFilterActive: boolean;
-  onInsertAutoSum: () => void;
-  onAdjustDecimals: (delta: number) => void;
+  onInsertFunction: (name: string) => void;
+  onOpenCommandSearch: () => void;
+  showFormulaBar: boolean;
+  onToggleFormulaBar: () => void;
 }
 
+const FONTS = ["Arial", "Calibri", "Cambria", "Georgia", "Times New Roman", "Verdana", "Courier New", "Hanken Grotesk"];
+const FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 36];
+
+const FORMATS: Array<{ format: CellFormat; label: string; sample: string }> = [
+  { format: "general", label: "Automático", sample: "" },
+  { format: "text", label: "Texto sin formato", sample: "" },
+  { format: "number", label: "Número", sample: "1.000,12" },
+  { format: "percent", label: "Porcentaje", sample: "10,12%" },
+  { format: "currency", label: "Moneda", sample: "$ 1.000" },
+  { format: "date", label: "Fecha", sample: "26/09/2026" },
+];
+
+const CURRENCIES = [
+  { code: "COP", label: "Peso colombiano ($)" },
+  { code: "USD", label: "Dólar (US$)" },
+  { code: "EUR", label: "Euro (€)" },
+  { code: "MXN", label: "Peso mexicano" },
+];
+
+export const PALETTE = [
+  "#000000", "#434343", "#666666", "#999999", "#cccccc", "#efefef", "#f3f3f3", "#ffffff",
+  "#980000", "#ff0000", "#ff9900", "#ffff00", "#00ff00", "#00ffff", "#4a86e8", "#0000ff",
+  "#9900ff", "#ff00ff", "#e6b8af", "#f4cccc", "#fce5cd", "#fff2cc", "#d9ead3", "#d0e0e3",
+  "#c9daf8", "#cfe2f3", "#d9d2e9", "#ead1dc", "#cc4125", "#e06666", "#f6b26b", "#ffd966",
+  "#93c47d", "#76a5af", "#6d9eeb", "#6fa8dc", "#8e7cc3", "#c27ba0", "#107c41", "#0e6b37",
+  "#dff6dd", "#1a73e8", "#d3e3fd", "#b3261e", "#fce8e6", "#f9a825", "#fff8e1", "#6f4e37",
+];
+
+type DropdownId = "zoom" | "format" | "font" | "size" | "color" | "fill" | "borders" | "align" | "valign" | "functions";
+
+const ToolButton: React.FC<{
+  title: string;
+  onClick: () => void;
+  active?: boolean;
+  disabled?: boolean;
+  children: React.ReactNode;
+}> = ({ title, onClick, active, disabled, children }) => (
+  <button
+    type="button"
+    title={title}
+    disabled={disabled}
+    onMouseDown={(e) => e.preventDefault()}
+    onClick={onClick}
+    className={`p-1.5 rounded-full transition-colors disabled:opacity-35 disabled:hover:bg-transparent ${
+      active ? "bg-[#c2e7ff] text-[#001d35]" : "text-[#444746] hover:bg-gray-200/70"
+    }`}
+  >
+    {children}
+  </button>
+);
+
+const Separator = () => <div className="h-4 w-px bg-gray-300 mx-0.5 shrink-0" />;
+
 export const GoogleSheetsToolbar: React.FC<GoogleSheetsToolbarProps> = ({
+  active,
+  readOnly,
   onUndo,
   onRedo,
   onPrint,
-  onFormatPainter,
-  isFormatPainterActive,
+  painterActive,
+  onTogglePainter,
   zoom,
   onZoomChange,
-  onSetFormat,
-  onSetFontFamily,
-  onSetFontSize,
-  onToggleBold,
-  onToggleItalic,
-  onSetTextColor,
-  onSetBgColor,
-  onToggleBorders,
-  onMergeAndCenter,
-  onSetAlign,
-  onToggleWrapText,
+  onStyle,
+  onToggle,
+  onDecimals,
+  onBorders,
+  onMerge,
+  isMerged,
+  onInsertLink,
+  onInsertNote,
   onInsertChart,
   onToggleFilter,
   isFilterActive,
-  onInsertAutoSum,
-  onAdjustDecimals,
+  onInsertFunction,
+  onOpenCommandSearch,
+  showFormulaBar,
+  onToggleFormulaBar,
 }) => {
-  const [fontSize, setFontSize] = useState<number>(10);
-  const [fontFamily, setFontFamily] = useState<string>("Predet...");
+  const [open, setOpen] = useState<DropdownId | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
-  // Estados de dropdowns
-  const [zoomOpen, setZoomOpen] = useState(false);
-  const [fontOpen, setFontOpen] = useState(false);
-  const [formatOpen, setFormatOpen] = useState(false);
-  const [alignOpen, setAlignOpen] = useState(false);
-  const [fnOpen, setFnOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const handleMouseDown = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(null);
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(null);
+    };
+    document.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open]);
 
-  const handleFontSizeChange = (delta: number) => {
-    const next = Math.max(6, Math.min(48, fontSize + delta));
-    setFontSize(next);
-    onSetFontSize(next);
+  const toggle = (id: DropdownId) => setOpen((current) => (current === id ? null : id));
+  const apply = (patch: Partial<CellData>) => {
+    setOpen(null);
+    onStyle(patch);
   };
 
-  const handleFontSelect = (f: string) => {
-    setFontFamily(f);
-    setFontOpen(false);
-    onSetFontFamily(f === "Predet..." ? "Arial" : f);
-  };
+  const fontSize = active?.fontSize || 10;
+  const fontFamily = active?.fontFamily || "Predeterminada";
+  const format = active?.format || "general";
+  const align = active?.align;
+  const AlignIcon = align === "center" ? AlignCenter : align === "right" ? AlignRight : AlignLeft;
+  const VAlignIcon =
+    active?.valign === "top"
+      ? AlignVerticalJustifyStart
+      : active?.valign === "middle"
+      ? AlignVerticalJustifyCenter
+      : AlignVerticalJustifyEnd;
+
+  const dropdownClass =
+    "absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50";
+  const optionClass = (selected: boolean) =>
+    `w-full text-left px-3 py-1.5 text-xs hover:bg-[#f0f4f9] flex items-center justify-between gap-4 ${
+      selected ? "text-[#0F9D58] font-semibold" : "text-[#444746]"
+    }`;
+
+  const colorGrid = (onPick: (color: string) => void, clearLabel: string, onClear: () => void) => (
+    <div className={`${dropdownClass} p-2 w-[196px]`}>
+      <div className="grid grid-cols-8 gap-1">
+        {PALETTE.map((color) => (
+          <button
+            key={color}
+            type="button"
+            title={color}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => onPick(color)}
+            style={{ backgroundColor: color }}
+            className="w-5 h-5 rounded-full border border-black/10 hover:scale-110 transition-transform"
+          />
+        ))}
+      </div>
+      <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200 text-[11px] text-[#444746]">
+        <button type="button" onClick={onClear} className="hover:text-[#0b57d0]">
+          {clearLabel}
+        </button>
+        <label className="flex items-center gap-1.5 cursor-pointer">
+          <span>Otro</span>
+          <input
+            type="color"
+            onChange={(e) => onPick(e.target.value)}
+            className="w-6 h-6 p-0 border border-gray-300 rounded cursor-pointer"
+          />
+        </label>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="w-full px-4 py-1 flex items-center justify-between select-none bg-white">
-      {/* Contenedor tipo píldora flotante de Google Sheets */}
+    <div
+      ref={rootRef}
+      className="w-full px-4 py-1 flex items-center justify-between select-none bg-white print:hidden"
+    >
       <div className="bg-[#edf2fa] rounded-full px-3 py-1 flex items-center gap-1 shadow-xs text-[#444746] text-xs flex-wrap max-w-full">
-        {/* 1. Botón de búsqueda de menús (Menús) */}
         <button
           type="button"
-          onClick={() => {}}
+          onClick={onOpenCommandSearch}
           className="flex items-center gap-1.5 bg-white hover:bg-gray-50 border border-gray-200/80 rounded-full px-2.5 py-1 text-xs text-[#444746] shadow-xs cursor-pointer mr-1"
           title="Buscar en los menús (Alt+/)"
         >
-          <Search size={14} className="text-[#444746]" />
+          <Search size={14} />
           <span className="font-medium text-[11px]">Menús</span>
         </button>
 
-        {/* 2. Acciones de historial e impresión */}
-        <button
-          type="button"
-          onClick={onUndo}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Deshacer (Ctrl+Z)"
-        >
+        <ToolButton title="Deshacer (Ctrl+Z)" onClick={onUndo} disabled={readOnly}>
           <Undo2 size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={onRedo}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Rehacer (Ctrl+Y)"
-        >
+        </ToolButton>
+        <ToolButton title="Rehacer (Ctrl+Y)" onClick={onRedo} disabled={readOnly}>
           <Redo2 size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={onPrint}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Imprimir (Ctrl+P)"
-        >
+        </ToolButton>
+        <ToolButton title="Imprimir (Ctrl+P)" onClick={onPrint}>
           <Printer size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={onFormatPainter}
-          className={`p-1.5 rounded-full transition-colors ${
-            isFormatPainterActive
-              ? "bg-[#c2e7ff] text-[#001d35]"
-              : "hover:bg-gray-200/70 text-[#444746]"
-          }`}
-          title="Copiar formato"
+        </ToolButton>
+        <ToolButton
+          title="Copiar formato: pulsa y después selecciona las celdas de destino"
+          onClick={onTogglePainter}
+          active={painterActive}
+          disabled={readOnly}
         >
           <Paintbrush size={15} />
-        </button>
+        </ToolButton>
 
-        {/* 3. Selector de Zoom */}
         <div className="relative">
           <button
             type="button"
-            onClick={() => setZoomOpen(!zoomOpen)}
-            className="flex items-center gap-1 px-2 py-1 rounded-full hover:bg-gray-200/70 text-[#444746] text-xs font-medium cursor-pointer"
+            onClick={() => toggle("zoom")}
+            className="flex items-center gap-1 px-2 py-1 rounded-full hover:bg-gray-200/70 text-xs font-medium cursor-pointer"
             title="Zoom"
           >
             <span>{zoom}%</span>
             <ChevronDown size={12} />
           </button>
-          {zoomOpen && (
-            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 min-w-[90px]">
+          {open === "zoom" && (
+            <div className={`${dropdownClass} min-w-[90px]`}>
               {[50, 75, 90, 100, 125, 150, 200].map((z) => (
                 <button
                   key={z}
                   type="button"
                   onClick={() => {
                     onZoomChange(z);
-                    setZoomOpen(false);
+                    setOpen(null);
                   }}
-                  className={`w-full text-left px-3 py-1 text-xs hover:bg-[#f0f4f9] flex items-center justify-between ${
-                    zoom === z ? "font-bold text-[#0F9D58]" : "text-[#444746]"
-                  }`}
+                  className={optionClass(zoom === z)}
                 >
                   <span>{z}%</span>
                   {zoom === z && <Check size={12} />}
@@ -192,344 +280,313 @@ export const GoogleSheetsToolbar: React.FC<GoogleSheetsToolbarProps> = ({
           )}
         </div>
 
-        <div className="h-4 w-px bg-gray-300 mx-0.5" />
+        <Separator />
 
-        {/* 4. Formatos numéricos rápidos de Google Sheets: $, %, .0, .00, 123 */}
-        <button
-          type="button"
-          onClick={() => onSetFormat("currency")}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] font-bold text-xs"
-          title="Formatear como moneda ($)"
-        >
-          $
-        </button>
+        {/* Formatos numéricos */}
+        <ToolButton title="Formato de moneda" onClick={() => apply({ format: "currency" })} active={format === "currency"} disabled={readOnly}>
+          <span className="font-semibold text-[13px] leading-none w-[15px] inline-block">$</span>
+        </ToolButton>
+        <ToolButton title="Formato de porcentaje" onClick={() => apply({ format: "percent" })} active={format === "percent"} disabled={readOnly}>
+          <span className="font-semibold text-[13px] leading-none w-[15px] inline-block">%</span>
+        </ToolButton>
+        <ToolButton title="Quitar un decimal" onClick={() => onDecimals(-1)} disabled={readOnly}>
+          <span className="font-mono text-[11px] font-semibold leading-none">.0</span>
+        </ToolButton>
+        <ToolButton title="Añadir un decimal" onClick={() => onDecimals(1)} disabled={readOnly}>
+          <span className="font-mono text-[11px] font-semibold leading-none">.00</span>
+        </ToolButton>
 
-        <button
-          type="button"
-          onClick={() => onSetFormat("percent")}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] font-bold text-xs"
-          title="Formatear como porcentaje (%)"
-        >
-          %
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onAdjustDecimals(-1)}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] font-mono text-[11px] font-bold"
-          title="Reducir decimales (.0)"
-        >
-          .0
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onAdjustDecimals(1)}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] font-mono text-[11px] font-bold"
-          title="Aumentar decimales (.00)"
-        >
-          .00
-        </button>
-
-        {/* Más formatos (123) */}
         <div className="relative">
           <button
             type="button"
-            onClick={() => setFormatOpen(!formatOpen)}
-            className="flex items-center gap-0.5 px-1.5 py-1 rounded-full hover:bg-gray-200/70 text-[#444746] font-mono font-bold text-xs"
-            title="Más formatos (123)"
+            disabled={readOnly}
+            onClick={() => toggle("format")}
+            className="flex items-center gap-1 px-2 py-1 rounded-full hover:bg-gray-200/70 text-xs font-medium cursor-pointer disabled:opacity-35"
+            title="Más formatos"
           >
             <span>123</span>
-            <ChevronDown size={11} />
+            <ChevronDown size={12} />
           </button>
-          {formatOpen && (
-            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 min-w-[140px]">
-              {[
-                { id: "text", label: "Texto sin formato" },
-                { id: "number", label: "Número" },
-                { id: "currency", label: "Moneda ($)" },
-                { id: "percent", label: "Porcentaje (%)" },
-                { id: "date", label: "Fecha" },
-              ].map((f) => (
+          {open === "format" && (
+            <div className={`${dropdownClass} min-w-[230px]`}>
+              {FORMATS.map((item) => (
+                <button key={item.format} type="button" onClick={() => apply({ format: item.format })} className={optionClass(format === item.format)}>
+                  <span>{item.label}</span>
+                  <span className="font-mono text-[10px] text-[#747775]">{item.sample}</span>
+                </button>
+              ))}
+              <div className="h-px bg-gray-200 my-1" />
+              <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-[#747775] font-semibold">Moneda</div>
+              {CURRENCIES.map((currency) => (
                 <button
-                  key={f.id}
+                  key={currency.code}
                   type="button"
-                  onClick={() => {
-                    onSetFormat(f.id as CellFormat);
-                    setFormatOpen(false);
-                  }}
-                  className="w-full text-left px-3 py-1.5 text-xs hover:bg-[#f0f4f9] text-[#1f1f1f]"
+                  onClick={() => apply({ format: "currency", currency: currency.code })}
+                  className={optionClass(format === "currency" && (active?.currency || "COP") === currency.code)}
                 >
-                  {f.label}
+                  <span>{currency.label}</span>
+                  <span className="font-mono text-[10px] text-[#747775]">{currency.code}</span>
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        <div className="h-4 w-px bg-gray-300 mx-0.5" />
+        <Separator />
 
-        {/* 5. Selector de Fuente */}
+        {/* Fuente */}
         <div className="relative">
           <button
             type="button"
-            onClick={() => setFontOpen(!fontOpen)}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full hover:bg-gray-200/70 text-[#444746] text-xs font-medium cursor-pointer max-w-[90px] truncate"
+            disabled={readOnly}
+            onClick={() => toggle("font")}
+            className="flex items-center justify-between gap-1.5 px-2.5 py-1 rounded-full hover:bg-gray-200/70 text-xs font-medium cursor-pointer w-[96px] disabled:opacity-35"
             title="Fuente"
           >
             <span className="truncate">{fontFamily}</span>
-            <ChevronDown size={11} />
+            <ChevronDown size={12} className="shrink-0" />
           </button>
-          {fontOpen && (
-            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 min-w-[150px]">
-              {["Predet...", "Arial", "Roboto", "Georgia", "JetBrains Mono"].map((f) => (
+          {open === "font" && (
+            <div className={`${dropdownClass} min-w-[180px]`}>
+              <button type="button" onClick={() => apply({ fontFamily: undefined })} className={optionClass(!active?.fontFamily)}>
+                <span>Predeterminada</span>
+              </button>
+              {FONTS.map((font) => (
                 <button
-                  key={f}
+                  key={font}
                   type="button"
-                  onClick={() => handleFontSelect(f)}
-                  className="w-full text-left px-3 py-1.5 text-xs hover:bg-[#f0f4f9] text-[#1f1f1f]"
+                  onClick={() => apply({ fontFamily: font })}
+                  style={{ fontFamily: font }}
+                  className={optionClass(active?.fontFamily === font)}
                 >
-                  {f}
+                  <span>{font}</span>
+                  {active?.fontFamily === font && <Check size={12} />}
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        {/* 6. Tamaño de fuente: [-] 10 [+] */}
-        <div className="flex items-center bg-transparent rounded-full px-1">
-          <button
-            type="button"
-            onClick={() => handleFontSizeChange(-1)}
-            className="p-1 rounded-full hover:bg-gray-200/70 text-[#444746]"
-            title="Reducir tamaño"
-          >
+        <div className="flex items-center relative">
+          <ToolButton title="Reducir tamaño de fuente" disabled={readOnly} onClick={() => onStyle({ fontSize: Math.max(6, fontSize - 1) })}>
             <Minus size={12} />
-          </button>
-          <span className="w-6 text-center text-xs font-medium text-[#1f1f1f]">
+          </ToolButton>
+          <button
+            type="button"
+            disabled={readOnly}
+            title="Tamaño de fuente"
+            onClick={() => toggle("size")}
+            className="w-8 text-center text-xs font-medium text-[#1f1f1f] border border-[#c4c7c5] rounded py-0.5 hover:bg-white disabled:opacity-35"
+          >
             {fontSize}
-          </span>
-          <button
-            type="button"
-            onClick={() => handleFontSizeChange(1)}
-            className="p-1 rounded-full hover:bg-gray-200/70 text-[#444746]"
-            title="Aumentar tamaño"
-          >
+          </button>
+          <ToolButton title="Aumentar tamaño de fuente" disabled={readOnly} onClick={() => onStyle({ fontSize: Math.min(72, fontSize + 1) })}>
             <Plus size={12} />
-          </button>
-        </div>
-
-        <div className="h-4 w-px bg-gray-300 mx-0.5" />
-
-        {/* 7. Estilos de texto: B, I, S, Color texto, Color relleno */}
-        <button
-          type="button"
-          onClick={onToggleBold}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Negrita (Ctrl+B)"
-        >
-          <Bold size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={onToggleItalic}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Cursiva (Ctrl+I)"
-        >
-          <Italic size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {}}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Tachado"
-        >
-          <Strikethrough size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            const color = window.prompt("Color de texto (ej: #0f9d58 o #000000):", "#0f9d58");
-            if (color) onSetTextColor(color);
-          }}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors flex flex-col items-center"
-          title="Color de texto"
-        >
-          <span className="font-bold text-xs leading-none">A</span>
-          <span className="w-3 h-0.5 bg-[#1f1f1f] rounded-full mt-0.5" />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            const color = window.prompt("Color de relleno de celda (ej: #dff6dd o #fef3c7):", "#dff6dd");
-            if (color) onSetBgColor(color);
-          }}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Color de relleno"
-        >
-          <PaintBucket size={15} />
-        </button>
-
-        {/* 8. Bordes y Combinar celdas */}
-        <button
-          type="button"
-          onClick={onToggleBorders}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Bordes"
-        >
-          <Grid size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={onMergeAndCenter}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Combinar celdas"
-        >
-          <Merge size={15} />
-        </button>
-
-        <div className="h-4 w-px bg-gray-300 mx-0.5" />
-
-        {/* 9. Alineación horizontal y vertical */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setAlignOpen(!alignOpen)}
-            className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors flex items-center gap-0.5"
-            title="Alineación horizontal"
-          >
-            <AlignLeft size={15} />
-            <ChevronDown size={11} />
-          </button>
-          {alignOpen && (
-            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-1 z-50 flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => {
-                  onSetAlign("left");
-                  setAlignOpen(false);
-                }}
-                className="p-1.5 rounded hover:bg-gray-100"
-                title="Izquierda"
-              >
-                <AlignLeft size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onSetAlign("center");
-                  setAlignOpen(false);
-                }}
-                className="p-1.5 rounded hover:bg-gray-100"
-                title="Centro"
-              >
-                <AlignCenter size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onSetAlign("right");
-                  setAlignOpen(false);
-                }}
-                className="p-1.5 rounded hover:bg-gray-100"
-                title="Derecha"
-              >
-                <AlignRight size={14} />
-              </button>
+          </ToolButton>
+          {open === "size" && (
+            <div className={`${dropdownClass} left-6 min-w-[56px] max-h-64 overflow-y-auto`}>
+              {FONT_SIZES.map((size) => (
+                <button key={size} type="button" onClick={() => apply({ fontSize: size })} className={`${optionClass(fontSize === size)} justify-center`}>
+                  {size}
+                </button>
+              ))}
             </div>
           )}
         </div>
 
-        <button
-          type="button"
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Alineación vertical"
+        <Separator />
+
+        <ToolButton title="Negrita (Ctrl+B)" onClick={() => onToggle("bold")} active={Boolean(active?.bold)} disabled={readOnly}>
+          <Bold size={15} />
+        </ToolButton>
+        <ToolButton title="Cursiva (Ctrl+I)" onClick={() => onToggle("italic")} active={Boolean(active?.italic)} disabled={readOnly}>
+          <Italic size={15} />
+        </ToolButton>
+        <ToolButton title="Subrayado (Ctrl+U)" onClick={() => onToggle("underline")} active={Boolean(active?.underline)} disabled={readOnly}>
+          <Underline size={15} />
+        </ToolButton>
+        <ToolButton title="Tachado" onClick={() => onToggle("strike")} active={Boolean(active?.strike)} disabled={readOnly}>
+          <Strikethrough size={15} />
+        </ToolButton>
+
+        <div className="relative">
+          <ToolButton title="Color del texto" onClick={() => toggle("color")} disabled={readOnly}>
+            <span className="flex flex-col items-center w-[15px]">
+              <span className="font-bold text-xs leading-none">A</span>
+              <span className="w-3.5 h-[3px] rounded-full mt-0.5" style={{ backgroundColor: active?.color || "#1f1f1f" }} />
+            </span>
+          </ToolButton>
+          {open === "color" &&
+            colorGrid(
+              (color) => apply({ color }),
+              "Color automático",
+              () => apply({ color: undefined })
+            )}
+        </div>
+
+        <div className="relative">
+          <ToolButton title="Color de relleno" onClick={() => toggle("fill")} disabled={readOnly}>
+            <span className="flex flex-col items-center w-[15px]">
+              <PaintBucket size={13} />
+              <span
+                className="w-3.5 h-[3px] rounded-full mt-px border border-black/10"
+                style={{ backgroundColor: active?.bg || "#ffffff" }}
+              />
+            </span>
+          </ToolButton>
+          {open === "fill" &&
+            colorGrid(
+              (bg) => apply({ bg }),
+              "Sin relleno",
+              () => apply({ bg: undefined })
+            )}
+        </div>
+
+        <div className="relative">
+          <ToolButton title="Bordes" onClick={() => toggle("borders")} disabled={readOnly}>
+            <Grid3x3 size={15} />
+          </ToolButton>
+          {open === "borders" && (
+            <div className={`${dropdownClass} min-w-[170px]`}>
+              {(
+                [
+                  ["all", "Todos los bordes"],
+                  ["outer", "Borde exterior"],
+                  ["bottom", "Borde inferior"],
+                  ["none", "Sin bordes"],
+                ] as Array<[BorderPreset, string]>
+              ).map(([preset, label]) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => {
+                    setOpen(null);
+                    onBorders(preset);
+                  }}
+                  className={optionClass(false)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <ToolButton
+          title={isMerged ? "Separar celdas" : "Combinar celdas"}
+          onClick={onMerge}
+          active={isMerged}
+          disabled={readOnly}
         >
-          <AlignVerticalJustifyCenter size={15} />
-        </button>
+          <TableCellsMerge size={15} />
+        </ToolButton>
 
-        <button
-          type="button"
-          onClick={onToggleWrapText}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Ajuste de texto"
-        >
-          <WrapText size={15} />
-        </button>
+        <Separator />
 
-        <div className="h-4 w-px bg-gray-300 mx-0.5" />
-
-        {/* 10. Enlace, Comentario, Gráfico, Filtro, Funciones */}
-        <button
-          type="button"
-          onClick={() => {
-            const url = window.prompt("Introduce un enlace URL:");
-            if (url) alert(`Enlace ${url} vinculado a la celda.`);
-          }}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Insertar enlace (Ctrl+K)"
-        >
-          <Link size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => alert("Comentario añadido a la celda seleccionada.")}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Añadir comentario"
-        >
-          <MessageSquarePlus size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={onInsertChart}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Insertar gráfico"
-        >
-          <BarChart3 size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={onToggleFilter}
-          className={`p-1.5 rounded-full transition-colors ${
-            isFilterActive ? "bg-[#c2e7ff] text-[#001d35]" : "hover:bg-gray-200/70 text-[#444746]"
-          }`}
-          title="Crear un filtro"
-        >
-          <Filter size={15} />
-        </button>
-
-        {/* Funciones (Sigma Σ) */}
         <div className="relative">
           <button
             type="button"
-            onClick={() => setFnOpen(!fnOpen)}
-            className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors flex items-center gap-0.5 font-bold"
-            title="Funciones (Σ)"
+            disabled={readOnly}
+            onClick={() => toggle("align")}
+            className="p-1.5 rounded-full hover:bg-gray-200/70 transition-colors flex items-center gap-0.5 disabled:opacity-35"
+            title="Alineación horizontal"
+          >
+            <AlignIcon size={15} />
+            <ChevronDown size={11} />
+          </button>
+          {open === "align" && (
+            <div className={`${dropdownClass} !p-1 flex items-center gap-1`}>
+              {(
+                [
+                  ["left", "Izquierda", AlignLeft],
+                  ["center", "Centro", AlignCenter],
+                  ["right", "Derecha", AlignRight],
+                ] as const
+              ).map(([value, title, Icon]) => (
+                <ToolButton key={value} title={title} active={align === value} onClick={() => apply({ align: value })}>
+                  <Icon size={14} />
+                </ToolButton>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="relative">
+          <button
+            type="button"
+            disabled={readOnly}
+            onClick={() => toggle("valign")}
+            className="p-1.5 rounded-full hover:bg-gray-200/70 transition-colors flex items-center gap-0.5 disabled:opacity-35"
+            title="Alineación vertical"
+          >
+            <VAlignIcon size={15} />
+            <ChevronDown size={11} />
+          </button>
+          {open === "valign" && (
+            <div className={`${dropdownClass} !p-1 flex items-center gap-1`}>
+              {(
+                [
+                  ["top", "Arriba", AlignVerticalJustifyStart],
+                  ["middle", "Centro", AlignVerticalJustifyCenter],
+                  ["bottom", "Abajo", AlignVerticalJustifyEnd],
+                ] as const
+              ).map(([value, title, Icon]) => (
+                <ToolButton
+                  key={value}
+                  title={title}
+                  active={(active?.valign || "bottom") === value}
+                  onClick={() => apply({ valign: value })}
+                >
+                  <Icon size={14} />
+                </ToolButton>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <ToolButton title="Ajustar texto a la celda" onClick={() => onToggle("wrapText")} active={Boolean(active?.wrapText)} disabled={readOnly}>
+          <WrapText size={15} />
+        </ToolButton>
+
+        <Separator />
+
+        <ToolButton title="Insertar enlace (Ctrl+K)" onClick={onInsertLink} active={Boolean(active?.link)} disabled={readOnly}>
+          <Link size={15} />
+        </ToolButton>
+        <ToolButton title="Añadir o editar un comentario" onClick={onInsertNote} active={Boolean(active?.note)} disabled={readOnly}>
+          <MessageSquarePlus size={15} />
+        </ToolButton>
+        <ToolButton title="Insertar gráfico" onClick={onInsertChart} disabled={readOnly}>
+          <BarChart3 size={15} />
+        </ToolButton>
+        <ToolButton title={isFilterActive ? "Quitar el filtro" : "Crear un filtro"} onClick={onToggleFilter} active={isFilterActive}>
+          <Filter size={15} />
+        </ToolButton>
+
+        <div className="relative">
+          <button
+            type="button"
+            disabled={readOnly}
+            onClick={() => toggle("functions")}
+            className="p-1.5 rounded-full hover:bg-gray-200/70 transition-colors flex items-center gap-0.5 disabled:opacity-35"
+            title="Funciones"
           >
             <Sigma size={15} />
             <ChevronDown size={11} />
           </button>
-          {fnOpen && (
-            <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 min-w-[130px]">
-              {["SUMA", "PROMEDIO", "CONTAR", "MAX", "MIN"].map((fn) => (
+          {open === "functions" && (
+            <div className={`${dropdownClass} left-auto right-0 min-w-[150px]`}>
+              {["SUMA", "PROMEDIO", "CONTAR", "MAX", "MIN"].map((name) => (
                 <button
-                  key={fn}
+                  key={name}
                   type="button"
                   onClick={() => {
-                    onInsertAutoSum();
-                    setFnOpen(false);
+                    setOpen(null);
+                    onInsertFunction(name);
                   }}
-                  className="w-full text-left px-3 py-1.5 text-xs hover:bg-[#f0f4f9] text-[#1f1f1f] font-mono font-bold"
+                  className={optionClass(false)}
                 >
-                  ={fn}()
+                  <span className="font-mono">{name}</span>
                 </button>
               ))}
             </div>
@@ -537,13 +594,13 @@ export const GoogleSheetsToolbar: React.FC<GoogleSheetsToolbarProps> = ({
         </div>
       </div>
 
-      {/* Flecha colapsar */}
       <button
         type="button"
-        className="p-1.5 rounded-full hover:bg-gray-100 text-[#444746] transition-colors ml-2 shrink-0"
-        title="Ocultar menús"
+        onClick={onToggleFormulaBar}
+        className="p-1.5 rounded-full hover:bg-gray-100 text-[#444746] transition-colors shrink-0 ml-2"
+        title={showFormulaBar ? "Ocultar la barra de fórmulas" : "Mostrar la barra de fórmulas"}
       >
-        <ChevronUp size={15} />
+        {showFormulaBar ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
       </button>
     </div>
   );

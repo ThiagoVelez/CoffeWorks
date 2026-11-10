@@ -1,8 +1,10 @@
-// Tipos de datos para CoffeCalc (Hoja de cálculo profesional estilo Microsoft Excel)
+// Tipos de datos de CoffeCalc (hoja de cálculo de la suite CoffeWorks)
 
-export type CellFormat = "general" | "currency" | "percent" | "number";
+export type CellFormat = "general" | "number" | "currency" | "percent" | "date" | "text";
 
 export type CellAlign = "left" | "center" | "right";
+
+export type CellVAlign = "top" | "middle" | "bottom";
 
 export interface CellBorders {
   top?: boolean;
@@ -11,27 +13,102 @@ export interface CellBorders {
   right?: boolean;
 }
 
+export type CellValue = number | string | boolean | null;
+
 export interface CellData {
+  /** Lo que el usuario escribió: un valor o una fórmula que empieza por "=". */
   raw: string;
-  computed?: string | number | null;
+  /** Resultado calculado por el motor de fórmulas. */
+  computed?: CellValue;
+  /** Valor que traía la fórmula en un libro importado (por si la función no existe aquí). */
+  cached?: CellValue;
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
+  strike?: boolean;
   align?: CellAlign;
+  valign?: CellVAlign;
   color?: string;
   bg?: string;
   format?: CellFormat;
+  decimals?: number;
+  currency?: string;
   borders?: CellBorders;
   fontFamily?: string;
   fontSize?: number;
   wrapText?: boolean;
-  decimals?: number;
+  /** Dirección web asociada a la celda. */
+  link?: string;
+  /** Comentario de la celda. */
+  note?: string;
 }
 
+/** Propiedades de formato que se copian con "Copiar formato". */
+export const STYLE_KEYS = [
+  "bold",
+  "italic",
+  "underline",
+  "strike",
+  "align",
+  "valign",
+  "color",
+  "bg",
+  "format",
+  "decimals",
+  "currency",
+  "borders",
+  "fontFamily",
+  "fontSize",
+  "wrapText",
+] as const;
+
+export interface SelectionRange {
+  startRow: number;
+  startCol: number;
+  endRow: number;
+  endCol: number;
+}
+
+/** Rango normalizado (r1 <= r2, c1 <= c2). */
+export interface Bounds {
+  r1: number;
+  c1: number;
+  r2: number;
+  c2: number;
+}
+
+export type ChartType = "bar" | "line" | "area" | "pie";
+
 export interface ChartConfig {
-  type: "bar" | "line" | "pie";
+  id: string;
+  type: ChartType;
   title: string;
-  data: Array<{ label: string; value: number }>;
+  /** Rango de datos del que se alimenta el gráfico. */
+  range: Bounds;
+  /** Posición y tamaño sobre la hoja, en píxeles. */
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export type ConditionKind = "gt" | "lt" | "eq" | "neq" | "between" | "contains" | "duplicate" | "top";
+
+export interface ConditionalRule {
+  id: string;
+  range: Bounds;
+  kind: ConditionKind;
+  value: string;
+  value2?: string;
+  bg: string;
+  color: string;
+}
+
+export interface FilterState {
+  /** Rango filtrado; su primera fila es la de encabezados. */
+  range: Bounds;
+  /** Por columna, los valores (texto mostrado) que se ocultan. */
+  excluded: Record<number, string[]>;
 }
 
 export interface Sheet {
@@ -40,11 +117,15 @@ export interface Sheet {
   data: Record<string, CellData>;
   colWidths?: Record<string, number>;
   rowHeights?: Record<number, number>;
+  merges?: Bounds[];
+  charts?: ChartConfig[];
+  conditional?: ConditionalRule[];
+  filter?: FilterState | null;
+  frozenRows?: number;
+  frozenCols?: number;
   isProtected?: boolean;
-  filterEnabled?: boolean;
-  frozenPanes?: boolean;
-  showRawFormulas?: boolean;
-  chart?: ChartConfig | null;
+  /** Color de la pestaña de la hoja. */
+  tabColor?: string;
 }
 
 export interface WorkbookMetadata {
@@ -55,11 +136,10 @@ export interface WorkbookMetadata {
   updatedAt: string;
 }
 
-export interface SelectionRange {
-  startRow: number;
-  startCol: number;
-  endRow: number;
-  endCol: number;
+export interface Workbook {
+  metadata: WorkbookMetadata;
+  sheets: Sheet[];
+  activeSheetId: string;
 }
 
 export interface SelectionStats {
@@ -71,13 +151,9 @@ export interface SelectionStats {
   max: number;
 }
 
-export type ExcelRibbonTab =
-  | "inicio"
-  | "insertar"
-  | "dibujar"
-  | "disposicion"
-  | "formulas"
-  | "datos"
-  | "revisar"
-  | "vista"
-  | "ayuda";
+export type ExportFormat = "cfs" | "xlsx" | "csv" | "pdf";
+
+export const DEFAULT_COL_WIDTH = 110;
+export const DEFAULT_ROW_HEIGHT = 24;
+export const HEADER_WIDTH = 48;
+export const HEADER_HEIGHT = 24;
