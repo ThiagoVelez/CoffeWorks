@@ -1,23 +1,28 @@
 [package]
-name = "coffeeworks-launcher"
-version = "2.4.0"
-description = "Launcher y orquestador para la suite ofimática CoffeWorks"
-authors = ["CoffeWorks OpenSource Team"]
-edition = "2021"
+name = "coffeworks-launcher"
+description = "Launcher y gestor de aplicaciones de la suite ofimática CoffeWorks"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "CoffeWorks"
+path = "src/main.rs"
+
+[features]
+# Activa el modo de producción (frontend embebido en el ejecutable).
+custom-protocol = ["tauri/custom-protocol"]
 
 [build-dependencies]
-tauri-build = { version = "2.0", features = [] }
+tauri-build = { workspace = true }
 
 [dependencies]
-tauri = { version = "2.0", features = [] }
-tauri-plugin-shell = "2.0"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-chrono = "0.4"
+tauri = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+open = { workspace = true }
+coffe-core = { workspace = true }
 
-[profile.release]
-panic = "abort"
-codegen-units = 1
-lto = true
-opt-level = "z"
-strip = true
+[target.'cfg(windows)'.dependencies]
+winreg = "0.52"
+windows-sys = { version = "0.59", features = ["Win32_UI_Shell"] }
