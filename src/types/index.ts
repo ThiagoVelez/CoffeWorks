@@ -1,4 +1,4 @@
-// Definiciones de tipos para el launcher de CoffeWorks
+// Definiciones de tipos para el Launcher de CoffeWorks
 
 export interface SuiteApp {
   id: string;
@@ -7,15 +7,16 @@ export interface SuiteApp {
   description: string;
   version: string;
   installed: boolean;
+  /** El paquete está presente y la aplicación puede instalarse. */
+  available: boolean;
   size_mb: number;
   status: string;
-  color_badge: "primary" | "secondary" | "tertiary" | "tertiary-fixed" | "secondary-fixed" | "outline";
+  color_badge: string;
   icon_name: string;
   icon_url?: string;
   category?: string;
+  install_path?: string;
 }
-
-export type AppCategory = "all" | "office" | "multimedia";
 
 export interface RecentDocument {
   id: string;
@@ -25,11 +26,17 @@ export interface RecentDocument {
   last_modified: string;
   is_pinned: boolean;
   path: string;
+  updated_at?: number;
 }
 
 export type DocumentFilter = "all" | "documents" | "spreadsheets" | "presentations" | "pinned";
 
-export interface WorkspaceProfile {
-  name: string;
-  team: string;
+export interface SuiteInfo {
+  version: string;
+  vault_dir: string;
+  apps_dir: string;
+  data_dir: string;
+  packages_dir: string;
+  webview_version: string;
+  platform: string;
 }

@@ -1,658 +1,1010 @@
-import React, { useRef, useEffect } from "react";
-import type { CellData, SelectionRange, ChartConfig } from "../types";
-import {
-  colIndexToName,
-  parseCellKey,
-  formatCellValue,
-} from "../services/formulaEngine";
-import { Filter, X, ShieldAlert } from "lucide-react";
+// Cuadrícula de CoffeCalc.
+//
+// Dibuja solo las filas y columnas visibles (ventana virtual) con posición
+// absoluta, de modo que la hoja puede crecer sin penalizar el rendimiento.
+// Las cabeceras y los paneles inmovilizados son capas "sticky" que comparten
+// el mismo sistema de coordenadas que la capa principal.
 
-interface SpreadsheetGridProps {
-  data: Record<string, CellData>;
-  colWidths?: Record<string, number>;
-  activeCellKey: string;
-  selectionRange: SelectionRange | null;
-  onSelectCell: (key: string) => void;
-  onRangeSelect: (range: SelectionRange, anchorKey: string) => void;
-  onClearSelection: () => void;
-  isEditing: boolean;
-  editingValue: string;
-  onChangeEditingValue: (val: string) => void;
-  onStartEditing: () => void;
-  onCommitEditing: (moveToNext?: "down" | "right" | "none") => void;
-  onCancelEditing: () => void;
-  showGridlines: boolean;
-  zoom: number;
-  showRawFormulas?: boolean;
-  isFilterActive?: boolean;
-  isSheetProtected?: boolean;
-  chartConfig?: ChartConfig | null;
-  onCloseChart?: () => void;
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Filter, ShieldAlert } from "lucide-react";
+import type { Bounds, CellData, SelectionRange, Sheet } from "../types";
+import { DEFAULT_COL_WIDTH, DEFAULT_ROW_HEIGHT, HEADER_HEIGHT, HEADER_WIDTH } from "../types";
+import { cellKey, colIndexToName, formatCellValue, isErrorValue } from "../services/formulaEngine";
+import { boundsContain, conditionalStyles, hiddenRows, mergeAt } from "../services/sheetOps";
+import { ChartCard } from "./ChartCard";
+
+export interface CellPosition {
+  col: number;
+  row: number;
 }
 
+export type MoveDirection = "up" | "down" | "left" | "right" | "none";
+
+interface SpreadsheetGridProps {
+  sheet: Sheet;
+  activeCell: CellPosition;
+  selection: Bounds;
+  onSelect: (range: SelectionRange, active: CellPosition) => void;
+  /** Texto en edición, o `null` si no se está editando. */
+  editingValue: string | null;
+  /** La edición se hace en la celda (true) o en la barra de fórmulas (false). */
+  editingInCell: boolean;
+  onStartEdit: (initial?: string) => void;
+  onEditChange: (value: string) => void;
+  onCommitEdit: (move: MoveDirection) => void;
+  onCancelEdit: () => void;
+  onClear: () => void;
+  onFill: (source: Bounds, target: Bounds) => void;
+  onResizeColumn: (col: number, width: number) => void;
+  onAutoFitColumn: (col: number) => void;
+  onResizeRow: (row: number, height: number) => void;
+  onContextMenu: (x: number, y: number) => void;
+  onOpenFilter: (col: number, anchor: DOMRect) => void;
+  onOpenLink: (url: string) => void;
+  onUpdateChart: (id: string, changes: { x?: number; y?: number; width?: number; height?: number; type?: string; title?: string }) => void;
+  onRemoveChart: (id: string) => void;
+  /** Rango copiado o cortado (se dibuja con borde discontinuo). */
+  clipboardBounds: Bounds | null;
+  showGridlines: boolean;
+  showFormulas: boolean;
+  zoom: number;
+}
+
+const MIN_ROWS = 100;
+const MIN_COLS = 26;
+
+/** Devuelve el índice del tramo que contiene `offset` en un vector de acumulados. */
+function locate(offsets: number[], offset: number): number {
+  let low = 0;
+  let high = offsets.length - 2;
+  if (offset <= 0) return 0;
+  while (low < high) {
+    const mid = Math.ceil((low + high) / 2);
+    if (offsets[mid] <= offset) low = mid;
+    else high = mid - 1;
+  }
+  return low;
+}
+
+interface CellBoxProps {
+  cell: CellData;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  text: string;
+  conditional?: { bg: string; color: string };
+  spans: boolean;
+}
+
+/** Celda con contenido o formato. Las celdas vacías no se dibujan. */
+const CellBox = React.memo(function CellBox({
+  cell,
+  left,
+  top,
+  width,
+  height,
+  text,
+  conditional,
+  spans,
+}: CellBoxProps) {
+  const isNumber = typeof cell.computed === "number";
+  const isError = isErrorValue(cell.computed);
+  const align = cell.align || (isNumber ? "right" : typeof cell.computed === "boolean" || isError ? "center" : "left");
+  const background = conditional?.bg || cell.bg || (spans ? "#ffffff" : undefined);
+  const color = conditional?.color || cell.color || (cell.link ? "#0b57d0" : isError ? "#b3261e" : undefined);
+  const decorations = [cell.underline || cell.link ? "underline" : "", cell.strike ? "line-through" : ""]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    <div
+      title={cell.note || undefined}
+      style={{
+        left,
+        top,
+        width: width - 1,
+        height: height - 1,
+        backgroundColor: background,
+        color,
+        fontWeight: cell.bold ? 700 : undefined,
+        fontStyle: cell.italic ? "italic" : undefined,
+        textDecoration: decorations || undefined,
+        fontFamily: cell.fontFamily || undefined,
+        fontSize: cell.fontSize ? `${cell.fontSize}pt` : undefined,
+        justifyContent: align === "center" ? "center" : align === "right" ? "flex-end" : "flex-start",
+        alignItems: cell.valign === "top" ? "flex-start" : cell.valign === "middle" ? "center" : "flex-end",
+        textAlign: align,
+        borderTop: cell.borders?.top ? "1px solid #1f1f1f" : undefined,
+        borderBottom: cell.borders?.bottom ? "1px solid #1f1f1f" : undefined,
+        borderLeft: cell.borders?.left ? "1px solid #1f1f1f" : undefined,
+        borderRight: cell.borders?.right ? "1px solid #1f1f1f" : undefined,
+        zIndex: spans ? 1 : undefined,
+      }}
+      className="absolute flex px-1.5 pb-[3px] text-xs leading-[1.25] overflow-hidden pointer-events-none box-border"
+    >
+      <span className={cell.wrapText ? "whitespace-pre-wrap break-words w-full" : "whitespace-nowrap"}>{text}</span>
+      {cell.note && (
+        <span className="absolute top-0 right-0 w-0 h-0 border-l-[6px] border-l-transparent border-t-[6px] border-t-[#f9a825]" />
+      )}
+    </div>
+  );
+});
+
+type DragMode =
+  | { kind: "select"; anchor: CellPosition; axis: "cells" | "cols" | "rows" }
+  | { kind: "fill"; target: Bounds }
+  | { kind: "col-resize"; col: number; startX: number; startWidth: number }
+  | { kind: "row-resize"; row: number; startY: number; startHeight: number };
+
 export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
-  data,
-  colWidths,
-  activeCellKey,
-  selectionRange,
-  onSelectCell,
-  onRangeSelect,
-  onClearSelection,
-  isEditing,
+  sheet,
+  activeCell,
+  selection,
+  onSelect,
   editingValue,
-  onChangeEditingValue,
-  onStartEditing,
-  onCommitEditing,
-  onCancelEditing,
+  editingInCell,
+  onStartEdit,
+  onEditChange,
+  onCommitEdit,
+  onCancelEdit,
+  onClear,
+  onFill,
+  onResizeColumn,
+  onAutoFitColumn,
+  onResizeRow,
+  onContextMenu,
+  onOpenFilter,
+  onOpenLink,
+  onUpdateChart,
+  onRemoveChart,
+  clipboardBounds,
   showGridlines,
+  showFormulas,
   zoom,
-  showRawFormulas = false,
-  isFilterActive = false,
-  isSheetProtected = false,
-  chartConfig,
-  onCloseChart,
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const isDraggingRef = useRef<boolean>(false);
-  const anchorCoordsRef = useRef<{ col: number; row: number } | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<HTMLInputElement>(null);
+  const dragRef = useRef<DragMode | null>(null);
+  const pointerRef = useRef<{ x: number; y: number } | null>(null);
+  const [viewport, setViewport] = useState({ left: 0, top: 0, width: 1200, height: 700 });
+  const [fillTarget, setFillTarget] = useState<Bounds | null>(null);
+  const scale = zoom / 100;
+  const isEditing = editingValue !== null;
+  const isProtected = Boolean(sheet.isProtected);
+  const frozenRows = sheet.frozenRows || 0;
+  const frozenCols = sheet.frozenCols || 0;
 
-  const parsedActive = parseCellKey(activeCellKey) || { col: 0, row: 0, colName: "A", rowNum: 1 };
+  // --- Geometría de la hoja -------------------------------------------------
 
-  // Cantidad dinámica de columnas y filas según los datos presentes
-  const { totalCols, totalRows } = React.useMemo(() => {
-    let maxColIdx = 25; // Al menos hasta la Z (26 columnas)
-    let maxRowIdx = 99; // Al menos 100 filas
-
-    for (const key of Object.keys(data)) {
-      const parsed = parseCellKey(key);
-      if (parsed) {
-        if (parsed.col > maxColIdx) maxColIdx = parsed.col;
-        if (parsed.row > maxRowIdx) maxRowIdx = parsed.row;
-      }
+  const { totalRows, totalCols } = useMemo(() => {
+    let maxRow = 0;
+    let maxCol = 0;
+    for (const key of Object.keys(sheet.data)) {
+      const match = /^([A-Z]+)([0-9]+)$/.exec(key);
+      if (!match) continue;
+      const row = Number(match[2]) - 1;
+      let col = 0;
+      for (let i = 0; i < match[1].length; i++) col = col * 26 + (match[1].charCodeAt(i) - 64);
+      col -= 1;
+      if (row > maxRow) maxRow = row;
+      if (col > maxCol) maxCol = col;
     }
-
     return {
-      totalCols: Math.max(26, maxColIdx + 5),
-      totalRows: Math.max(100, maxRowIdx + 20),
+      totalRows: Math.max(MIN_ROWS, maxRow + 40, activeCell.row + 30, selection.r2 + 2),
+      totalCols: Math.max(MIN_COLS, maxCol + 8, activeCell.col + 6, selection.c2 + 2),
     };
-  }, [data]);
+  }, [sheet.data, activeCell.row, activeCell.col, selection.r2, selection.c2]);
 
-  // Referencias para auto-scroll continuo al arrastrar
-  const scrollAnimRef = useRef<number | null>(null);
-  const scrollSpeedRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const lastMousePosRef = useRef<{ x: number; y: number } | null>(null);
+  const hidden = useMemo(() => hiddenRows(sheet), [sheet]);
+  const conditional = useMemo(() => conditionalStyles(sheet), [sheet]);
 
-  // Autoenfocar el input cuando entra en modo de edición
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isEditing]);
-
-  const getColWidth = (colIdx: number): number => {
-    const colName = colIndexToName(colIdx);
-    if (colWidths && colWidths[colName]) {
-      return colWidths[colName];
-    }
-    return colIdx === 0 ? 200 : 120;
-  };
-
-  // Auxiliares para resolver columna y fila por offsets en píxeles dentro del lienzo
-  const getColAtOffset = (x: number): number => {
-    let currentX = x - 48; // Restar cabecera de filas a la izquierda (48px)
-    if (currentX <= 0) return 0;
+  const colOffsets = useMemo(() => {
+    const offsets = [0];
     for (let c = 0; c < totalCols; c++) {
-      const w = getColWidth(c);
-      if (currentX < w) return c;
-      currentX -= w;
+      offsets.push(offsets[c] + (sheet.colWidths?.[colIndexToName(c)] || DEFAULT_COL_WIDTH));
     }
-    return totalCols - 1;
+    return offsets;
+  }, [sheet.colWidths, totalCols]);
+
+  const rowOffsets = useMemo(() => {
+    const offsets = [0];
+    for (let r = 0; r < totalRows; r++) {
+      offsets.push(offsets[r] + (hidden.has(r) ? 0 : sheet.rowHeights?.[r] || DEFAULT_ROW_HEIGHT));
+    }
+    return offsets;
+  }, [sheet.rowHeights, totalRows, hidden]);
+
+  const totalWidth = HEADER_WIDTH + colOffsets[totalCols];
+  const totalHeight = HEADER_HEIGHT + rowOffsets[totalRows];
+  const frozenWidth = colOffsets[Math.min(frozenCols, totalCols)];
+  const frozenHeight = rowOffsets[Math.min(frozenRows, totalRows)];
+
+  const cellX = (col: number) => HEADER_WIDTH + colOffsets[Math.min(col, totalCols)];
+  const cellY = (row: number) => HEADER_HEIGHT + rowOffsets[Math.min(row, totalRows)];
+  const colWidth = (col: number) => colOffsets[col + 1] - colOffsets[col];
+  const rowHeight = (row: number) => rowOffsets[row + 1] - rowOffsets[row];
+
+  const rectOf = (b: Bounds) => ({
+    left: cellX(b.c1),
+    top: cellY(b.r1),
+    width: cellX(b.c2 + 1) - cellX(b.c1),
+    height: cellY(b.r2 + 1) - cellY(b.r1),
+  });
+
+  // --- Ventana visible ------------------------------------------------------
+
+  const readViewport = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setViewport((prev) => {
+      const next = {
+        left: el.scrollLeft / scale,
+        top: el.scrollTop / scale,
+        width: el.clientWidth / scale,
+        height: el.clientHeight / scale,
+      };
+      return prev.left === next.left && prev.top === next.top && prev.width === next.width && prev.height === next.height
+        ? prev
+        : next;
+    });
+  }, [scale]);
+
+  useLayoutEffect(() => {
+    readViewport();
+    const el = scrollRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(readViewport);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [readViewport]);
+
+  const firstRow = locate(rowOffsets, viewport.top);
+  const lastRow = Math.min(totalRows - 1, locate(rowOffsets, viewport.top + viewport.height) + 1);
+  const firstCol = locate(colOffsets, viewport.left);
+  const lastCol = Math.min(totalCols - 1, locate(colOffsets, viewport.left + viewport.width) + 1);
+
+  const range = (from: number, to: number) => {
+    const out: number[] = [];
+    for (let i = from; i <= to; i++) out.push(i);
+    return out;
+  };
+  const visibleRows = range(firstRow, lastRow).filter((r) => !hidden.has(r));
+  const visibleCols = range(firstCol, lastCol);
+  const frozenRowList = range(0, Math.min(frozenRows, totalRows) - 1).filter((r) => !hidden.has(r));
+  const frozenColList = range(0, Math.min(frozenCols, totalCols) - 1);
+
+  // --- Posición del puntero a celda -----------------------------------------
+
+  const hitTest = (clientX: number, clientY: number) => {
+    const el = scrollRef.current;
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    const vx = (clientX - rect.left) / scale;
+    const vy = (clientY - rect.top) / scale;
+    const inRowHeader = vx < HEADER_WIDTH;
+    const inColHeader = vy < HEADER_HEIGHT;
+    const x = vx < HEADER_WIDTH + frozenWidth ? vx : vx + el.scrollLeft / scale;
+    const y = vy < HEADER_HEIGHT + frozenHeight ? vy : vy + el.scrollTop / scale;
+    const col = Math.min(totalCols - 1, locate(colOffsets, Math.max(0, x - HEADER_WIDTH)));
+    let row = Math.min(totalRows - 1, locate(rowOffsets, Math.max(0, y - HEADER_HEIGHT)));
+    while (hidden.has(row) && row < totalRows - 1) row++;
+    return { col, row, inRowHeader, inColHeader };
   };
 
-  const getRowAtOffset = (y: number): number => {
-    const offset = y - 24; // Restar cabecera de columnas superior (24px)
-    if (offset <= 0) return 0;
-    const rowIndex = Math.floor(offset / 24);
-    return Math.min(totalRows - 1, Math.max(0, rowIndex));
+  /** Celda ancla de una combinación (o la propia celda si no está combinada). */
+  const anchorOf = (col: number, row: number): CellPosition => {
+    const merge = mergeAt(sheet, col, row);
+    return merge ? { col: merge.c1, row: merge.r1 } : { col, row };
   };
 
-  const updateRangeFromMouseCoords = (clientX: number, clientY: number) => {
-    if (!isDraggingRef.current || !anchorCoordsRef.current || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const container = containerRef.current;
-
-    // Coordenada virtual proyectada sobre el contenido scrolleable
-    const clampedMouseX = Math.min(rect.right, Math.max(rect.left, clientX));
-    const clampedMouseY = Math.min(rect.bottom, Math.max(rect.top, clientY));
-
-    const contentX = container.scrollLeft + (clampedMouseX - rect.left);
-    const contentY = container.scrollTop + (clampedMouseY - rect.top);
-
-    const targetCol = getColAtOffset(contentX);
-    const targetRow = getRowAtOffset(contentY);
-
-    const anchor = anchorCoordsRef.current;
-    const anchorKey = `${colIndexToName(anchor.col)}${anchor.row + 1}`;
-
-    onRangeSelect(
-      {
-        startCol: anchor.col,
-        startRow: anchor.row,
-        endCol: targetCol,
-        endRow: targetRow,
-      },
-      anchorKey
-    );
-  };
-
-  // Ciclo continuo de auto-scroll mientras se sostiene el clic arrastrando
-  useEffect(() => {
-    const autoScrollLoop = () => {
-      if (isDraggingRef.current && containerRef.current) {
-        const { x, y } = scrollSpeedRef.current;
-        if (x !== 0 || y !== 0) {
-          containerRef.current.scrollLeft += x;
-          containerRef.current.scrollTop += y;
-
-          if (lastMousePosRef.current) {
-            updateRangeFromMouseCoords(
-              lastMousePosRef.current.x,
-              lastMousePosRef.current.y
-            );
-          }
+  const selectCells = (anchor: CellPosition, focus: CellPosition) => {
+    let bounds: Bounds = {
+      r1: Math.min(anchor.row, focus.row),
+      c1: Math.min(anchor.col, focus.col),
+      r2: Math.max(anchor.row, focus.row),
+      c2: Math.max(anchor.col, focus.col),
+    };
+    // Ampliar la selección para abarcar las combinaciones que toca
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const merge of sheet.merges || []) {
+        const overlaps = merge.r1 <= bounds.r2 && merge.r2 >= bounds.r1 && merge.c1 <= bounds.c2 && merge.c2 >= bounds.c1;
+        if (overlaps && (merge.r1 < bounds.r1 || merge.r2 > bounds.r2 || merge.c1 < bounds.c1 || merge.c2 > bounds.c2)) {
+          bounds = {
+            r1: Math.min(bounds.r1, merge.r1),
+            c1: Math.min(bounds.c1, merge.c1),
+            r2: Math.max(bounds.r2, merge.r2),
+            c2: Math.max(bounds.c2, merge.c2),
+          };
+          grew = true;
         }
       }
-      scrollAnimRef.current = requestAnimationFrame(autoScrollLoop);
-    };
+    }
+    onSelect({ startRow: bounds.r1, startCol: bounds.c1, endRow: bounds.r2, endCol: bounds.c2 }, anchorOf(anchor.col, anchor.row));
+  };
 
-    scrollAnimRef.current = requestAnimationFrame(autoScrollLoop);
-    return () => {
-      if (scrollAnimRef.current) cancelAnimationFrame(scrollAnimRef.current);
-    };
-  }, []);
+  // --- Ratón ----------------------------------------------------------------
 
-  // Manejo global de movimiento y liberación del ratón durante el arrastre
-  useEffect(() => {
-    const handleGlobalMouseMove = (e: MouseEvent) => {
-      if (!isDraggingRef.current || !containerRef.current) return;
-      lastMousePosRef.current = { x: e.clientX, y: e.clientY };
-
-      const rect = containerRef.current.getBoundingClientRect();
-      const edgeThreshold = 45;
-
-      let speedX = 0;
-      let speedY = 0;
-
-      // Desplazamiento horizontal automático al acercarse al borde o sobrepasarlo
-      if (e.clientX > rect.right - edgeThreshold) {
-        speedX = Math.min(30, Math.max(8, (e.clientX - (rect.right - edgeThreshold)) * 0.4));
-      } else if (e.clientX < rect.left + edgeThreshold) {
-        speedX = -Math.min(30, Math.max(8, ((rect.left + edgeThreshold) - e.clientX) * 0.4));
-      }
-
-      // Desplazamiento vertical automático al acercarse al borde o sobrepasarlo
-      if (e.clientY > rect.bottom - edgeThreshold) {
-        speedY = Math.min(25, Math.max(6, (e.clientY - (rect.bottom - edgeThreshold)) * 0.4));
-      } else if (e.clientY < rect.top + edgeThreshold) {
-        speedY = -Math.min(25, Math.max(6, ((rect.top + edgeThreshold) - e.clientY) * 0.4));
-      }
-
-      scrollSpeedRef.current = { x: speedX, y: speedY };
-
-      // Actualizar rango según la posición actual del cursor
-      updateRangeFromMouseCoords(e.clientX, e.clientY);
-    };
-
-    const handleGlobalMouseUp = () => {
-      isDraggingRef.current = false;
-      scrollSpeedRef.current = { x: 0, y: 0 };
-    };
-
-    const handleWheel = () => {
-      if (isDraggingRef.current && lastMousePosRef.current) {
-        updateRangeFromMouseCoords(
-          lastMousePosRef.current.x,
-          lastMousePosRef.current.y
+  const applyDrag = (clientX: number, clientY: number) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    if (drag.kind === "col-resize") {
+      onResizeColumn(drag.col, Math.max(24, Math.round(drag.startWidth + (clientX - drag.startX) / scale)));
+      return;
+    }
+    if (drag.kind === "row-resize") {
+      onResizeRow(drag.row, Math.max(16, Math.round(drag.startHeight + (clientY - drag.startY) / scale)));
+      return;
+    }
+    const hit = hitTest(clientX, clientY);
+    if (!hit) return;
+    if (drag.kind === "select") {
+      if (drag.axis === "cols") {
+        onSelect(
+          { startRow: 0, endRow: totalRows - 1, startCol: Math.min(drag.anchor.col, hit.col), endCol: Math.max(drag.anchor.col, hit.col) },
+          { col: drag.anchor.col, row: 0 }
         );
+      } else if (drag.axis === "rows") {
+        onSelect(
+          { startCol: 0, endCol: totalCols - 1, startRow: Math.min(drag.anchor.row, hit.row), endRow: Math.max(drag.anchor.row, hit.row) },
+          { col: 0, row: drag.anchor.row }
+        );
+      } else {
+        selectCells(drag.anchor, { col: hit.col, row: hit.row });
+      }
+      return;
+    }
+    // Relleno: se extiende en el eje donde más se aleja el puntero
+    const below = hit.row - selection.r2;
+    const above = selection.r1 - hit.row;
+    const right = hit.col - selection.c2;
+    const left = selection.c1 - hit.col;
+    const vertical = Math.max(below, above);
+    const horizontal = Math.max(right, left);
+    let target: Bounds = selection;
+    if (vertical > 0 && vertical >= horizontal) {
+      target = below > 0 ? { ...selection, r2: hit.row } : { ...selection, r1: hit.row };
+    } else if (horizontal > 0) {
+      target = right > 0 ? { ...selection, c2: hit.col } : { ...selection, c1: hit.col };
+    }
+    drag.target = target;
+    setFillTarget(target);
+  };
+
+  useEffect(() => {
+    const handleMove = (e: MouseEvent) => {
+      if (!dragRef.current) return;
+      pointerRef.current = { x: e.clientX, y: e.clientY };
+      applyDrag(e.clientX, e.clientY);
+    };
+    const handleUp = () => {
+      const drag = dragRef.current;
+      dragRef.current = null;
+      pointerRef.current = null;
+      if (drag?.kind === "fill") {
+        setFillTarget(null);
+        const t = drag.target;
+        if (t.r1 !== selection.r1 || t.r2 !== selection.r2 || t.c1 !== selection.c1 || t.c2 !== selection.c2) {
+          onFill(selection, t);
+        }
       }
     };
-
-    window.addEventListener("mousemove", handleGlobalMouseMove);
-    window.addEventListener("mouseup", handleGlobalMouseUp);
-    window.addEventListener("wheel", handleWheel, { passive: true });
+    // Desplazamiento automático al arrastrar cerca de los bordes
+    const timer = window.setInterval(() => {
+      const drag = dragRef.current;
+      const pointer = pointerRef.current;
+      const el = scrollRef.current;
+      if (!drag || !pointer || !el || drag.kind === "col-resize" || drag.kind === "row-resize") return;
+      const rect = el.getBoundingClientRect();
+      const edge = 28;
+      let dx = 0;
+      let dy = 0;
+      if (pointer.x > rect.right - edge) dx = 24;
+      else if (pointer.x < rect.left + HEADER_WIDTH * scale + edge) dx = -24;
+      if (pointer.y > rect.bottom - edge) dy = 24;
+      else if (pointer.y < rect.top + HEADER_HEIGHT * scale + edge) dy = -24;
+      if (dx || dy) {
+        el.scrollLeft += dx;
+        el.scrollTop += dy;
+        applyDrag(pointer.x, pointer.y);
+      }
+    }, 60);
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
     return () => {
-      window.removeEventListener("mousemove", handleGlobalMouseMove);
-      window.removeEventListener("mouseup", handleGlobalMouseUp);
-      window.removeEventListener("wheel", handleWheel);
+      window.clearInterval(timer);
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
     };
-  }, []);
+  });
 
-  // Inicio de arrastre con clic sostenido
-  const handleCellMouseDown = (colIdx: number, rowIdx: number, e: React.MouseEvent) => {
-    if (e.button !== 0) return; // Solo clic izquierdo
-    const cellKey = `${colIndexToName(colIdx)}${rowIdx + 1}`;
+  /** Al escribir una fórmula, un clic en otra celda inserta su referencia. */
+  const canPickReference = () =>
+    isEditing && editingValue !== null && /^=/.test(editingValue) && /[=+\-*/^&(,;:<>]\s*$/.test(editingValue);
 
-    isDraggingRef.current = true;
-    anchorCoordsRef.current = { col: colIdx, row: rowIdx };
-    lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0 && e.button !== 2) return;
+    const hit = hitTest(e.clientX, e.clientY);
+    if (!hit) return;
 
-    // Enfocar el contenedor para recibir atajos de teclado inmediatos
-    containerRef.current?.focus();
-
-    onRangeSelect(
-      {
-        startCol: colIdx,
-        startRow: rowIdx,
-        endCol: colIdx,
-        endRow: rowIdx,
-      },
-      cellKey
-    );
-  };
-
-  // Movimiento mientras se mantiene presionado el clic
-  const handleCellMouseEnter = (colIdx: number, rowIdx: number) => {
-    if (!isDraggingRef.current || !anchorCoordsRef.current) return;
-    const anchor = anchorCoordsRef.current;
-    const anchorKey = `${colIndexToName(anchor.col)}${anchor.row + 1}`;
-
-    onRangeSelect(
-      {
-        startCol: anchor.col,
-        startRow: anchor.row,
-        endCol: colIdx,
-        endRow: rowIdx,
-      },
-      anchorKey
-    );
-  };
-
-  // Límites del rango seleccionado
-  const minCol = selectionRange
-    ? Math.min(selectionRange.startCol, selectionRange.endCol)
-    : parsedActive.col;
-  const maxCol = selectionRange
-    ? Math.max(selectionRange.startCol, selectionRange.endCol)
-    : parsedActive.col;
-  const minRow = selectionRange
-    ? Math.min(selectionRange.startRow, selectionRange.endRow)
-    : parsedActive.row;
-  const maxRow = selectionRange
-    ? Math.max(selectionRange.startRow, selectionRange.endRow)
-    : parsedActive.row;
-
-  const isMultiCellRange = selectionRange && (minCol !== maxCol || minRow !== maxRow);
-
-  // Manejo de atajos de teclado globales sobre la cuadrícula de Excel
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (isEditing) {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        onCommitEditing(e.shiftKey ? "none" : "down");
-      } else if (e.key === "Tab") {
-        e.preventDefault();
-        onCommitEditing("right");
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        onCancelEditing();
+    if (e.button === 2) {
+      if (!hit.inRowHeader && !hit.inColHeader && !boundsContain(selection, hit.col, hit.row)) {
+        if (isEditing) onCommitEdit("none");
+        selectCells({ col: hit.col, row: hit.row }, { col: hit.col, row: hit.row });
       }
       return;
     }
 
-    // Seleccionar todo con Ctrl+A o Cmd+A
-    if ((e.ctrlKey || e.metaKey) && (e.key === "a" || e.key === "A")) {
+    if (hit.inRowHeader && hit.inColHeader) {
+      if (isEditing) onCommitEdit("none");
+      onSelect({ startRow: 0, startCol: 0, endRow: totalRows - 1, endCol: totalCols - 1 }, { col: 0, row: 0 });
+      scrollRef.current?.focus();
+      return;
+    }
+
+    if (canPickReference() && !hit.inRowHeader && !hit.inColHeader) {
       e.preventDefault();
-      onRangeSelect(
-        {
-          startCol: 0,
-          startRow: 0,
-          endCol: totalCols - 1,
-          endRow: totalRows - 1,
-        },
-        "A1"
+      onEditChange(editingValue + cellKey(hit.col, hit.row));
+      window.setTimeout(() => editorRef.current?.focus(), 0);
+      return;
+    }
+
+    if (isEditing) onCommitEdit("none");
+    scrollRef.current?.focus();
+    pointerRef.current = { x: e.clientX, y: e.clientY };
+
+    if (hit.inColHeader) {
+      const anchorCol = e.shiftKey ? activeCell.col : hit.col;
+      dragRef.current = { kind: "select", anchor: { col: anchorCol, row: 0 }, axis: "cols" };
+      onSelect(
+        { startRow: 0, endRow: totalRows - 1, startCol: Math.min(anchorCol, hit.col), endCol: Math.max(anchorCol, hit.col) },
+        { col: anchorCol, row: 0 }
+      );
+      return;
+    }
+    if (hit.inRowHeader) {
+      const anchorRow = e.shiftKey ? activeCell.row : hit.row;
+      dragRef.current = { kind: "select", anchor: { col: 0, row: anchorRow }, axis: "rows" };
+      onSelect(
+        { startCol: 0, endCol: totalCols - 1, startRow: Math.min(anchorRow, hit.row), endRow: Math.max(anchorRow, hit.row) },
+        { col: 0, row: anchorRow }
       );
       return;
     }
 
-    // Borrado / Suprimir de rango o celda activa
-    if (e.key === "Delete" || e.key === "Backspace") {
-      e.preventDefault();
-      onClearSelection();
+    const cell = sheet.data[cellKey(hit.col, hit.row)];
+    if (cell?.link && (e.ctrlKey || e.metaKey)) {
+      onOpenLink(cell.link);
       return;
     }
+    const anchor = e.shiftKey ? activeCell : { col: hit.col, row: hit.row };
+    dragRef.current = { kind: "select", anchor, axis: "cells" };
+    selectCells(anchor, { col: hit.col, row: hit.row });
+  };
 
-    // Navegación cuando no está editando
-    if (e.key === "ArrowUp") {
-      e.preventDefault();
-      if (parsedActive.row > 0) {
-        onSelectCell(`${parsedActive.colName}${parsedActive.row}`);
-      }
-    } else if (e.key === "ArrowDown") {
-      e.preventDefault();
-      if (parsedActive.row < totalRows - 1) {
-        onSelectCell(`${parsedActive.colName}${parsedActive.row + 2}`);
-      }
-    } else if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      if (parsedActive.col > 0) {
-        const prevColName = colIndexToName(parsedActive.col - 1);
-        onSelectCell(`${prevColName}${parsedActive.rowNum}`);
-      }
-    } else if (e.key === "ArrowRight") {
-      e.preventDefault();
-      if (parsedActive.col < totalCols - 1) {
-        const nextColName = colIndexToName(parsedActive.col + 1);
-        onSelectCell(`${nextColName}${parsedActive.rowNum}`);
-      }
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      onStartEditing();
-    } else if (e.key === "F2") {
-      e.preventDefault();
-      onStartEditing();
-    } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      // Escribir directamente sobre la celda activa (como en Excel)
-      onChangeEditingValue(e.key);
-      onStartEditing();
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    const hit = hitTest(e.clientX, e.clientY);
+    if (!hit || hit.inRowHeader || hit.inColHeader || isProtected || isEditing) return;
+    onStartEdit();
+  };
+
+  // --- Teclado --------------------------------------------------------------
+
+  const moveTo = (col: number, row: number, extend: boolean) => {
+    const target = {
+      col: Math.max(0, Math.min(totalCols - 1, col)),
+      row: Math.max(0, Math.min(totalRows - 1, row)),
+    };
+    if (extend) {
+      // El extremo opuesto a la celda activa es el que se desplaza
+      selectCells(activeCell, target);
+    } else {
+      selectCells(target, target);
     }
   };
 
-  const scale = zoom / 100;
+  /** Salto de Ctrl+flecha: hasta el borde del bloque de datos. */
+  const jump = (dCol: number, dRow: number, from: CellPosition): CellPosition => {
+    const filled = (c: number, r: number) => Boolean(sheet.data[cellKey(c, r)]?.raw);
+    let { col, row } = from;
+    const inside = (c: number, r: number) => c >= 0 && r >= 0 && c < totalCols && r < totalRows;
+    const startFilled = filled(col, row) && inside(col + dCol, row + dRow) && filled(col + dCol, row + dRow);
+    for (;;) {
+      const nextCol = col + dCol;
+      const nextRow = row + dRow;
+      if (!inside(nextCol, nextRow)) break;
+      if (startFilled) {
+        if (!filled(nextCol, nextRow)) break;
+      } else if (filled(nextCol, nextRow)) {
+        col = nextCol;
+        row = nextRow;
+        break;
+      }
+      col = nextCol;
+      row = nextRow;
+    }
+    return { col, row };
+  };
 
-  return (
-    <div
-      ref={containerRef}
-      tabIndex={0}
-      onKeyDown={handleKeyDown}
-      className="flex-1 overflow-auto bg-white select-none focus:outline-none relative"
-      style={{
-        transform: scale !== 1 ? `scale(${scale})` : undefined,
-        transformOrigin: "top left",
-      }}
-    >
-      {/* Banner de protección de hoja si está activa */}
-      {isSheetProtected && (
-        <div className="sticky top-0 left-0 right-0 z-50 bg-amber-50 border-b border-amber-300 px-3 py-1 flex items-center justify-between text-xs text-amber-900 shadow-sm">
-          <div className="flex items-center gap-2">
-            <ShieldAlert size={14} className="text-amber-700" />
-            <span className="font-semibold">Hoja protegida contra modificaciones accidentales (Modo de solo lectura)</span>
-          </div>
-          <span className="text-[11px] text-amber-800">Usa "Revisar &gt; Proteger hoja" en la cinta de opciones para habilitar edición.</span>
-        </div>
-      )}
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (isEditing) return;
+    const mod = e.ctrlKey || e.metaKey;
+    // El extremo móvil de la selección (para ampliar con Mayús)
+    const focus: CellPosition = {
+      col: activeCell.col === selection.c1 ? selection.c2 : selection.c1,
+      row: activeCell.row === selection.r1 ? selection.r2 : selection.r1,
+    };
+    const origin = e.shiftKey ? focus : activeCell;
+    const step = (dCol: number, dRow: number) => {
+      e.preventDefault();
+      if (mod) {
+        const target = jump(dCol, dRow, origin);
+        moveTo(target.col, target.row, e.shiftKey);
+        return;
+      }
+      let col = origin.col + dCol;
+      let row = origin.row + dRow;
+      // Saltar las celdas cubiertas por una combinación y las filas filtradas
+      const merge = mergeAt(sheet, origin.col, origin.row);
+      if (merge && !e.shiftKey) {
+        if (dCol > 0) col = merge.c2 + 1;
+        if (dCol < 0) col = merge.c1 - 1;
+        if (dRow > 0) row = merge.r2 + 1;
+        if (dRow < 0) row = merge.r1 - 1;
+      }
+      while (dRow !== 0 && hidden.has(row) && row > 0 && row < totalRows - 1) row += dRow;
+      moveTo(col, row, e.shiftKey);
+    };
 
-      {/* Widget flotante de Gráfico generado */}
-      {chartConfig && (
-        <div className="absolute top-10 right-10 z-40 bg-white/95 backdrop-blur-md rounded-lg shadow-xl border border-stone-300 p-4 w-96 flex flex-col gap-2">
-          <div className="flex items-center justify-between border-b border-stone-200 pb-2">
-            <div className="font-bold text-xs text-stone-800 tracking-wide uppercase">
-              {chartConfig.title || "Gráfico de datos"}
-            </div>
-            {onCloseChart && (
-              <button
-                type="button"
-                onClick={onCloseChart}
-                className="w-5 h-5 flex items-center justify-center rounded hover:bg-stone-200 text-stone-500 cursor-pointer"
-                title="Cerrar gráfico"
-              >
-                <X size={13} />
-              </button>
-            )}
-          </div>
+    switch (e.key) {
+      case "ArrowUp": return step(0, -1);
+      case "ArrowDown": return step(0, 1);
+      case "ArrowLeft": return step(-1, 0);
+      case "ArrowRight": return step(1, 0);
+      case "Tab":
+        e.preventDefault();
+        moveTo(activeCell.col + (e.shiftKey ? -1 : 1), activeCell.row, false);
+        return;
+      case "Home":
+        e.preventDefault();
+        moveTo(0, mod ? 0 : activeCell.row, e.shiftKey);
+        return;
+      case "PageDown":
+      case "PageUp": {
+        e.preventDefault();
+        const page = Math.max(1, Math.floor(viewport.height / DEFAULT_ROW_HEIGHT) - 2);
+        moveTo(origin.col, origin.row + (e.key === "PageDown" ? page : -page), e.shiftKey);
+        return;
+      }
+      case "Enter":
+      case "F2":
+        e.preventDefault();
+        if (!isProtected) onStartEdit();
+        return;
+      case "Delete":
+      case "Backspace":
+        e.preventDefault();
+        if (!isProtected) onClear();
+        return;
+    }
+    if (e.key.length === 1 && !mod && !e.altKey && !isProtected) {
+      e.preventDefault();
+      onStartEdit(e.key);
+    }
+  };
 
-          {/* Renderizado SVG según tipo de gráfico */}
-          <div className="h-44 w-full flex items-end justify-center gap-3 pt-4 px-2 pb-2 bg-stone-50 rounded border border-stone-100">
-            {chartConfig.type === "bar" && (
-              <div className="w-full h-full flex items-end justify-around gap-2">
-                {chartConfig.data.map((item, idx) => {
-                  const maxVal = Math.max(...chartConfig.data.map((d) => d.value), 1);
-                  const heightPercent = Math.max(10, Math.min(100, Math.round((item.value / maxVal) * 100)));
-                  return (
-                    <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group">
-                      <span className="text-[9px] font-mono font-bold text-stone-600 mb-1">{item.value}</span>
-                      <div
-                        className="w-full bg-[#107c41] rounded-t hover:bg-[#0e6b37] transition-all shadow-sm"
-                        style={{ height: `${heightPercent}%` }}
-                      />
-                      <span className="text-[9px] truncate max-w-[40px] text-stone-500 mt-1 font-medium">{item.label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+  // Mantener visible la celda activa al navegar con el teclado
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || dragRef.current) return;
+    const left = cellX(activeCell.col) * scale;
+    const right = cellX(activeCell.col + 1) * scale;
+    const top = cellY(activeCell.row) * scale;
+    const bottom = cellY(activeCell.row + 1) * scale;
+    const minX = el.scrollLeft + (HEADER_WIDTH + frozenWidth) * scale;
+    const minY = el.scrollTop + (HEADER_HEIGHT + frozenHeight) * scale;
+    if (activeCell.col >= frozenCols) {
+      if (left < minX) el.scrollLeft -= minX - left;
+      else if (right > el.scrollLeft + el.clientWidth) el.scrollLeft = right - el.clientWidth + 2;
+    }
+    if (activeCell.row >= frozenRows) {
+      if (top < minY) el.scrollTop -= minY - top;
+      else if (bottom > el.scrollTop + el.clientHeight) el.scrollTop = bottom - el.clientHeight + 2;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCell.col, activeCell.row, sheet.id]);
 
-            {chartConfig.type === "line" && (
-              <svg viewBox="0 0 300 120" className="w-full h-full overflow-visible">
-                {(() => {
-                  const maxVal = Math.max(...chartConfig.data.map((d) => d.value), 1);
-                  const minVal = Math.min(...chartConfig.data.map((d) => d.value), 0);
-                  const range = maxVal - minVal || 1;
-                  const points = chartConfig.data.map((d, i) => {
-                    const x = (i / Math.max(chartConfig.data.length - 1, 1)) * 280 + 10;
-                    const y = 110 - ((d.value - minVal) / range) * 90;
-                    return { x, y, val: d.value, label: d.label };
-                  });
-                  const polylinePoints = points.map((p) => `${p.x},${p.y}`).join(" ");
+  // Al terminar de editar, el teclado vuelve a la cuadrícula
+  const wasEditing = useRef(false);
+  useEffect(() => {
+    if (wasEditing.current && !isEditing) scrollRef.current?.focus({ preventScroll: true });
+    wasEditing.current = isEditing;
+  }, [isEditing]);
 
-                  return (
-                    <>
-                      <polyline fill="none" stroke="#0e6b37" strokeWidth="2.5" points={polylinePoints} />
-                      {points.map((p, i) => (
-                        <g key={i}>
-                          <circle cx={p.x} cy={p.y} r="3.5" fill="#107c41" stroke="#fff" strokeWidth="1.5" />
-                          <text x={p.x} y={p.y - 6} fontSize="8" textAnchor="middle" fill="#333" fontFamily="monospace">
-                            {p.val}
-                          </text>
-                          <text x={p.x} y={118} fontSize="7" textAnchor="middle" fill="#666">
-                            {p.label}
-                          </text>
-                        </g>
-                      ))}
-                    </>
-                  );
-                })()}
-              </svg>
-            )}
+  useEffect(() => {
+    if (isEditing && editingInCell && editorRef.current) {
+      const input = editorRef.current;
+      input.focus();
+      const end = input.value.length;
+      input.setSelectionRange(end, end);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing, editingInCell]);
 
-            {chartConfig.type === "pie" && (
-              <div className="w-full h-full flex items-center justify-around">
-                <div className="relative w-28 h-28 rounded-full border-4 border-white shadow-md bg-[#107c41] flex items-center justify-center">
-                  <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[10px] font-bold text-stone-700">
-                    {chartConfig.data.length}
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1 text-[10px]">
-                  {chartConfig.data.slice(0, 5).map((d, i) => (
-                    <div key={i} className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#107c41]" />
-                      <span className="truncate max-w-[80px] font-medium">{d.label}:</span>
-                      <span className="font-mono font-bold text-stone-700">{d.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+  // --- Dibujo ---------------------------------------------------------------
 
-      <div className="inline-block min-w-full">
-        {/* FILA DE ENCABEZADOS DE COLUMNA (A, B, C...) */}
-        <div className="flex sticky top-0 z-30 bg-[#f3f2f1] border-b border-[#c8c6c4]">
-          {/* Esquina superior izquierda de Excel (Selector Total) */}
-          <button
-            type="button"
-            onClick={() => {
-              containerRef.current?.focus();
-              onRangeSelect(
-                {
-                  startCol: 0,
-                  startRow: 0,
-                  endCol: totalCols - 1,
-                  endRow: totalRows - 1,
-                },
-                "A1"
-              );
+  const activeMerge = mergeAt(sheet, activeCell.col, activeCell.row);
+  const activeBounds: Bounds = activeMerge || { r1: activeCell.row, c1: activeCell.col, r2: activeCell.row, c2: activeCell.col };
+  const isMulti = selection.r1 !== selection.r2 || selection.c1 !== selection.c2;
+  const filter = sheet.filter;
+
+  const coveredByMerge = (col: number, row: number) => {
+    const merge = mergeAt(sheet, col, row);
+    return merge ? merge.c1 !== col || merge.r1 !== row : false;
+  };
+
+  const renderCells = (rows: number[], cols: number[]) => {
+    const boxes: React.ReactNode[] = [];
+    const seenMerges = new Set<string>();
+    for (const row of rows) {
+      for (const col of cols) {
+        const merge = mergeAt(sheet, col, row);
+        const anchorCol = merge ? merge.c1 : col;
+        const anchorRow = merge ? merge.r1 : row;
+        const key = cellKey(anchorCol, anchorRow);
+        if (merge) {
+          if (seenMerges.has(key)) continue;
+          seenMerges.add(key);
+        }
+        const cell = sheet.data[key];
+        if (!cell && !merge) continue;
+        const data = cell || { raw: "" };
+        const text = showFormulas && data.raw ? data.raw : formatCellValue(data.computed, data);
+
+        let width = merge ? cellX(merge.c2 + 1) - cellX(merge.c1) : colWidth(col);
+        const height = merge ? cellY(merge.r2 + 1) - cellY(merge.r1) : rowHeight(row);
+        let spans = Boolean(merge);
+
+        // El texto largo invade las celdas vacías de su derecha, como en Excel
+        const overflows =
+          !merge && !data.wrapText && typeof data.computed === "string" && (data.align || "left") === "left" && text.length * 6.5 > width;
+        if (overflows) {
+          let next = col + 1;
+          let needed = text.length * 6.6 + 12;
+          while (needed > width && next < totalCols && !sheet.data[cellKey(next, row)] && !coveredByMerge(next, row) && next - col < 12) {
+            width += colWidth(next);
+            next++;
+            spans = true;
+          }
+        }
+
+        boxes.push(
+          <CellBox
+            key={key}
+            cell={data}
+            left={cellX(anchorCol)}
+            top={cellY(anchorRow)}
+            width={width}
+            height={height}
+            text={text}
+            conditional={conditional.get(key)}
+            spans={spans}
+          />
+        );
+      }
+    }
+    return boxes;
+  };
+
+  const renderGridlines = (rows: number[], cols: number[]) =>
+    showGridlines && (
+      <>
+        {rows.map((row) => (
+          <div
+            key={`h${row}`}
+            className="absolute h-px bg-[#e1e3e6] pointer-events-none"
+            style={{ left: HEADER_WIDTH, top: cellY(row + 1) - 1, width: colOffsets[totalCols] }}
+          />
+        ))}
+        {cols.map((col) => (
+          <div
+            key={`v${col}`}
+            className="absolute w-px bg-[#e1e3e6] pointer-events-none"
+            style={{ left: cellX(col + 1) - 1, top: HEADER_HEIGHT, height: rowOffsets[totalRows] }}
+          />
+        ))}
+      </>
+    );
+
+  const renderOverlays = (withEditor: boolean) => {
+    const selectionRect = rectOf(selection);
+    const activeRect = rectOf(activeBounds);
+    return (
+      <>
+        {isMulti && (
+          <div
+            className="absolute bg-[#1a73e8]/10 border border-[#1a73e8] pointer-events-none z-[3]"
+            style={selectionRect}
+          />
+        )}
+        <div
+          className="absolute border-2 border-[#1a73e8] pointer-events-none z-[4]"
+          style={{ left: activeRect.left - 1, top: activeRect.top - 1, width: activeRect.width + 1, height: activeRect.height + 1 }}
+        />
+        {clipboardBounds && (
+          <div
+            className="absolute border-2 border-dashed border-[#188038] pointer-events-none z-[4]"
+            style={rectOf(clipboardBounds)}
+          />
+        )}
+        {fillTarget && (
+          <div className="absolute border border-dashed border-[#5f6368] pointer-events-none z-[4]" style={rectOf(fillTarget)} />
+        )}
+        {!isEditing && !isProtected && (
+          <div
+            className="absolute w-[7px] h-[7px] bg-[#1a73e8] border border-white cursor-crosshair z-[6]"
+            style={{ left: selectionRect.left + selectionRect.width - 4, top: selectionRect.top + selectionRect.height - 4 }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              dragRef.current = { kind: "fill", target: selection };
+              pointerRef.current = { x: e.clientX, y: e.clientY };
             }}
-            title="Seleccionar toda la hoja (Ctrl+A)"
-            className="w-12 h-6 bg-[#f3f2f1] border-r border-[#c8c6c4] flex items-center justify-center shrink-0 sticky left-0 z-40 hover:bg-[#edebe9] cursor-pointer transition-colors"
-          >
-            <div className="w-2.5 h-2.5 border-b-2 border-r-2 border-[#8a8886] opacity-60" />
-          </button>
+          />
+        )}
 
-          {/* Letras de columna */}
-          {Array.from({ length: totalCols }).map((_, colIdx) => {
-            const colName = colIndexToName(colIdx);
-            const isColInSelection = colIdx >= minCol && colIdx <= maxCol;
-            const w = getColWidth(colIdx);
-
+        {/* Botones del filtro sobre la fila de encabezados */}
+        {filter &&
+          range(filter.range.c1, filter.range.c2).map((col) => {
+            const active = (filter.excluded[col] || []).length > 0;
             return (
-              <div
-                key={colName}
-                style={{ width: `${w}px` }}
-                className={`h-6 flex items-center justify-between px-1.5 font-mono text-[11px] font-semibold border-r border-[#c8c6c4] shrink-0 transition-colors ${
-                  isColInSelection
-                    ? "bg-[#e8f0fe] text-[#1a73e8] border-b-2 border-b-[#1a73e8]"
-                    : "text-[#595959] hover:bg-[#edebe9]"
+              <button
+                key={`f${col}`}
+                type="button"
+                title="Filtrar y ordenar esta columna"
+                onMouseDown={(e) => e.stopPropagation()}
+                onDoubleClick={(e) => e.stopPropagation()}
+                onClick={(e) => onOpenFilter(col, e.currentTarget.getBoundingClientRect())}
+                className={`absolute z-[6] w-4 h-4 rounded flex items-center justify-center border ${
+                  active ? "bg-[#188038] text-white border-[#188038]" : "bg-white text-[#444746] border-[#c4c7c5] hover:bg-[#e8eaed]"
                 }`}
+                style={{ left: cellX(col + 1) - 20, top: cellY(filter.range.r1) + (rowHeight(filter.range.r1) - 16) / 2 }}
               >
-                <span className="mx-auto">{colName}</span>
-                {isFilterActive && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                    title={`Filtrar columna ${colName}`}
-                    className="w-3.5 h-3.5 rounded hover:bg-stone-300 flex items-center justify-center text-stone-600 cursor-pointer"
-                  >
-                    <Filter size={9} />
-                  </button>
-                )}
-              </div>
+                <Filter size={9} />
+              </button>
             );
           })}
-        </div>
 
-        {/* FILAS DE DATOS DE LA CUADRÍCULA */}
-        {Array.from({ length: totalRows }).map((_, rowIdx) => {
-          const rowNum = rowIdx + 1;
-          const isRowInSelection = rowIdx >= minRow && rowIdx <= maxRow;
-
-          return (
-            <div key={rowNum} className="flex">
-              {/* Encabezado numérico de fila (1, 2, 3...) */}
-              <div
-                className={`w-12 h-6 flex items-center justify-center font-mono text-[11px] font-semibold border-r border-b border-[#c8c6c4] shrink-0 sticky left-0 z-20 transition-colors ${
-                  isRowInSelection
-                    ? "bg-[#e8f0fe] text-[#1a73e8] border-r-2 border-r-[#1a73e8]"
-                    : "bg-[#f8f9fa] text-[#595959] hover:bg-[#edebe9]"
-                }`}
-              >
-                {rowNum}
-              </div>
-
-              {/* Celdas de la fila */}
-              {Array.from({ length: totalCols }).map((_, colIdx) => {
-                const colName = colIndexToName(colIdx);
-                const cellKey = `${colName}${rowNum}`;
-                const cell = data[cellKey];
-                const isActive = cellKey === activeCellKey;
-
-                // Verificación de si la celda está dentro del rango seleccionado
-                const inRange =
-                  colIdx >= minCol && colIdx <= maxCol && rowIdx >= minRow && rowIdx <= maxRow;
-
-                // Bordes exteriores del área seleccionada
-                const isTopEdge = inRange && rowIdx === minRow;
-                const isBottomEdge = inRange && rowIdx === maxRow;
-                const isLeftEdge = inRange && colIdx === minCol;
-                const isRightEdge = inRange && colIdx === maxCol;
-
-                // Si está activada la opción de mostrar fórmulas directas
-                const displayValue = showRawFormulas && cell?.raw
-                  ? cell.raw
-                  : cell
-                  ? formatCellValue(cell.computed !== undefined ? cell.computed : cell.raw, cell.format)
-                  : "";
-
-                const cellWidth = `${getColWidth(colIdx)}px`;
-
-                return (
-                  <div
-                    key={cellKey}
-                    style={{
-                      width: cellWidth,
-                      backgroundColor: cell?.bg || undefined,
-                      color: cell?.color || undefined,
-                      fontWeight: cell?.bold ? "700" : undefined,
-                      fontStyle: cell?.italic ? "italic" : undefined,
-                      textDecoration: cell?.underline ? "underline" : undefined,
-                      textAlign: cell?.align || (typeof cell?.computed === "number" ? "right" : "left"),
-                      fontFamily: cell?.fontFamily || undefined,
-                      fontSize: cell?.fontSize ? `${cell.fontSize}pt` : undefined,
-                      borderTop: cell?.borders?.top ? "1px solid #1a73e8" : undefined,
-                      borderBottom: cell?.borders?.bottom ? "1px solid #1a73e8" : undefined,
-                      borderLeft: cell?.borders?.left ? "1px solid #1a73e8" : undefined,
-                      borderRight: cell?.borders?.right ? "1px solid #1a73e8" : undefined,
-                    }}
-                    onMouseDown={(e) => handleCellMouseDown(colIdx, rowIdx, e)}
-                    onMouseEnter={() => handleCellMouseEnter(colIdx, rowIdx)}
-                    onDoubleClick={() => {
-                      if (isSheetProtected) return;
-                      onSelectCell(cellKey);
-                      onStartEditing();
-                    }}
-                    className={`h-6 px-1.5 flex items-center text-xs relative shrink-0 transition-colors ${
-                      showGridlines ? "border-r border-b border-[#e1dfdd]" : ""
-                    } ${
-                      isActive && !isMultiCellRange
-                        ? "excel-cell-active bg-white"
-                        : inRange
-                        ? "bg-[#e8f0fe]/70"
-                        : "hover:bg-[#fbf9f6]"
-                    } ${
-                      isMultiCellRange && inRange
-                        ? `${isTopEdge ? "border-t-2 border-t-[#1a73e8] -mt-[1px]" : ""} ${
-                            isBottomEdge ? "border-b-2 border-b-[#1a73e8]" : ""
-                          } ${isLeftEdge ? "border-l-2 border-l-[#1a73e8] -ml-[1px]" : ""} ${
-                            isRightEdge ? "border-r-2 border-r-[#1a73e8]" : ""
-                          }`
-                        : ""
-                    }`}
-                  >
-                    {/* Renderizado de celda o input en edición */}
-                    {isActive && isEditing ? (
-                      <input
-                        ref={inputRef}
-                        type="text"
-                        value={editingValue}
-                        onChange={(e) => onChangeEditingValue(e.target.value)}
-                        onBlur={() => onCommitEditing("none")}
-                        className="w-full h-full bg-white text-[#201f1e] font-sans text-xs focus:outline-none border-none p-0 select-text"
-                        style={{ textAlign: cell?.align || "left" }}
-                      />
-                    ) : (
-                      <span
-                        className={`w-full font-sans leading-none pointer-events-none ${
-                          cell?.wrapText ? "whitespace-normal break-words" : "truncate"
-                        }`}
-                      >
-                        {displayValue}
-                      </span>
-                    )}
-
-                    {/* Tirador de autollenado de Excel en la esquina inferior derecha del rango */}
-                    {((isActive && !isMultiCellRange) ||
-                      (isMultiCellRange && isBottomEdge && isRightEdge)) &&
-                      !isEditing && !isSheetProtected && <div className="excel-fill-handle" />}
-                  </div>
-                );
-              })}
+        {/* Editor dentro de la celda */}
+        {isEditing && withEditor && (
+          editingInCell ? (
+            <input
+              ref={editorRef}
+              type="text"
+              value={editingValue ?? ""}
+              spellCheck={false}
+              onChange={(e) => onEditChange(e.target.value)}
+              onMouseDown={(e) => e.stopPropagation()}
+              onDoubleClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  onCommitEdit(e.shiftKey ? "up" : "down");
+                } else if (e.key === "Tab") {
+                  e.preventDefault();
+                  onCommitEdit(e.shiftKey ? "left" : "right");
+                } else if (e.key === "Escape") {
+                  e.preventDefault();
+                  onCancelEdit();
+                }
+              }}
+              className="absolute z-[8] bg-white text-[#1f1f1f] text-xs px-1.5 outline-none border-2 border-[#1a73e8] shadow-md select-text box-border"
+              style={{
+                left: activeRect.left - 1,
+                top: activeRect.top - 1,
+                height: activeRect.height + 1,
+                width: Math.max(activeRect.width + 1, Math.min(600, (editingValue?.length || 0) * 7.2 + 24)),
+              }}
+            />
+          ) : (
+            <div
+              className="absolute z-[8] bg-white text-[#1f1f1f] text-xs px-1.5 flex items-center border-2 border-[#1a73e8] whitespace-nowrap overflow-hidden pointer-events-none box-border"
+              style={{ left: activeRect.left - 1, top: activeRect.top - 1, height: activeRect.height + 1, minWidth: activeRect.width + 1 }}
+            >
+              {editingValue}
             </div>
-          );
-        })}
+          )
+        )}
+      </>
+    );
+  };
+
+  const columnHeaders = (cols: number[]) =>
+    cols.map((col) => {
+      const selected = col >= selection.c1 && col <= selection.c2;
+      return (
+        <React.Fragment key={col}>
+          <div
+            style={{ left: cellX(col), top: 0, width: colWidth(col), height: HEADER_HEIGHT }}
+            className={`absolute flex items-center justify-center font-mono text-[11px] font-semibold border-r border-b border-[#c8c6c4] box-border ${
+              selected ? "bg-[#d3e3fd] text-[#0b57d0]" : "bg-[#f3f2f1] text-[#595959]"
+            }`}
+          >
+            {colIndexToName(col)}
+          </div>
+          <div
+            title="Arrastra para cambiar el ancho; doble clic para ajustarlo al contenido"
+            style={{ left: cellX(col + 1) - 3, top: 0, width: 6, height: HEADER_HEIGHT }}
+            className="absolute cursor-col-resize z-[7] hover:bg-[#1a73e8]/40"
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              dragRef.current = { kind: "col-resize", col, startX: e.clientX, startWidth: colWidth(col) };
+            }}
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              onAutoFitColumn(col);
+            }}
+          />
+        </React.Fragment>
+      );
+    });
+
+  const rowHeaders = (rows: number[]) =>
+    rows.map((row) => {
+      const selected = row >= selection.r1 && row <= selection.r2;
+      const filteredNearby = hidden.has(row + 1) || hidden.has(row - 1);
+      return (
+        <React.Fragment key={row}>
+          <div
+            style={{ left: 0, top: cellY(row), width: HEADER_WIDTH, height: rowHeight(row) }}
+            className={`absolute flex items-center justify-center font-mono text-[11px] font-semibold border-r border-b border-[#c8c6c4] box-border ${
+              selected ? "bg-[#d3e3fd] text-[#0b57d0]" : filteredNearby ? "bg-[#e6f4ea] text-[#188038]" : "bg-[#f8f9fa] text-[#595959]"
+            }`}
+          >
+            {row + 1}
+          </div>
+          <div
+            style={{ left: 0, top: cellY(row + 1) - 3, width: HEADER_WIDTH, height: 6 }}
+            className="absolute cursor-row-resize z-[7] hover:bg-[#1a73e8]/40"
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              dragRef.current = { kind: "row-resize", row, startY: e.clientY, startHeight: rowHeight(row) };
+            }}
+          />
+        </React.Fragment>
+      );
+    });
+
+  // Capa donde se coloca el editor: la que contiene la celda activa
+  const editorLayer =
+    activeCell.row < frozenRows && activeCell.col < frozenCols
+      ? "corner"
+      : activeCell.row < frozenRows
+      ? "top"
+      : activeCell.col < frozenCols
+      ? "left"
+      : "main";
+
+  const frozenLine = "#9aa0a6";
+
+  return (
+    <div className="flex-1 flex flex-col min-h-0 relative print:hidden">
+      {isProtected && (
+        <div className="bg-amber-50 border-b border-amber-300 px-3 py-1 flex items-center gap-2 text-xs text-amber-900 shrink-0">
+          <ShieldAlert size={14} className="text-amber-700" />
+          <span className="font-semibold">Hoja protegida: solo lectura.</span>
+          <span>Desactiva la protección en Datos › Proteger hoja para editarla.</span>
+        </div>
+      )}
+
+      <div
+        ref={scrollRef}
+        tabIndex={0}
+        onScroll={readViewport}
+        onKeyDown={handleKeyDown}
+        onMouseDown={handleMouseDown}
+        onDoubleClick={handleDoubleClick}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          onContextMenu(e.clientX, e.clientY);
+        }}
+        className="flex-1 overflow-auto bg-white select-none focus:outline-none relative cursor-cell"
+      >
+        <div style={{ zoom: scale, width: totalWidth, height: totalHeight }}>
+          {/* Capa superior: cabeceras de columna y filas inmovilizadas */}
+          <div className="sticky top-0 h-0 z-30">
+            <div
+              className="absolute left-0 top-0 overflow-hidden bg-white"
+              style={{
+                width: totalWidth,
+                height: HEADER_HEIGHT + frozenHeight,
+                borderBottom: frozenRows > 0 ? `2px solid ${frozenLine}` : undefined,
+              }}
+            >
+              {frozenRows > 0 && (
+                <>
+                  {renderGridlines(frozenRowList, visibleCols)}
+                  {renderCells(frozenRowList, visibleCols)}
+                  {renderOverlays(editorLayer === "top")}
+                </>
+              )}
+              {columnHeaders(visibleCols)}
+            </div>
+
+            {/* Esquina: intersección de cabeceras y paneles inmovilizados */}
+            <div className="sticky left-0 w-0 h-0 z-10">
+              <div
+                className="absolute left-0 top-0 overflow-hidden bg-white"
+                style={{
+                  width: HEADER_WIDTH + frozenWidth,
+                  height: HEADER_HEIGHT + frozenHeight,
+                  borderRight: frozenCols > 0 ? `2px solid ${frozenLine}` : undefined,
+                  borderBottom: frozenRows > 0 ? `2px solid ${frozenLine}` : undefined,
+                }}
+              >
+                {frozenRows > 0 && frozenCols > 0 && (
+                  <>
+                    {renderGridlines(frozenRowList, frozenColList)}
+                    {renderCells(frozenRowList, frozenColList)}
+                    {renderOverlays(editorLayer === "corner")}
+                  </>
+                )}
+                {columnHeaders(frozenColList)}
+                {rowHeaders(frozenRowList)}
+                <div
+                  title="Seleccionar toda la hoja (Ctrl+A)"
+                  className="absolute left-0 top-0 bg-[#f3f2f1] border-r border-b border-[#c8c6c4] flex items-end justify-end p-0.5 box-border"
+                  style={{ width: HEADER_WIDTH, height: HEADER_HEIGHT }}
+                >
+                  <div className="w-2.5 h-2.5 border-b-2 border-r-2 border-[#8a8886] opacity-60" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Capa izquierda: cabeceras de fila y columnas inmovilizadas */}
+          <div className="sticky left-0 w-0 h-0 z-20">
+            <div
+              className="absolute left-0 top-0 overflow-hidden bg-white"
+              style={{
+                width: HEADER_WIDTH + frozenWidth,
+                height: totalHeight,
+                borderRight: frozenCols > 0 ? `2px solid ${frozenLine}` : undefined,
+              }}
+            >
+              {frozenCols > 0 && (
+                <>
+                  {renderGridlines(visibleRows, frozenColList)}
+                  {renderCells(visibleRows, frozenColList)}
+                  {renderOverlays(editorLayer === "left")}
+                </>
+              )}
+              {rowHeaders(visibleRows)}
+            </div>
+          </div>
+
+          {/* Capa principal */}
+          <div className="relative" style={{ width: totalWidth, height: totalHeight }}>
+            {renderGridlines(visibleRows, visibleCols)}
+            {renderCells(visibleRows, visibleCols)}
+            {renderOverlays(editorLayer === "main")}
+            {(sheet.charts || []).map((chart) => (
+              <ChartCard
+                key={chart.id}
+                chart={chart}
+                sheet={sheet}
+                scale={scale}
+                onChange={(changes) => onUpdateChart(chart.id, changes)}
+                onRemove={() => onRemoveChart(chart.id)}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

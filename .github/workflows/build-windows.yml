@@ -1,0 +1,144 @@
+name: Instalador de Windows
+
+# Compila la suite en Windows, crea el instalador con Inno Setup, lo prueba
+# (instalación silenciosa, instalar y desinstalar apps, arranque de las
+# ventanas) y lo publica como artefacto descargable de la ejecución.
+# Al subir una etiqueta "v*" se adjunta además a una versión (Release).
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, "claude/**"]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-installer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Compilar y empaquetar
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Pruebas del núcleo
+        run: cargo test -p coffe-core
+
+      - name: Compilar la suite
+        run: node scripts/build.mjs
+
+      - name: Descargar el instalador de WebView2
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://go.microsoft.com/fwlink/p/?LinkId=2124703" `
+            -OutFile installer/build/MicrosoftEdgeWebview2Setup.exe -UseBasicParsing
+
+      - name: Instalar Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup --no-progress -y
+          }
+
+      - name: Crear el instalador
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\CoffeWorks.iss
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup devolvió un error" }
+          Get-ChildItem installer\Output
+
+      - name: Probar el instalador
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          function Assert($condition, $message) {
+            if (-not $condition) { throw "FALLO: $message" } else { Write-Host "OK: $message" }
+          }
+          function Run($exe, $arguments) {
+            $process = Start-Process $exe -ArgumentList $arguments -Wait -PassThru
+            return $process.ExitCode
+          }
+
+          $setup = (Get-ChildItem installer\Output\*.exe | Select-Object -First 1).FullName
+          $dir = "C:\cw-test"
+          $code = Run $setup @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=$dir")
+          Assert ($code -eq 0) "el instalador termina sin errores"
+          Assert (Test-Path "$dir\CoffeWorks.exe") "el Launcher queda instalado"
+          Assert (Test-Path "$dir\packages\CoffeDoc.exe") "los paquetes de las apps quedan disponibles"
+
+          $apps = "$env:LOCALAPPDATA\CoffeWorks\Apps"
+          $menu = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\CoffeWorks"
+          Assert (-not (Test-Path "$apps\CoffeDoc\CoffeDoc.exe")) "las apps no se instalan hasta pedirlo"
+
+          Assert ((Run "$dir\CoffeWorks.exe" @("--install", "coffedoc")) -eq 0) "instalar CoffeDoc desde el Launcher"
+          Assert (Test-Path "$apps\CoffeDoc\CoffeDoc.exe") "CoffeDoc queda instalado"
+          Assert (Test-Path "$menu\CoffeDoc.lnk") "se crea el acceso directo del menú Inicio"
+          $association = (Get-ItemProperty "HKCU:\Software\Classes\.cfd" -ErrorAction SilentlyContinue).'(default)'
+          Assert ($association -eq "CoffeWorks.CoffeDoc.cfd") "se asocia el tipo de archivo .cfd"
+
+          Assert ((Run "$dir\CoffeWorks.exe" @("--install-all")) -eq 0) "instalar todas las apps"
+          Assert (Test-Path "$apps\CoffeCalc\CoffeCalc.exe") "CoffeCalc queda instalado"
+          Assert (Test-Path "$apps\CoffeView\CoffeView.exe") "CoffeView queda instalado"
+
+          # Las ventanas deben arrancar y seguir abiertas
+          New-Item -ItemType Directory -Force screenshots | Out-Null
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          foreach ($exe in @("$dir\CoffeWorks.exe", "$apps\CoffeDoc\CoffeDoc.exe", "$apps\CoffeCalc\CoffeCalc.exe", "$apps\CoffeView\CoffeView.exe")) {
+            $name = [IO.Path]::GetFileNameWithoutExtension($exe)
+            $process = Start-Process $exe -PassThru
+            Start-Sleep -Seconds 12
+            Assert (-not $process.HasExited) "$name arranca y sigue en ejecución"
+            try {
+              $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+              $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+              [System.Drawing.Graphics]::FromImage($bitmap).CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+              $bitmap.Save("screenshots\$name.png")
+            } catch { Write-Host "No se pudo capturar la pantalla: $_" }
+            Stop-Process -Id $process.Id -Force
+            Start-Sleep -Seconds 2
+          }
+
+          Assert ((Run "$dir\CoffeWorks.exe" @("--uninstall", "coffecalc")) -eq 0) "desinstalar CoffeCalc"
+          Assert (-not (Test-Path "$apps\CoffeCalc")) "CoffeCalc se elimina"
+          Assert (-not (Test-Path "$menu\CoffeCalc.lnk")) "se quita su acceso directo"
+
+          $uninstaller = (Get-ChildItem "$dir\unins*.exe" | Select-Object -First 1).FullName
+          Assert ((Run $uninstaller @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART")) -eq 0) "el desinstalador termina sin errores"
+          Start-Sleep -Seconds 5
+          Assert (-not (Test-Path "$dir\CoffeWorks.exe")) "el Launcher se elimina"
+          Assert (-not (Test-Path "$apps\CoffeDoc\CoffeDoc.exe")) "las apps instaladas se eliminan"
+
+      - name: Publicar el instalador
+        uses: actions/upload-artifact@v4
+        with:
+          name: CoffeWorks-Setup
+          path: installer/Output/*.exe
+          if-no-files-found: error
+
+      - name: Publicar capturas de la prueba
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capturas-prueba
+          path: screenshots/*.png
+          if-no-files-found: ignore
+
+      - name: Adjuntar a la versión
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: installer/Output/*.exe

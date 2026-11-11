@@ -8,6 +8,8 @@ import {
   CheckCircle2,
   ArrowUpRight,
 } from "lucide-react";
+import { tauriBridge } from "../services/tauriBridge";
+import { buildTemplateFile } from "../services/templates";
 
 export interface TemplateItem {
   id: string;
@@ -21,7 +23,7 @@ export interface TemplateItem {
   badgeBg: string;
   badgeText: string;
   accentBorder: string;
-  initialData?: any;
+  initialData?: { title: string; content: string };
 }
 
 const TEMPLATES: TemplateItem[] = [
@@ -301,7 +303,7 @@ const TEMPLATES: TemplateItem[] = [
 ];
 
 interface TemplatesViewProps {
-  onNotify: (msg: string) => void;
+  onNotify: (msg: string, isError?: boolean) => void;
 }
 
 export const TemplatesView: React.FC<TemplatesViewProps> = ({ onNotify }) => {
@@ -318,27 +320,18 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onNotify }) => {
     return matchesFilter && matchesSearch;
   });
 
-  const handleUseTemplate = (tpl: TemplateItem) => {
-    // Si la plantilla tiene contenido inicial para CoffeDoc, lo inyectamos en localStorage
-    if (tpl.appId === "coffedoc" && tpl.initialData) {
-      try {
-        localStorage.setItem(
-          "coffedoc_active_document",
-          JSON.stringify({
-            title: tpl.initialData.title,
-            content: tpl.initialData.content,
-            updatedAt: new Date().toISOString(),
-          })
-        );
-      } catch {
-        // En caso de que falle localStorage no bloquea la navegación
+  const handleUseTemplate = async (tpl: TemplateItem) => {
+    const file = buildTemplateFile(tpl.id, tpl.appId, tpl.initialData?.title || tpl.title, tpl.initialData?.content);
+    try {
+      if (file) {
+        await tauriBridge.createFromTemplate(tpl.appId, file.docId, file.fileName, file.contents);
+      } else {
+        await tauriBridge.launchApp(tpl.appId, tpl.title);
       }
+      onNotify(`Plantilla «${tpl.title}» abierta en ${tpl.appName}`);
+    } catch (err) {
+      onNotify(err instanceof Error ? err.message : String(err), true);
     }
-
-    // Abrir la aplicación correspondiente en la ventana local
-    const url = `http://localhost:${tpl.port}`;
-    window.open(url, "_blank");
-    onNotify(`Cargando plantilla "${tpl.title}" en ${tpl.appName}`);
   };
 
   const getAppIcon = (appId: string) => {
@@ -451,7 +444,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onNotify }) => {
             {/* Botón de acción para usar la plantilla */}
             <button
               type="button"
-              onClick={() => handleUseTemplate(tpl)}
+              onClick={() => void handleUseTemplate(tpl)}
               className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-[#faf7f2] hover:bg-[#5c3a21] text-[#5c3a21] hover:text-white font-medium text-xs transition-colors border border-[#e8dfd8] group-hover:border-transparent cursor-pointer shadow-2xs"
             >
               <span>Usar esta plantilla</span>

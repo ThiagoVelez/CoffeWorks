@@ -21,7 +21,16 @@
   }
 }
 
-/* Scrollbars discretos estilo Excel */
+/* Región de arrastre para la ventana sin marco de Tauri */
+[data-tauri-drag-region] {
+  -webkit-app-region: drag;
+}
+
+button, input, select, textarea, a {
+  -webkit-app-region: no-drag;
+}
+
+/* Barras de desplazamiento */
 ::-webkit-scrollbar {
   width: 12px;
   height: 12px;
@@ -43,37 +52,42 @@
   background: #8a8886;
 }
 
-/* Borde de la celda activa estilo Google Sheets con tirador de esquina azul */
-.excel-cell-active {
-  outline: 2px solid #1a73e8 !important;
-  outline-offset: -1px;
-  z-index: 20;
+::-webkit-scrollbar-corner {
+  background: #f8f9fa;
 }
 
-/* Tirador de autollenado (fill handle) de Google Sheets en la esquina inferior derecha */
-.excel-fill-handle {
-  position: absolute;
-  bottom: -4px;
-  right: -4px;
-  width: 7px;
-  height: 7px;
-  background-color: #1a73e8;
-  border: 1px solid #ffffff;
-  cursor: crosshair;
-  z-index: 25;
+/* Impresión / Guardar como PDF */
+.calc-print-view {
+  display: none;
 }
 
-/* Rango de selección estilo Google Sheets */
-.excel-cell-selected {
-  background-color: rgba(26, 115, 232, 0.1) !important;
+@media print {
+  html, body, #root, .calc-app {
+    background: #ffffff !important;
+    overflow: visible !important;
+    height: auto !important;
+    width: auto !important;
+    display: block !important;
+  }
+
+  .calc-print-view {
+    display: block;
+    color: #000000;
+  }
+
+  .calc-print-view tr {
+    break-inside: avoid;
+  }
+
+  @page {
+    size: A4 landscape;
+    margin: 12mm;
+  }
 }
 
-/* Animación de guardado */
-@keyframes pulse-subtle {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
-
-.animate-pulse-subtle {
-  animation: pulse-subtle 1.8s infinite ease-in-out;
+@media print {
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 }

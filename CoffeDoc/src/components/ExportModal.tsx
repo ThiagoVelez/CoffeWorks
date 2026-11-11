@@ -1,10 +1,11 @@
 import React from "react";
-import { X, FileCode, FileText, Printer, Download, Globe } from "lucide-react";
+import { X, FileCode, FileText, Printer, Download, Globe, AlignLeft } from "lucide-react";
+import type { ExportFormat } from "../types";
 
 interface ExportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onExport: (format: "cfd" | "docx" | "md" | "html" | "pdf") => void;
+  onExport: (format: ExportFormat) => void;
   documentTitle: string;
 }
 
@@ -20,7 +21,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     {
       format: "docx" as const,
       name: "Microsoft Word (.docx)",
-      description: "Documento oficial de Word con formato enriquecido, títulos y tablas.",
+      description: "Documento de Word real con títulos, listas, tablas, imágenes y formato de texto.",
       icon: FileText,
       badge: "Word Nativo",
       color: "text-[#185abd]",
@@ -28,7 +29,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     {
       format: "cfd" as const,
       name: "Formato Nativo CoffeDoc (.cfd)",
-      description: "Archivo estructurado con metadatos, compatible con la suite CoffeWorks.",
+      description: "Copia completa del documento con sus pestañas y la configuración de página.",
       icon: FileText,
       badge: "Recomendado",
       color: "text-primary",
@@ -50,9 +51,17 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       color: "text-secondary",
     },
     {
+      format: "txt" as const,
+      name: "Texto sin formato (.txt)",
+      description: "Solo el texto del documento, sin estilos ni imágenes.",
+      icon: AlignLeft,
+      badge: "Texto",
+      color: "text-outline",
+    },
+    {
       format: "pdf" as const,
       name: "Imprimir / Guardar como PDF",
-      description: "Generación de documento para impresión con formato de página A4.",
+      description: "Abre el diálogo de impresión; elige «Guardar como PDF» como impresora.",
       icon: Printer,
       badge: "Impresión",
       color: "text-primary-fixed-dim",
@@ -61,7 +70,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 select-none"
+      className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 select-none print:hidden"
       onClick={onClose}
     >
       <div

@@ -1,62 +1,133 @@
-# CoffeWorks - Suite Launcher Desktop
+# CoffeWorks
 
-Launcher de escritorio modular y orquestador nativo para la suite ofimática de código abierto **CoffeWorks**.
+Suite ofimática de escritorio para Windows, de código abierto y sin conexión. Se compone de un **Launcher** que instala y gestiona las aplicaciones y de tres editores:
 
-## Arquitectura del Proyecto
+| Aplicación | Qué es | Formato propio | Abre | Exporta |
+| :--- | :--- | :--- | :--- | :--- |
+| **CoffeDoc** | Procesador de textos | `.cfd` | Word (`.docx`), Markdown, HTML, texto | Word (`.docx`), Markdown, HTML, texto, PDF |
+| **CoffeCalc** | Hoja de cálculo | `.cfs` | Excel (`.xlsx`, `.xls`), CSV | Excel (`.xlsx`) con formato, CSV, PDF |
+| **CoffeView** | Presentaciones | `.csl` | PowerPoint (`.pptx`) | PowerPoint (`.pptx`), HTML, PDF |
 
-El proyecto implementa una arquitectura híbrida de alto rendimiento basada en **Tauri (Rust + TypeScript)**, correspondiente al stack de desarrollo mostrado en la distribución del repositorio:
-- **Rust (59.4%)**: Núcleo del sistema operativo, gestión de procesos de las aplicaciones ofimáticas, acceso al sistema de archivos local, bóveda cifrada P2P, y comandos IPC.
-- **TypeScript & React (39.3%)**: Interfaz de usuario reactiva, diseño de precisión píxel por píxel derivado de Stitch, atajos globales de teclado (`Ctrl + K`), e integración con aceleración por hardware WebView2.
-- **CSS / Tailwind (0.2%)**: Sistema de tokens de color "Espresso Roast" (`#161311`), tipografías Hanken Grotesk y JetBrains Mono.
+Cada aplicación es un ejecutable independiente construido con **Tauri 2** (Rust + WebView2) y **React + TypeScript**.
 
-## Aplicaciones de la Suite Ofimática (Ingeniería Inversa)
+## Cómo funciona la instalación
 
-| Aplicación CoffeWorks | Equivalente Tradicional | Formato de Archivo | Propósito |
-| :--- | :--- | :--- | :--- |
-| **CoffeDoc** | Microsoft Word / Google Docs | `.cfd` / `.docx` | Procesador de texto enriquecido, Markdown y redacción contextual con IA. |
-| **CoffeSheet** | Microsoft Excel / Google Sheets | `.cfs` / `.xlsx` | Motor de cálculo en memoria, tablas dinámicas y análisis financiero. |
-| **CoffeSlides** | Microsoft PowerPoint | `.csl` / `.pptx` | Presentaciones dinámicas, diapositivas cinemáticas y exportación 4K. |
-| **CoffeNotes** | Microsoft OneNote / Apple Notes | `.cfn` | Lienzo infinito, notas rápidas al vuelo y resúmenes de reuniones. |
-| **CoffeFlow** | Microsoft Visio / Jira | `.cff` | Diagramas de flujo, tableros Kanban y cronogramas Gantt. |
-| **CoffeMail & Meet** | Microsoft Outlook & Teams | N/A | Cliente de correo cifrado y videollamadas P2P sin servidor central. |
+1. El instalador (`CoffeWorks-Setup-2.4.0.exe`, hecho con **Inno Setup**) instala solo el Launcher y deja los paquetes de las tres aplicaciones en su carpeta `packages`.
+2. Dentro del Launcher, en la **Tienda de Apps**, cada aplicación tiene sus botones **Instalar**, **Abrir App** y **Desinstalar**:
+   - *Instalar* copia la aplicación a `%LOCALAPPDATA%\CoffeWorks\Apps\<App>`, crea su acceso directo en el menú Inicio (carpeta *CoffeWorks*) y asocia su tipo de archivo, de modo que un doble clic sobre un `.cfd`, `.cfs` o `.csl` lo abre.
+   - *Desinstalar* borra la aplicación, su acceso directo y su asociación. **Los documentos no se tocan.**
+3. Los documentos se guardan como archivos normales en `Documentos\CoffeWorks` y aparecen en *Documentos recientes* del Launcher.
+4. Al desinstalar CoffeWorks desde *Aplicaciones* de Windows se quitan también las aplicaciones instaladas; los documentos se conservan.
 
-## Estructura de Directorios
+No hacen falta permisos de administrador: todo se instala por usuario. El instalador incluye el motor **WebView2** para los equipos con Windows 10 que aún no lo tengan (Windows 11 lo trae de serie).
 
+## Obtener el instalador
+
+### Opción A: descargarlo ya compilado (GitHub Actions)
+
+Cada vez que se sube código, el flujo **Instalador de Windows** (`.github/workflows/build-windows.yml`) compila la suite en Windows, crea el instalador, lo prueba y lo publica:
+
+1. Abre la pestaña **Actions** del repositorio y entra en la última ejecución de *Instalador de Windows*.
+2. En **Artifacts**, descarga `CoffeWorks-Setup` y descomprímelo: dentro está `CoffeWorks-Setup-2.4.0.exe`.
+
+Al subir una etiqueta `v*` (por ejemplo `v2.4.0`) el instalador se adjunta además a una *Release*.
+
+### Opción B: compilarlo en tu equipo con Inno Setup
+
+Requisitos (una sola vez):
+
+| Herramienta | Instalación |
+| :--- | :--- |
+| Node.js 20 o superior | <https://nodejs.org> o `winget install OpenJS.NodeJS.LTS` |
+| Rust (toolchain MSVC) | <https://rustup.rs> o `winget install Rustlang.Rustup` |
+| Herramientas de compilación de C++ | `winget install Microsoft.VisualStudio.2022.BuildTools` (carga de trabajo *Desarrollo para el escritorio con C++*) |
+| Inno Setup 6 | <https://jrsoftware.org/isdl.php> o `winget install JRSoftware.InnoSetup` |
+
+Después, desde la carpeta del repositorio:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 ```
-CoffeWorks/
-├── CoffeDoc/                  # Procesador de texto estilo Microsoft Word (React + Vite, puerto 1421)
-├── CoffeCalc/                 # Hoja de cálculo con fórmulas y grilla interactiva estilo Excel (puerto 1422)
-├── CoffeView/                 # Diseñador de presentaciones 16:9 estilo PowerPoint (puerto 1423)
-├── CoffeWorks_Icon/           # Iconografía institucional de la suite (.ico)
-├── package.json               # Dependencias del Launcher de escritorio
-├── tailwind.config.js         # Tokens de diseño y paleta "Café Roast"
-├── src/                       # Frontend TypeScript & React del Launcher (puerto 1420)
-│   ├── components/            # TitleBar, Sidebar, AppGrid, RecentDocuments, WelcomeBanner, etc.
-│   ├── services/              # tauriBridge.ts (Adaptador IPC y orquestador de apps)
-│   ├── types/                 # Definiciones de tipo estrictas
-│   └── App.tsx                # Orquestador visual
-└── src-tauri/                 # Backend nativo en Rust (Tauri 2.0)
-    ├── Cargo.toml             # Configuración del paquete Tauri
-    ├── tauri.conf.json        # Ventana nativa frameless y permisos IPC
-    └── src/main.rs            # Comandos IPC de lanzamiento de apps y control de ventanas
+
+El script compila las cuatro interfaces, los cuatro ejecutables y el instalador. El resultado queda en `installer\Output\CoffeWorks-Setup-2.4.0.exe`.
+
+Si prefieres hacerlo paso a paso:
+
+```powershell
+node scripts/build.mjs
 ```
 
-## Guía de Ejecución
+```powershell
+& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\CoffeWorks.iss
+```
 
-### 1. Modo Desarrollo Web (Frontend)
-Para probar la interfaz, micro-interacciones, atajos y lógica de creación de documentos inmediatamente:
+El primer comando deja los ejecutables en `installer\build` (`CoffeWorks.exe` y `packages\CoffeDoc.exe`, `CoffeCalc.exe`, `CoffeView.exe`); el segundo los empaqueta. También puedes abrir `installer\CoffeWorks.iss` con el editor de Inno Setup y pulsar **Compile** (Ctrl+F9).
+
+## Desarrollo
+
+Modo web (cada aplicación en el navegador, con recarga en caliente):
+
 ```bash
 npm install
-npm run dev
 ```
-Accede en tu navegador a `http://localhost:1420`.
 
-### 2. Modo Aplicación de Escritorio Nativa (.exe)
-Una vez instalado el compilador de Rust (`rustup` / `cargo`):
+```bash
+npm run dev:all
+```
+
+Antes de la primera vez, instala también las dependencias de cada aplicación (`npm install` dentro de `CoffeDoc`, `CoffeCalc` y `CoffeView`). Los servidores quedan en:
+
+| Launcher | CoffeDoc | CoffeCalc | CoffeView |
+| :--- | :--- | :--- | :--- |
+| <http://localhost:1420> | <http://localhost:1421> | <http://localhost:1422> | <http://localhost:1423> |
+
+En el navegador los documentos se guardan en `localStorage` y el Launcher abre las aplicaciones en pestañas; en el ejecutable se usan archivos reales y ventanas nativas.
+
+Modo escritorio de una aplicación concreta (ventana nativa con recarga en caliente):
+
 ```bash
 npm run tauri dev
 ```
-Para generar el instalador de producción optimizado:
-```bash
-npm run tauri build
+
+Ese comando, en la raíz, abre el Launcher; para un editor, ejecútalo con `npx tauri dev` dentro de su carpeta (por ejemplo `CoffeDoc`).
+
+## Estructura del repositorio
+
 ```
+CoffeWorks/
+├── src/                    Interfaz del Launcher (React)
+├── src-tauri/              Launcher nativo: instalar, desinstalar y abrir apps
+├── CoffeDoc/               Procesador de textos (src/ + src-tauri/)
+├── CoffeCalc/              Hoja de cálculo (src/ + src-tauri/)
+├── CoffeView/              Presentaciones (src/ + src-tauri/)
+├── crates/coffe-core/      Código Rust compartido: bóveda, recientes, archivos y diálogos
+├── installer/CoffeWorks.iss  Script de Inno Setup
+├── scripts/                build.mjs, build-windows.ps1 y dev.mjs
+└── .github/workflows/      Compilación y prueba automática del instalador
+```
+
+El Launcher admite además un modo de línea de comandos, que usan el instalador y las pruebas:
+
+```powershell
+CoffeWorks.exe --list
+```
+
+```powershell
+CoffeWorks.exe --install coffedoc
+```
+
+```powershell
+CoffeWorks.exe --uninstall coffedoc
+```
+
+También existen `--install-all` y `--uninstall-all`.
+
+## Qué incluye cada aplicación
+
+**CoffeDoc** — estilos de párrafo, fuentes y tamaños en puntos, colores y resaltado, listas, tablas editables, imágenes, enlaces, comentarios, pestañas de documento, esquema automático, buscar y reemplazar, copiar formato, corrector ortográfico del sistema, configuración de página (tamaño, orientación, márgenes, columnas, color y marca de agua) y modo de solo lectura.
+
+**CoffeCalc** — más de 90 funciones en español e inglés (`SUMA`, `SI`, `BUSCARV`, `CONTAR.SI`, `PAGO`…), referencias absolutas y entre hojas, formatos numéricos, moneda y fecha, bordes, celdas combinadas, formato condicional, filtros por columna, ordenar, quitar duplicados, texto en columnas, paneles inmovilizados, tirador de relleno, gráficos de columnas, líneas, áreas y circulares, comentarios y enlaces.
+
+**CoffeView** — diseños y temas, cuadros de texto, formas, líneas, tablas, imágenes y vídeos que se mueven y redimensionan con el ratón, notas del orador, transiciones, ensayo de intervalos con avance automático, vista de cuadrícula y modo presentación a pantalla completa.
+
+En las tres: autoguardado, *Guardar como*, deshacer y rehacer, impresión y PDF, buscador de menús (`Alt+/`) y documentos fijados en el Launcher.

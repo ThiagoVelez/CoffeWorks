@@ -1,182 +1,202 @@
-import React, { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, X, Clock } from "lucide-react";
-import type { Slide, SlideTheme } from "../types";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, X, Clock, StickyNote } from "lucide-react";
+import type { AspectRatio, Slide, SlideTheme } from "../types";
+import { SLIDE_SIZE } from "../types";
+import { SlideView } from "./SlideView";
+import { appWindow } from "../services/desktop";
 
 interface PresentationModeProps {
   slides: Slide[];
-  initialSlideIndex?: number;
+  startSlideId: string;
   theme: SlideTheme;
-  onExit: () => void;
+  aspectRatio: AspectRatio;
+  /** Avanzar solo con los intervalos ensayados de cada diapositiva. */
+  autoAdvance: boolean;
+  onExit: (lastSlideId: string) => void;
 }
 
+const formatTime = (seconds: number) =>
+  `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
+
+/** Proyección a pantalla completa con transiciones, notas y temporizador. */
 export const PresentationMode: React.FC<PresentationModeProps> = ({
   slides,
-  initialSlideIndex = 0,
+  startSlideId,
   theme,
+  aspectRatio,
+  autoAdvance,
   onExit,
 }) => {
-  const [currentIndex, setCurrentIndex] = useState(initialSlideIndex);
-  const [secondsElapsed, setSecondsElapsed] = useState(0);
+  // Las diapositivas ocultas no se proyectan
+  const visible = useMemo(() => {
+    const shown = slides.filter((slide) => !slide.hidden);
+    return shown.length > 0 ? shown : slides;
+  }, [slides]);
 
-  const currentSlide = slides[currentIndex] || slides[0];
+  const [index, setIndex] = useState(() => {
+    const start = visible.findIndex((slide) => slide.id === startSlideId);
+    if (start >= 0) return start;
+    // Si se empezó desde una diapositiva oculta, se usa la siguiente visible
+    const original = slides.findIndex((slide) => slide.id === startSlideId);
+    const next = visible.findIndex((slide) => slides.indexOf(slide) > original);
+    return Math.max(0, next);
+  });
+  const [finished, setFinished] = useState(false);
+  const [blackout, setBlackout] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [viewport, setViewport] = useState({ width: window.innerWidth, height: window.innerHeight });
+  const [controlsVisible, setControlsVisible] = useState(true);
 
-  // Temporizador de presentación transcurrido
+  const current = visible[Math.min(index, visible.length - 1)];
+  const size = SLIDE_SIZE[aspectRatio];
+
+  const exit = useCallback(() => onExit(current.id), [current.id, onExit]);
+
+  const next = useCallback(() => {
+    if (finished) {
+      exit();
+    } else if (index >= visible.length - 1) {
+      setFinished(true);
+    } else {
+      setIndex(index + 1);
+    }
+  }, [exit, finished, index, visible.length]);
+
+  const previous = useCallback(() => {
+    if (finished) setFinished(false);
+    else setIndex(Math.max(0, index - 1));
+  }, [finished, index]);
+
   useEffect(() => {
-    const timer = setInterval(() => {
-      setSecondsElapsed((prev) => prev + 1);
-    }, 1000);
-    return () => clearInterval(timer);
+    void appWindow.setFullscreen(true);
+    const handleResize = () => setViewport({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener("resize", handleResize);
+    const timer = window.setInterval(() => setElapsed((seconds) => seconds + 1), 1000);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.clearInterval(timer);
+      void appWindow.setFullscreen(false);
+    };
   }, []);
 
-  const formatTime = (totalSec: number) => {
-    const m = Math.floor(totalSec / 60);
-    const s = totalSec % 60;
-    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-  };
+  // Avance automático con los intervalos ensayados
+  useEffect(() => {
+    if (!autoAdvance || finished || blackout || !current.duration) return;
+    const timer = window.setTimeout(next, current.duration * 1000);
+    return () => window.clearTimeout(timer);
+  }, [autoAdvance, blackout, current, finished, next]);
 
-  const handleNext = () => {
-    if (currentIndex < slides.length - 1) {
-      setCurrentIndex((prev) => prev + 1);
-    }
-  };
-
-  const handlePrev = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex((prev) => prev - 1);
-    }
-  };
-
-  // Controles de teclado en modo presentación
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onExit();
-      } else if (e.key === "ArrowRight" || e.key === " " || e.key === "Enter" || e.key === "PageDown") {
-        e.preventDefault();
-        handleNext();
-      } else if (e.key === "ArrowLeft" || e.key === "Backspace" || e.key === "PageUp") {
-        e.preventDefault();
-        handlePrev();
+      e.stopPropagation();
+      switch (e.key) {
+        case "Escape":
+          e.preventDefault();
+          exit();
+          break;
+        case "ArrowRight":
+        case "ArrowDown":
+        case " ":
+        case "Enter":
+        case "PageDown":
+          e.preventDefault();
+          next();
+          break;
+        case "ArrowLeft":
+        case "ArrowUp":
+        case "Backspace":
+        case "PageUp":
+          e.preventDefault();
+          previous();
+          break;
+        case "Home":
+          setFinished(false);
+          setIndex(0);
+          break;
+        case "End":
+          setFinished(false);
+          setIndex(visible.length - 1);
+          break;
+        case "b":
+        case "B":
+        case ".":
+          setBlackout((value) => !value);
+          break;
+        case "n":
+        case "N":
+          setShowNotes((value) => !value);
+          break;
       }
     };
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [exit, next, previous, visible.length]);
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentIndex, slides.length]);
+  // Los controles se ocultan tras unos segundos sin mover el ratón
+  useEffect(() => {
+    if (!controlsVisible) return;
+    const timer = window.setTimeout(() => setControlsVisible(false), 2500);
+    return () => window.clearTimeout(timer);
+  }, [controlsVisible, index]);
+
+  const notesHeight = showNotes ? 150 : 0;
+  const width = Math.min(viewport.width, (viewport.height - notesHeight) * (size.width / size.height));
 
   return (
-    <div className="fixed inset-0 bg-black z-50 flex items-center justify-center select-none overflow-hidden cursor-default">
-      {/* Contenedor de la diapositiva proyectada en 16:9 con transicion SMIL activa */}
-      <div
-        key={`${currentSlide.id}_${currentIndex}`}
-        style={{ backgroundColor: currentSlide.background || theme.slideBg }}
-        className={`w-[96vw] max-w-[177.77vh] aspect-video relative rounded shadow-2xl overflow-hidden ${
-          currentSlide.transition === "fade"
-            ? "transition-slide-fade"
-            : currentSlide.transition === "push"
-            ? "transition-slide-push"
-            : currentSlide.transition === "wipe"
-            ? "transition-slide-wipe"
-            : currentSlide.transition === "zoom"
-            ? "transition-slide-zoom"
-            : ""
-        }`}
-      >
-        {currentSlide.elements.map((el) => (
-          <div
-            key={el.id}
-            style={{
-              left: `${el.x}%`,
-              top: `${el.y}%`,
-              width: `${el.width}%`,
-              height: `${el.height}%`,
-              color: el.color || (el.type === "title" ? theme.titleColor : theme.textColor),
-              backgroundColor: el.bg || (el.type === "shape" ? theme.accentColor : "transparent"),
-              textAlign: el.align || "left",
-              fontWeight: el.fontWeight || (el.type === "title" ? "bold" : "normal"),
-              fontStyle: el.fontStyle || "normal",
-              textDecoration: el.underline ? "underline" : "none",
-              fontSize: `${(el.fontSize || (el.type === "title" ? 36 : 18)) * 1.5}px`,
-            }}
-            className="absolute flex flex-col justify-center p-4 break-words leading-snug"
-          >
-            {el.type === "image" ? (
-              <img
-                src={el.content}
-                alt="Elemento"
-                className="w-full h-full object-contain pointer-events-none"
-              />
-            ) : el.type === "video" ? (
-              el.content.includes("youtube.com") || el.content.includes("youtu.be") ? (
-                <iframe
-                  src={el.content.replace("watch?v=", "embed/")}
-                  title="Video"
-                  className="w-full h-full border-0 rounded"
-                  allowFullScreen
-                />
-              ) : (
-                <video
-                  src={el.content}
-                  controls
-                  className="w-full h-full rounded object-contain"
-                />
-              )
-            ) : (
-              <div
-                className="w-full h-full whitespace-pre-wrap"
-                style={{ textAlign: el.align || "left" }}
-              >
-                {el.content}
-              </div>
-            )}
+    <div
+      className="fixed inset-0 z-[999999] bg-black flex flex-col items-center justify-center select-none print:hidden"
+      style={{ cursor: controlsVisible ? "default" : "none" }}
+      onMouseMove={() => setControlsVisible(true)}
+    >
+      <div className="flex-1 flex items-center justify-center w-full min-h-0" onClick={next}>
+        {blackout ? null : finished ? (
+          <div className="text-center text-white/80">
+            <p className="text-2xl font-semibold">Fin de la presentación</p>
+            <p className="text-sm mt-2 text-white/50">Haz clic o pulsa Esc para salir</p>
           </div>
-        ))}
+        ) : (
+          <div key={current.id} className={`slide-transition-${current.transition}`}>
+            <SlideView slide={current} theme={theme} aspectRatio={aspectRatio} width={width} interactive />
+          </div>
+        )}
       </div>
 
-      {/* Barra de control flotante inferior */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-neutral-900/80 backdrop-blur-md text-white px-4 py-2 rounded-full border border-white/20 shadow-2xl flex items-center gap-4 text-xs font-mono">
-        <button
-          type="button"
-          onClick={handlePrev}
-          disabled={currentIndex === 0}
-          title="Anterior (Flecha izquierda)"
-          className="p-1.5 hover:bg-white/20 rounded-full disabled:opacity-30 transition-colors"
-        >
+      {showNotes && (
+        <div className="w-full bg-[#1f1f1f] text-white/90 px-8 py-4 text-sm leading-relaxed overflow-y-auto whitespace-pre-wrap" style={{ height: notesHeight }}>
+          <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1">Notas del orador</div>
+          {current.notes || <span className="text-white/40">Esta diapositiva no tiene notas.</span>}
+        </div>
+      )}
+
+      <div
+        className={`absolute left-1/2 -translate-x-1/2 flex items-center gap-1 bg-[#202124]/90 text-white rounded-full px-2 py-1 text-xs shadow-xl transition-opacity ${
+          controlsVisible ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+        style={{ bottom: notesHeight + 16 }}
+      >
+        <button type="button" onClick={previous} title="Anterior (←)" className="p-1.5 rounded-full hover:bg-white/15">
           <ChevronLeft size={16} />
         </button>
-
-        <span className="font-bold">
-          {currentIndex + 1} / {slides.length}
+        <span className="font-mono px-1 min-w-[52px] text-center">
+          {finished ? visible.length : index + 1} / {visible.length}
         </span>
-
-        <button
-          type="button"
-          onClick={handleNext}
-          disabled={currentIndex === slides.length - 1}
-          title="Siguiente (Espacio / Flecha derecha)"
-          className="p-1.5 hover:bg-white/20 rounded-full disabled:opacity-30 transition-colors"
-        >
+        <button type="button" onClick={next} title="Siguiente (→)" className="p-1.5 rounded-full hover:bg-white/15">
           <ChevronRight size={16} />
         </button>
-
-        <div className="h-4 w-px bg-white/20" />
-
-        {/* Cronómetro en vivo */}
-        <div className="flex items-center gap-1.5 text-white/80">
-          <Clock size={13} />
-          <span>{formatTime(secondsElapsed)}</span>
-        </div>
-
-        <div className="h-4 w-px bg-white/20" />
-
-        {/* Salir */}
+        <span className="w-px h-4 bg-white/20 mx-1" />
+        <span className="flex items-center gap-1 font-mono px-1" title="Tiempo transcurrido">
+          <Clock size={13} /> {formatTime(elapsed)}
+        </span>
         <button
           type="button"
-          onClick={onExit}
-          title="Salir de la presentación (Escape)"
-          className="p-1.5 hover:bg-red-600 rounded-full transition-colors"
+          onClick={() => setShowNotes((value) => !value)}
+          title="Notas del orador (N)"
+          className={`p-1.5 rounded-full hover:bg-white/15 ${showNotes ? "bg-white/20" : ""}`}
         >
+          <StickyNote size={15} />
+        </button>
+        <button type="button" onClick={exit} title="Salir (Esc)" className="p-1.5 rounded-full hover:bg-white/15">
           <X size={15} />
         </button>
       </div>

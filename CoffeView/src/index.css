@@ -3,111 +3,111 @@
 @tailwind utilities;
 
 @layer base {
-  * {
-    box-sizing: border-box;
-  }
-
-  body {
+  html, body {
+    margin: 0;
+    padding: 0;
+    background-color: #ffffff;
+    color: #201f1e;
+    font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     user-select: none;
     -webkit-user-select: none;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  code, kbd, pre {
+    font-family: 'JetBrains Mono', monospace;
   }
 }
 
-/* Estilos de cinta Ribbon estilo Microsoft PowerPoint */
-.ribbon-tab-active {
-  color: #c43e1c;
-  border-bottom: 2px solid #c43e1c;
-  font-weight: 600;
+/* Región de arrastre para la ventana sin marco de Tauri */
+[data-tauri-drag-region] {
+  -webkit-app-region: drag;
 }
 
-.ribbon-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
-  padding: 0.35rem 0.5rem;
-  border-radius: 0.25rem;
-  font-size: 11px;
-  color: #323130;
-  transition: all 0.15s ease;
+button, input, select, textarea, a {
+  -webkit-app-region: no-drag;
 }
 
-.ribbon-btn:hover {
-  background-color: #f3f2f1;
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
 }
 
-.ribbon-btn:active {
-  background-color: #edebe9;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-/* Lienzo de Diapositiva 16:9 con sombra y bordes */
-.slide-canvas-shadow {
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.08);
+::-webkit-scrollbar-thumb {
+  background: #c8c6c4;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  border-radius: 6px;
 }
 
-/* Tiradores de redimensión y selección de elementos */
-.element-handle {
-  width: 8px;
-  height: 8px;
-  background-color: #ffffff;
-  border: 1.5px solid #c43e1c;
-  border-radius: 1px;
-  position: absolute;
+::-webkit-scrollbar-thumb:hover {
+  background: #8a8886;
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 
-/* Transiciones cinematográficas de diapositivas (Estándar SMIL de LibreOffice Impress) */
+/* Transiciones de entrada de las diapositivas en el modo presentación */
 @keyframes slide-fade {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes slide-push {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
 }
 
 @keyframes slide-wipe {
-  from {
-    clip-path: inset(0 100% 0 0);
-  }
-  to {
-    clip-path: inset(0 0 0 0);
-  }
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
 }
 
 @keyframes slide-zoom {
-  from {
-    opacity: 0;
-    transform: scale(0.85);
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.slide-transition-fade { animation: slide-fade 0.6s ease-out; }
+.slide-transition-push { animation: slide-push 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
+.slide-transition-wipe { animation: slide-wipe 0.7s ease-out; }
+.slide-transition-zoom { animation: slide-zoom 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* Impresión / Guardar como PDF: una diapositiva por página */
+.view-print {
+  display: none;
+}
+
+@media print {
+  html, body, #root, .view-app {
+    background: #ffffff !important;
+    overflow: visible !important;
+    height: auto !important;
+    width: auto !important;
+    display: block !important;
   }
-  to {
-    opacity: 1;
-    transform: scale(1);
+
+  .view-print {
+    display: block;
   }
-}
 
-.transition-slide-fade {
-  animation: slide-fade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
+  .view-print-page {
+    break-after: page;
+    break-inside: avoid;
+    overflow: hidden;
+  }
 
-.transition-slide-push {
-  animation: slide-push 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
+  .view-print-page:last-child {
+    break-after: auto;
+  }
 
-.transition-slide-wipe {
-  animation: slide-wipe 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.transition-slide-zoom {
-  animation: slide-zoom 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 }

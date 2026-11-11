@@ -4,11 +4,11 @@ import {
   FileText,
   Table,
   Presentation,
-  StickyNote,
   CornerDownLeft,
   X,
   BookOpen,
 } from "lucide-react";
+import { appForDocument } from "../services/tauriBridge";
 import type { SuiteApp, RecentDocument } from "../types";
 
 interface CommandPaletteProps {
@@ -140,14 +140,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                 Documentos Recientes
               </span>
               {filteredDocs.map((doc) => {
-                const DocIcon =
-                  doc.app_id === "coffesheet"
-                    ? Table
-                    : doc.app_id === "coffeslides"
-                    ? Presentation
-                    : doc.app_id === "coffenotes"
-                    ? StickyNote
-                    : FileText;
+                const docApp = appForDocument(doc);
+                const DocIcon = docApp === "coffecalc" ? Table : docApp === "coffeview" ? Presentation : FileText;
 
                 return (
                   <button

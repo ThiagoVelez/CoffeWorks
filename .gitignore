@@ -31,3 +31,10 @@ pnpm-debug.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# Esquemas generados por Tauri
+**/src-tauri/gen/
+
+# Salida del instalador
+installer/Output/
+installer/build/

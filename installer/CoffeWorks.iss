@@ -1,0 +1,119 @@
+; Instalador de CoffeWorks para Windows (Inno Setup 6).
+;
+; Instala el Launcher (CoffeWorks.exe) y deja los paquetes de CoffeDoc,
+; CoffeCalc y CoffeView en la carpeta "packages". Las aplicaciones se instalan
+; y desinstalan después desde la Tienda de Apps del propio Launcher.
+;
+; Antes de compilar este script hay que generar los ejecutables con
+;   node scripts/build.mjs
+; que los deja en installer\build. Para hacerlo todo de una vez:
+;   powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
+
+#define AppName "CoffeWorks"
+#define AppVersion "2.4.0"
+#define AppPublisher "CoffeWorks OpenSource Team"
+#define AppExeName "CoffeWorks.exe"
+
+; Carpeta con los ejecutables ya compilados (se puede cambiar con /DSourceDir=...)
+#ifndef SourceDir
+  #define SourceDir "build"
+#endif
+
+[Setup]
+AppId={{26A1060F-CE35-4CE2-986C-410EC441ED8C}
+AppName={#AppName}
+AppVersion={#AppVersion}
+AppVerName={#AppName} {#AppVersion}
+AppPublisher={#AppPublisher}
+VersionInfoVersion={#AppVersion}
+DefaultDirName={autopf}\{#AppName}
+DefaultGroupName={#AppName}
+DisableProgramGroupPage=yes
+; Instalación por usuario: no necesita permisos de administrador
+PrivilegesRequired=lowest
+PrivilegesRequiredOverridesAllowed=dialog
+OutputDir=Output
+OutputBaseFilename=CoffeWorks-Setup-{#AppVersion}
+SetupIconFile=..\CoffeWorks_Icon\CoffeWorks.ico
+UninstallDisplayIcon={app}\{#AppExeName}
+UninstallDisplayName={#AppName}
+Compression=lzma2/max
+SolidCompression=yes
+WizardStyle=modern
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
+CloseApplications=yes
+MinVersion=10.0
+
+[Languages]
+Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[CustomMessages]
+spanish.InstallApps=Instalar ahora CoffeDoc, CoffeCalc y CoffeView
+english.InstallApps=Install CoffeDoc, CoffeCalc and CoffeView now
+spanish.SuiteApps=Aplicaciones de la suite:
+english.SuiteApps=Suite applications:
+spanish.InstallingApps=Instalando las aplicaciones de la suite...
+english.InstallingApps=Installing the suite applications...
+spanish.InstallingWebView=Instalando Microsoft Edge WebView2 (necesario para mostrar la interfaz)...
+english.InstallingWebView=Installing Microsoft Edge WebView2 (required to display the interface)...
+spanish.WebViewMissing=CoffeWorks necesita Microsoft Edge WebView2 y no se pudo instalar automáticamente.%n%nDescárgalo desde https://developer.microsoft.com/microsoft-edge/webview2/ (Evergreen Bootstrapper) e instálalo antes de abrir CoffeWorks.
+english.WebViewMissing=CoffeWorks requires Microsoft Edge WebView2 and it could not be installed automatically.%n%nDownload it from https://developer.microsoft.com/microsoft-edge/webview2/ (Evergreen Bootstrapper) and install it before opening CoffeWorks.
+
+[Tasks]
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
+Name: "installapps"; Description: "{cm:InstallApps}"; GroupDescription: "{cm:SuiteApps}"; Flags: unchecked
+
+[Files]
+Source: "{#SourceDir}\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourceDir}\packages\*"; DestDir: "{app}\packages"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Solo existe en compilaciones hechas con MinGW (las de MSVC lo llevan integrado)
+Source: "{#SourceDir}\WebView2Loader.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+; Instalador del motor WebView2 para los equipos que aún no lo tienen
+Source: "{#SourceDir}\MicrosoftEdgeWebview2Setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall skipifsourcedoesntexist
+
+[Icons]
+Name: "{autoprograms}\{#AppName}\{#AppName}"; Filename: "{app}\{#AppExeName}"
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
+
+[Run]
+Filename: "{tmp}\MicrosoftEdgeWebview2Setup.exe"; Parameters: "/silent /install"; StatusMsg: "{cm:InstallingWebView}"; Check: NeedsWebView2; Flags: waituntilterminated skipifdoesntexist
+Filename: "{app}\{#AppExeName}"; Parameters: "--install-all"; StatusMsg: "{cm:InstallingApps}"; Tasks: installapps; Flags: waituntilterminated runasoriginaluser
+Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent runasoriginaluser
+
+[UninstallRun]
+; Quita las aplicaciones instaladas desde el Launcher, sus accesos directos y
+; sus asociaciones de archivo. Los documentos del usuario no se tocan.
+Filename: "{app}\{#AppExeName}"; Parameters: "--uninstall-all"; Flags: waituntilterminated; RunOnceId: "RemoveSuiteApps"
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{localappdata}\CoffeWorks\Apps"
+Type: dirifempty; Name: "{localappdata}\CoffeWorks"
+
+[Code]
+const
+  WebView2ClientKey = '{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}';
+
+function HasWebView2Version(RootKey: Integer; const SubKey: String): Boolean;
+var
+  Version: String;
+begin
+  Result := RegQueryStringValue(RootKey, SubKey, 'pv', Version) and (Version <> '') and (Version <> '0.0.0.0');
+end;
+
+{ Indica si falta el motor WebView2 (Windows 11 y los Windows 10 actualizados ya lo incluyen). }
+function NeedsWebView2: Boolean;
+begin
+  Result := not (
+    HasWebView2Version(HKLM, 'SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\' + WebView2ClientKey) or
+    HasWebView2Version(HKLM, 'SOFTWARE\Microsoft\EdgeUpdate\Clients\' + WebView2ClientKey) or
+    HasWebView2Version(HKCU, 'Software\Microsoft\EdgeUpdate\Clients\' + WebView2ClientKey));
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  { Si tras la instalación sigue faltando WebView2, se avisa de cómo obtenerlo. }
+  if (CurStep = ssDone) and NeedsWebView2 and not WizardSilent then
+    MsgBox(CustomMessage('WebViewMissing'), mbInformation, MB_OK);
+end;

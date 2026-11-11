@@ -1,0 +1,35 @@
+# Espacio de trabajo Cargo de la suite CoffeWorks.
+# Compila el Launcher y las tres aplicaciones como ejecutables independientes
+# compartiendo dependencias y una sola carpeta `target/`.
+[workspace]
+resolver = "2"
+members = [
+  "crates/coffe-core",
+  "src-tauri",
+  "CoffeDoc/src-tauri",
+  "CoffeCalc/src-tauri",
+  "CoffeView/src-tauri",
+]
+
+[workspace.package]
+version = "2.4.0"
+authors = ["CoffeWorks OpenSource Team"]
+edition = "2021"
+
+[workspace.dependencies]
+tauri = { version = "2", features = [] }
+tauri-build = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+base64 = "0.22"
+dirs = "5"
+open = "5"
+coffe-core = { path = "crates/coffe-core" }
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

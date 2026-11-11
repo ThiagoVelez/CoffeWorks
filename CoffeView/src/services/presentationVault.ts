@@ -1,462 +1,400 @@
-// Bóveda de persistencia local y sincronización para CoffeView
-import type { PresentationMetadata, Slide, SlideTheme, SlideLayout } from "../types";
+// Almacén de presentaciones de CoffeView: temas, diseños de diapositiva,
+// formato nativo .csl, guardado en la bóveda de CoffeWorks y exportación.
+
+import type {
+  ExportFormat,
+  Presentation,
+  Slide,
+  SlideElement,
+  SlideLayout,
+  SlideTheme,
+} from "../types";
+import { SLIDE_SIZE } from "../types";
+import {
+  baseName,
+  bytesToText,
+  extensionOf,
+  isTauri,
+  readFileBytes,
+  registerRecent,
+  renameInVault,
+  saveFileAs,
+  stripExtension,
+  vaultPath,
+  writeFileText,
+  type PickedFile,
+} from "./desktop";
+
+export const APP_ID = "coffeview";
+export const NATIVE_EXTENSION = "csl";
+export const DEFAULT_TITLE = "Presentación sin título";
+
+const WEB_DOC_PREFIX = "coffeview:doc:";
+const LAST_KEY = "coffeview:last";
+const LEGACY_KEY = "coffeview_active_presentation";
+
+export const OPEN_FILTERS = [
+  { name: "Presentaciones", extensions: ["csl", "pptx"] },
+  { name: "Presentación de CoffeView", extensions: ["csl"] },
+  { name: "Presentación de PowerPoint", extensions: ["pptx"] },
+];
 
 export const SLIDE_THEMES: SlideTheme[] = [
-  {
-    id: "theme_light",
-    name: "Estándar Blanco",
-    slideBg: "#ffffff",
-    titleColor: "#1f1f1f",
-    textColor: "#444746",
-    accentColor: "#1a73e8",
-  },
-  {
-    id: "theme_paper",
-    name: "Papel Minimalista",
-    slideBg: "#f8f9fa",
-    titleColor: "#202124",
-    textColor: "#3c4043",
-    accentColor: "#1a73e8",
-  },
-  {
-    id: "theme_latte",
-    name: "Latte Moderno",
-    slideBg: "#fef7e0",
-    titleColor: "#3e2723",
-    textColor: "#5f6368",
-    accentColor: "#d35400",
-  },
-  {
-    id: "theme_espresso",
-    name: "Espresso Ejecutivo",
-    slideBg: "#1e140f",
-    titleColor: "#ffffff",
-    textColor: "#dfd3c7",
-    accentColor: "#c43e1c",
-  },
-  {
-    id: "theme_corporate",
-    name: "Mocca Corporativo",
-    slideBg: "#2b2523",
-    titleColor: "#ffffff",
-    textColor: "#e0d6d1",
-    accentColor: "#e67e22",
-  },
+  { id: "theme_light", name: "Estándar blanco", slideBg: "#ffffff", titleColor: "#1f1f1f", textColor: "#444746", accentColor: "#1a73e8", fontFamily: "Arial" },
+  { id: "theme_paper", name: "Papel minimalista", slideBg: "#f8f9fa", titleColor: "#202124", textColor: "#3c4043", accentColor: "#188038", fontFamily: "Georgia" },
+  { id: "theme_latte", name: "Latte moderno", slideBg: "#fef7e0", titleColor: "#3e2723", textColor: "#5d4037", accentColor: "#d35400", fontFamily: "Trebuchet MS" },
+  { id: "theme_ocean", name: "Océano", slideBg: "#e8f0fe", titleColor: "#0b3d91", textColor: "#1f3a5f", accentColor: "#0b57d0", fontFamily: "Verdana" },
+  { id: "theme_espresso", name: "Espresso ejecutivo", slideBg: "#1e140f", titleColor: "#ffffff", textColor: "#dfd3c7", accentColor: "#e08e45", fontFamily: "Georgia" },
+  { id: "theme_corporate", name: "Mocca corporativo", slideBg: "#2b2523", titleColor: "#ffffff", textColor: "#e0d6d1", accentColor: "#e67e22", fontFamily: "Arial" },
+  { id: "theme_night", name: "Noche", slideBg: "#202124", titleColor: "#e8eaed", textColor: "#bdc1c6", accentColor: "#8ab4f8", fontFamily: "Arial" },
 ];
 
-export const createDefaultSlides = (theme?: SlideTheme): Slide[] => [
-  {
-    id: "slide_1",
-    slideNumber: 1,
-    layout: "title",
-    background: theme?.slideBg || "#ffffff",
-    transition: "fade",
-    notes: "",
-    elements: [
-      {
-        id: "el_s1_title",
-        type: "title",
-        x: 10,
-        y: 28,
-        width: 80,
-        height: 22,
-        content: "",
-        fontSize: 44,
-        fontWeight: "bold",
-        align: "center",
-        color: theme?.titleColor || "#1f1f1f",
-      },
-      {
-        id: "el_s1_sub",
-        type: "subtitle",
-        x: 15,
-        y: 54,
-        width: 70,
-        height: 16,
-        content: "",
-        fontSize: 22,
-        fontWeight: "normal",
-        align: "center",
-        color: theme?.textColor || "#444746",
-      },
-    ],
-  },
-];
+export const themeById = (id: string): SlideTheme => SLIDE_THEMES.find((t) => t.id === id) || SLIDE_THEMES[0];
 
-export const createSlideForLayout = (
-  layout: SlideLayout,
-  slideNumber: number,
-  theme?: SlideTheme,
-  inheritedBg?: string
-): Slide => {
-  const baseId = `slide_${Date.now()}`;
-  const bg = inheritedBg || theme?.slideBg || "#ffffff";
-  const isDark = bg.toLowerCase() < "#888888" && !bg.toLowerCase().startsWith("#f");
-  const titleColor = theme?.titleColor || (isDark ? "#ffffff" : "#1f1f1f");
-  const textColor = theme?.textColor || (isDark ? "#dfd3c7" : "#444746");
+export interface OpenResult {
+  presentation: Presentation;
+  /** Ruta del archivo .csl en disco; `null` si aún no tiene archivo. */
+  filePath: string | null;
+}
 
+export const newId = (prefix: string) =>
+  `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+
+/** Indica si un color es oscuro (para elegir texto claro encima). */
+export function isDarkColor(color: string | undefined): boolean {
+  const match = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(color || "");
+  if (!match) return false;
+  const [r, g, b] = [match[1], match[2], match[3]].map((part) => parseInt(part, 16));
+  return 0.299 * r + 0.587 * g + 0.114 * b < 140;
+}
+
+const textElement = (
+  type: SlideElement["type"],
+  box: [number, number, number, number],
+  options: Partial<SlideElement> = {}
+): SlideElement => ({
+  id: newId("el"),
+  type,
+  x: box[0],
+  y: box[1],
+  width: box[2],
+  height: box[3],
+  content: "",
+  ...options,
+});
+
+/** Elementos de partida de cada diseño de diapositiva. */
+export function elementsForLayout(layout: SlideLayout): SlideElement[] {
   switch (layout) {
     case "title":
-      return {
-        id: baseId,
-        slideNumber,
-        layout,
-        background: bg,
-        transition: "fade",
-        notes: "",
-        elements: [
-          {
-            id: `el_${baseId}_1`,
-            type: "title",
-            x: 10,
-            y: 28,
-            width: 80,
-            height: 22,
-            content: "",
-            fontSize: 44,
-            fontWeight: "bold",
-            align: "center",
-            color: titleColor,
-          },
-          {
-            id: `el_${baseId}_2`,
-            type: "subtitle",
-            x: 15,
-            y: 54,
-            width: 70,
-            height: 16,
-            content: "",
-            fontSize: 22,
-            fontWeight: "normal",
-            align: "center",
-            color: textColor,
-          },
-        ],
-      };
+      return [
+        textElement("title", [10, 26, 80, 24], { fontSize: 48, fontWeight: "bold", align: "center" }),
+        textElement("subtitle", [15, 54, 70, 14], { fontSize: 24, align: "center" }),
+      ];
+    case "section":
+      return [
+        textElement("title", [8, 34, 84, 20], { fontSize: 44, fontWeight: "bold", align: "left" }),
+        textElement("subtitle", [8, 56, 84, 10], { fontSize: 20, align: "left" }),
+      ];
     case "two-columns":
-      return {
-        id: baseId,
-        slideNumber,
-        layout,
-        background: bg,
-        transition: "push",
-        notes: "",
-        elements: [
-          {
-            id: `el_${baseId}_title`,
-            type: "title",
-            x: 8,
-            y: 10,
-            width: 84,
-            height: 14,
-            content: "",
-            fontSize: 32,
-            fontWeight: "bold",
-            align: "left",
-            color: titleColor,
-          },
-          {
-            id: `el_${baseId}_c1`,
-            type: "text",
-            x: 8,
-            y: 28,
-            width: 40,
-            height: 58,
-            content: "• Primer punto de la columna 1\n• Segundo punto clave",
-            fontSize: 18,
-            fontWeight: "normal",
-            align: "left",
-            color: textColor,
-          },
-          {
-            id: `el_${baseId}_c2`,
-            type: "text",
-            x: 52,
-            y: 28,
-            width: 40,
-            height: 58,
-            content: "• Primer punto de la columna 2\n• Segundo punto clave",
-            fontSize: 18,
-            fontWeight: "normal",
-            align: "left",
-            color: textColor,
-          },
-        ],
-      };
+      return [
+        textElement("title", [6, 7, 88, 15], { fontSize: 34, fontWeight: "bold", align: "left" }),
+        textElement("text", [6, 26, 42, 64], { fontSize: 20, align: "left", valign: "top" }),
+        textElement("text", [52, 26, 42, 64], { fontSize: 20, align: "left", valign: "top" }),
+      ];
     case "blank":
-      return {
-        id: baseId,
-        slideNumber,
-        layout,
-        background: bg,
-        transition: "none",
-        notes: "",
-        elements: [],
-      };
+      return [];
     case "title-content":
     default:
-      return {
-        id: baseId,
-        slideNumber,
-        layout: "title-content",
-        background: bg,
-        transition: "push",
-        notes: "",
-        elements: [
-          {
-            id: `el_${baseId}_title`,
-            type: "title",
-            x: 8,
-            y: 10,
-            width: 84,
-            height: 14,
-            content: "",
-            fontSize: 32,
-            fontWeight: "bold",
-            align: "left",
-            color: titleColor,
-          },
-          {
-            id: `el_${baseId}_body`,
-            type: "text",
-            x: 8,
-            y: 28,
-            width: 84,
-            height: 58,
-            content: "",
-            fontSize: 20,
-            fontWeight: "normal",
-            align: "left",
-            color: textColor,
-          },
-        ],
-      };
-  }
-};
-
-const STORAGE_KEY = "coffeview_active_presentation";
-
-export const presentationVault = {
-  loadPresentation(): {
-    metadata: PresentationMetadata;
-    slides: Slide[];
-    activeSlideId: string;
-  } {
-    if (typeof window === "undefined") {
-      const slides = createDefaultSlides();
-      return {
-        metadata: {
-          id: "pres_1",
-          title: "Nueva Presentación",
-          author: "Usuario CoffeWorks",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          themeId: "theme_light",
-        },
-        slides,
-        activeSlideId: slides[0].id,
-      };
-    }
-
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed.slides && Array.isArray(parsed.slides) && parsed.slides.length > 0) {
-          // Normalizar diapositivas existentes para asegurar consistencia de fondo blanco y elementos editables
-          const normalizedSlides: Slide[] = parsed.slides.map((s: Slide, idx: number) => {
-            const hasNoElements = !s.elements || s.elements.length === 0;
-            // Si la diapositiva no tiene elementos o es la primera, inyectar los elementos editables
-            if (hasNoElements && (s.layout === "title" || idx === 0)) {
-              return {
-                ...s,
-                layout: "title" as SlideLayout,
-                background: s.background || "#ffffff",
-                elements: [
-                  {
-                    id: `el_${s.id}_title`,
-                    type: "title" as const,
-                    x: 10,
-                    y: 28,
-                    width: 80,
-                    height: 22,
-                    content: "",
-                    fontSize: 44,
-                    fontWeight: "bold" as const,
-                    align: "center" as const,
-                    color: "#1f1f1f",
-                  },
-                  {
-                    id: `el_${s.id}_sub`,
-                    type: "subtitle" as const,
-                    x: 15,
-                    y: 54,
-                    width: 70,
-                    height: 16,
-                    content: "",
-                    fontSize: 22,
-                    fontWeight: "normal" as const,
-                    align: "center" as const,
-                    color: "#444746",
-                  },
-                ],
-              };
-            }
-            return {
-              ...s,
-              background: s.background || "#ffffff",
-            };
-          });
-
-          const currentThemeId =
-            parsed.metadata?.themeId && parsed.metadata.themeId !== "theme_espresso"
-              ? parsed.metadata.themeId
-              : "theme_light";
-
-          return {
-            metadata: {
-              ...(parsed.metadata || {}),
-              id: parsed.metadata?.id || "pres_1",
-              title: parsed.metadata?.title || "Nueva Presentación",
-              author: parsed.metadata?.author || "Usuario CoffeWorks",
-              createdAt: parsed.metadata?.createdAt || new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              themeId: currentThemeId,
-            },
-            slides: normalizedSlides,
-            activeSlideId: parsed.activeSlideId || normalizedSlides[0].id,
-          };
-        }
-      }
-    } catch (err) {
-      console.warn("Fallo al leer presentación persistida:", err);
-    }
-
-    const defaultSlides = createDefaultSlides();
-    const initData = {
-      metadata: {
-        id: "pres_1",
-        title: "Nueva Presentación",
-        author: "Usuario CoffeWorks",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        themeId: "theme_light",
-      },
-      slides: defaultSlides,
-      activeSlideId: defaultSlides[0].id,
-    };
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(initData));
-    return initData;
-  },
-
-  savePresentation(
-    metadata: PresentationMetadata,
-    slides: Slide[],
-    activeSlideId: string
-  ): void {
-    if (typeof window === "undefined") return;
-
-    const data = {
-      metadata: {
-        ...metadata,
-        updatedAt: new Date().toISOString(),
-      },
-      slides,
-      activeSlideId,
-    };
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-
-    // Registrar en documentos recientes del Launcher
-    try {
-      const existingRaw = localStorage.getItem("coffeeworks_recent_docs");
-      const existing = existingRaw ? JSON.parse(existingRaw) : [];
-      const updatedDocs = [
-        {
-          id: metadata.id,
-          name: `${metadata.title}.csl`,
-          app_id: "coffeview",
-          category: "Presentaciones",
-          last_modified: "Hace unos instantes",
-          is_pinned: false,
-          path: `./vault/${metadata.title}.csl`,
-        },
-        ...existing.filter((d: { id: string }) => d.id !== metadata.id),
+      return [
+        textElement("title", [6, 7, 88, 15], { fontSize: 34, fontWeight: "bold", align: "left" }),
+        textElement("text", [6, 26, 88, 64], { fontSize: 22, align: "left", valign: "top" }),
       ];
-      localStorage.setItem("coffeeworks_recent_docs", JSON.stringify(updatedDocs));
+  }
+}
 
-      // Sincronizar vía endpoint si está disponible
-      fetch("/api/vault", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedDocs[0]),
-      }).catch(() => {});
-    } catch {
-      // Ignorar fallas secundarias de sincronización
-    }
-  },
+export function createSlide(layout: SlideLayout, background?: string): Slide {
+  return {
+    id: newId("slide"),
+    layout,
+    background,
+    elements: elementsForLayout(layout),
+    notes: "",
+    transition: "fade",
+  };
+}
 
-  exportToCSL(metadata: PresentationMetadata, slides: Slide[]): void {
-    const payload = JSON.stringify({ metadata, slides }, null, 2);
-    const blob = new Blob([payload], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${metadata.title || "Presentacion"}.csl`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  },
+export function createBlankPresentation(title = DEFAULT_TITLE): Presentation {
+  const now = new Date().toISOString();
+  return {
+    metadata: {
+      id: newId("pres"),
+      title,
+      author: "Usuario CoffeWorks",
+      createdAt: now,
+      updatedAt: now,
+      themeId: "theme_light",
+      aspectRatio: "16:9",
+    },
+    slides: [createSlide("title")],
+    assets: [],
+  };
+}
 
-  exportToHTML(metadata: PresentationMetadata, slides: Slide[], theme: SlideTheme): void {
-    const htmlContent = `<!DOCTYPE html>
+/** Convierte el texto de las tablas antiguas ("a, b\nc, d") en filas. */
+function legacyTableRows(content: string): string[][] {
+  return content
+    .split("\n")
+    .filter((line) => line.trim() !== "")
+    .map((line) => line.split(",").map((cell) => cell.trim()));
+}
+
+function normalizeElement(raw: Partial<SlideElement>): SlideElement {
+  const element: SlideElement = {
+    ...raw,
+    id: raw.id || newId("el"),
+    type: raw.type || "text",
+    x: Number(raw.x) || 0,
+    y: Number(raw.y) || 0,
+    width: Number(raw.width) || 20,
+    height: Number(raw.height) || 10,
+    content: typeof raw.content === "string" ? raw.content : "",
+  };
+  if (element.type === "table" && !Array.isArray(element.rows)) {
+    element.rows = legacyTableRows(element.content);
+    element.content = "";
+  }
+  return element;
+}
+
+/** Interpreta el contenido de un archivo .csl (formato actual o heredado). */
+export function parseCsl(text: string, fallbackTitle: string): Presentation {
+  const parsed = JSON.parse(text);
+  if (!Array.isArray(parsed.slides) || parsed.slides.length === 0) {
+    throw new Error("El archivo no contiene diapositivas válidas");
+  }
+  const blank = createBlankPresentation(fallbackTitle);
+  const metadata = { ...blank.metadata, ...(parsed.metadata || {}) };
+  if (!metadata.title) metadata.title = fallbackTitle;
+  if (!SLIDE_THEMES.some((t) => t.id === metadata.themeId)) metadata.themeId = "theme_light";
+  if (metadata.aspectRatio !== "4:3") metadata.aspectRatio = "16:9";
+
+  const slides: Slide[] = parsed.slides.map((slide: Partial<Slide>) => ({
+    id: slide.id || newId("slide"),
+    layout: slide.layout || "blank",
+    background: slide.background,
+    elements: Array.isArray(slide.elements) ? slide.elements.map(normalizeElement) : [],
+    notes: slide.notes || "",
+    transition: slide.transition || "none",
+    hidden: Boolean(slide.hidden),
+    duration: slide.duration,
+  }));
+  return { metadata, slides, assets: Array.isArray(parsed.assets) ? parsed.assets : [] };
+}
+
+export function serializeCsl(presentation: Presentation): string {
+  return JSON.stringify({ format: "coffeview", version: 2, ...presentation });
+}
+
+/** Convierte un archivo elegido por el usuario en una presentación editable. */
+export async function importFile(file: PickedFile): Promise<OpenResult> {
+  const extension = extensionOf(file.name);
+  const title = stripExtension(file.name) || DEFAULT_TITLE;
+  if (extension === "pptx") {
+    const { importPptx } = await import("./pptx");
+    return { presentation: await importPptx(file.bytes, title), filePath: null };
+  }
+  if (extension === "ppt") {
+    throw new Error("El formato .ppt de PowerPoint 97-2003 no es compatible. Guárdalo como .pptx y vuelve a abrirlo.");
+  }
+  const presentation = parseCsl(bytesToText(file.bytes), title);
+  return { presentation, filePath: extension === NATIVE_EXTENSION ? file.path : null };
+}
+
+export async function openPath(path: string): Promise<OpenResult> {
+  const bytes = await readFileBytes(path);
+  return importFile({ name: baseName(path), path, bytes });
+}
+
+export function loadWebPresentation(id: string): Presentation | null {
+  try {
+    const raw = localStorage.getItem(WEB_DOC_PREFIX + id);
+    return raw ? parseCsl(raw, DEFAULT_TITLE) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Presentación guardada por versiones anteriores de CoffeView en el navegador. */
+export function loadLegacyPresentation(): Presentation | null {
+  try {
+    const raw = localStorage.getItem(LEGACY_KEY);
+    if (!raw) return null;
+    const presentation = parseCsl(raw, DEFAULT_TITLE);
+    const hasContent = presentation.slides.some((s) => s.elements.some((el) => el.content || el.rows));
+    return hasContent ? presentation : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Guarda la presentación. En escritorio escribe el archivo .csl (en la bóveda
+ * si aún no tiene ubicación) y devuelve su ruta; en el navegador usa localStorage.
+ */
+export async function persistPresentation(
+  presentation: Presentation,
+  filePath: string | null
+): Promise<string | null> {
+  const stamped: Presentation = {
+    ...presentation,
+    metadata: { ...presentation.metadata, updatedAt: new Date().toISOString() },
+  };
+  const json = serializeCsl(stamped);
+  const title = presentation.metadata.title.trim() || DEFAULT_TITLE;
+  const fileName = `${title}.${NATIVE_EXTENSION}`;
+  const entry = {
+    id: presentation.metadata.id,
+    name: fileName,
+    app_id: APP_ID,
+    category: "Presentación",
+    last_modified: "",
+    is_pinned: false,
+    path: "",
+    updated_at: Date.now(),
+  };
+
+  if (isTauri) {
+    const path = filePath
+      ? await renameInVault(filePath, fileName, presentation.metadata.id)
+      : await vaultPath(fileName, presentation.metadata.id);
+    await writeFileText(path, json);
+    await registerRecent({ ...entry, name: baseName(path), path });
+    localStorage.setItem(LAST_KEY, path);
+    return path;
+  }
+
+  localStorage.setItem(WEB_DOC_PREFIX + presentation.metadata.id, json);
+  localStorage.setItem(LAST_KEY, presentation.metadata.id);
+  await registerRecent({ ...entry, path: `web:${presentation.metadata.id}` });
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Exportación
+// ---------------------------------------------------------------------------
+
+const escapeHtml = (text: string) =>
+  text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/** Página HTML autónoma con todas las diapositivas (navegable con las flechas). */
+function presentationToHtml(presentation: Presentation): string {
+  const theme = themeById(presentation.metadata.themeId);
+  const size = SLIDE_SIZE[presentation.metadata.aspectRatio];
+  const slides = presentation.slides
+    .filter((slide) => !slide.hidden)
+    .map((slide) => {
+      const elements = slide.elements
+        .map((el) => {
+          const box = `left:${el.x}%;top:${el.y}%;width:${el.width}%;height:${el.height}%;`;
+          if (el.type === "image") {
+            return `<img class="el" style="${box}object-fit:contain;" src="${escapeHtml(el.content)}" alt="">`;
+          }
+          if (el.type === "video") {
+            return `<video class="el" style="${box}" src="${escapeHtml(el.content)}" controls></video>`;
+          }
+          if (el.type === "line") {
+            const y1 = el.flip ? "100%" : "0";
+            const y2 = el.flip ? "0" : "100%";
+            return `<svg class="el" style="${box}overflow:visible;"><line x1="0" y1="${y1}" x2="100%" y2="${y2}" stroke="${el.color || theme.textColor}" stroke-width="${el.borderWidth || 3}"/></svg>`;
+          }
+          if (el.type === "table") {
+            const rows = (el.rows || [])
+              .map((row, r) => `<tr>${row.map((cell) => `<t${r === 0 ? "h" : "d"}>${escapeHtml(cell)}</t${r === 0 ? "h" : "d"}>`).join("")}</tr>`)
+              .join("");
+            return `<table class="el" style="${box}font-size:${el.fontSize || 16}px;color:${el.color || theme.textColor};">${rows}</table>`;
+          }
+          const isTitle = el.type === "title";
+          const radius = el.shapeType === "circle" ? "50%" : el.shapeType === "rounded" ? "18px" : "0";
+          const style =
+            box +
+            `color:${el.color || (isTitle ? theme.titleColor : theme.textColor)};` +
+            `background:${el.bg || (el.type === "shape" ? theme.accentColor : "transparent")};` +
+            `font-size:${el.fontSize || (isTitle ? 40 : 20)}px;font-weight:${el.fontWeight || (isTitle ? "bold" : "normal")};` +
+            `font-style:${el.fontStyle || "normal"};text-decoration:${el.underline ? "underline" : "none"};` +
+            `text-align:${el.align || "center"};font-family:${el.fontFamily || theme.fontFamily},sans-serif;` +
+            `justify-content:${el.valign === "top" ? "flex-start" : el.valign === "bottom" ? "flex-end" : "center"};border-radius:${radius};`;
+          return `<div class="el text" style="${style}">${escapeHtml(el.content).replace(/\n/g, "<br>")}</div>`;
+        })
+        .join("");
+      return `<section class="slide" style="background:${slide.background || theme.slideBg};">${elements}</section>`;
+    })
+    .join("\n");
+
+  return `<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <title>${metadata.title} - CoffeView</title>
-  <style>
-    body { margin: 0; background: #111; color: #fff; font-family: Segoe UI, sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-    .slide { width: 960px; height: 540px; background: ${theme.slideBg}; border-radius: 8px; position: relative; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; page-break-after: always; }
-    .el { position: absolute; box-sizing: border-box; }
-    .slide-num { position: absolute; bottom: 12px; right: 20px; font-size: 12px; color: ${theme.textColor}; opacity: 0.7; }
-  </style>
+<meta charset="utf-8">
+<title>${escapeHtml(presentation.metadata.title)}</title>
+<style>
+body{margin:0;background:#111;font-family:Arial,sans-serif;display:flex;flex-direction:column;align-items:center;gap:28px;padding:28px 0;}
+.slide{width:${size.width}px;height:${size.height}px;position:relative;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.5);flex-shrink:0;}
+.el{position:absolute;box-sizing:border-box;}
+.text{display:flex;flex-direction:column;padding:8px;white-space:pre-wrap;line-height:1.2;}
+table{border-collapse:collapse;}th,td{border:1px solid #bdc1c6;padding:4px 8px;text-align:left;}th{background:${theme.accentColor};color:#fff;}
+@media print{body{background:#fff;padding:0;gap:0;}.slide{box-shadow:none;page-break-after:always;}}
+</style>
 </head>
 <body>
-  ${slides
-    .map(
-      (slide, idx) => `
-    <div class="slide">
-      ${slide.elements
-        .map(
-          (el) => `
-        <div class="el" style="left: ${el.x}%; top: ${el.y}%; width: ${el.width}%; height: ${
-            el.height
-          }%; color: ${el.color || theme.textColor}; font-size: ${el.fontSize || 18}px; font-weight: ${
-            el.fontWeight || "normal"
-          }; text-align: ${el.align || "left"}; background: ${el.bg || "transparent"}; padding: 8px;">
-          ${el.content.replace(/\n/g, "<br/>")}
-        </div>
-      `
-        )
-        .join("")}
-      <div class="slide-num">Diapositiva ${idx + 1} de ${slides.length}</div>
-    </div>
-  `
-    )
-    .join("")}
+${slides}
+<script>
+document.addEventListener("keydown",function(e){var s=[].slice.call(document.querySelectorAll(".slide"));var i=s.findIndex(function(x){return x.getBoundingClientRect().top>-10});if(e.key==="ArrowRight"||e.key==="PageDown"||e.key===" "){e.preventDefault();(s[i+1]||s[i]).scrollIntoView({behavior:"smooth",block:"center"});}if(e.key==="ArrowLeft"||e.key==="PageUp"){e.preventDefault();(s[Math.max(0,i-1)]).scrollIntoView({behavior:"smooth",block:"center"});}});
+</script>
 </body>
-</html>`;
+</html>
+`;
+}
 
-    const blob = new Blob([htmlContent], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${metadata.title || "Presentacion"}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  },
-};
+/**
+ * Exporta la presentación mediante el diálogo "Guardar como". Devuelve `false`
+ * si el usuario canceló. El PDF se gestiona con la impresión del sistema.
+ */
+export async function exportPresentation(
+  presentation: Presentation,
+  format: Exclude<ExportFormat, "pdf">
+): Promise<boolean> {
+  const title = presentation.metadata.title.trim() || DEFAULT_TITLE;
+  let data: Uint8Array | string;
+  let filterName: string;
+
+  if (format === "pptx") {
+    const { exportPptx } = await import("./pptx");
+    data = await exportPptx(presentation);
+    filterName = "Presentación de PowerPoint";
+  } else if (format === "html") {
+    data = presentationToHtml(presentation);
+    filterName = "Página web";
+  } else {
+    data = serializeCsl(presentation);
+    filterName = "Presentación de CoffeView";
+  }
+
+  const saved = await saveFileAs(
+    `${title}.${format}`,
+    [{ name: filterName, extensions: [format] }],
+    data,
+    "Exportar presentación"
+  );
+  return saved !== null;
+}
+
+/** "Guardar como": elige una nueva ubicación para el archivo .csl. */
+export async function savePresentationAs(presentation: Presentation): Promise<string | null> {
+  const title = presentation.metadata.title.trim() || DEFAULT_TITLE;
+  return saveFileAs(
+    `${title}.${NATIVE_EXTENSION}`,
+    [{ name: "Presentación de CoffeView", extensions: [NATIVE_EXTENSION] }],
+    serializeCsl(presentation),
+    "Guardar presentación como"
+  );
+}
