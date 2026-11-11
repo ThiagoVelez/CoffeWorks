@@ -1,769 +1,561 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Search,
   Plus,
+  ChevronDown,
+  ChevronUp,
   Undo2,
   Redo2,
   Printer,
   Paintbrush,
-  ChevronDown,
-  ChevronUp,
-  MousePointer,
+  MousePointer2,
   Type,
   Image as ImageIcon,
-  Square,
+  Shapes,
   Minus,
-  Check,
+  Table,
+  StickyNote,
   Bold,
   Italic,
   Underline,
   AlignLeft,
   AlignCenter,
   AlignRight,
+  AlignVerticalJustifyStart,
+  AlignVerticalJustifyCenter,
+  AlignVerticalJustifyEnd,
+  PaintBucket,
+  BringToFront,
+  SendToBack,
   Trash2,
-  Table as TableIcon,
-  MessageSquarePlus,
-  X,
+  Check,
+  Square,
+  Circle,
+  Triangle,
+  Star,
+  Diamond,
+  ArrowRight,
+  MessageSquare,
+  RectangleHorizontal,
+  Palette,
 } from "lucide-react";
-import type { SlideTheme, SlideTransition, SlideLayout, ShapeType } from "../types";
-import { SLIDE_THEMES } from "../services/presentationVault";
+import type { ShapeType, SlideElement, SlideLayout, SlideTheme } from "../types";
+import { TEXT_TYPES } from "../types";
 
 interface GoogleSlidesToolbarProps {
+  selected: SlideElement | null;
+  theme: SlideTheme;
+  themes: SlideTheme[];
+  zoom: number | "fit";
+  onZoomChange: (zoom: number | "fit") => void;
   onUndo: () => void;
   onRedo: () => void;
   onPrint: () => void;
-  onFormatPainter: () => void;
-  isFormatPainterActive: boolean;
-  onAddSlide: (layout?: SlideLayout) => void;
-  onChangeSlideLayout?: (layout: SlideLayout) => void;
-  onSetSlideBackground?: (color: string, applyToAll?: boolean) => void;
-  currentSlideBackground?: string;
+  painterActive: boolean;
+  onTogglePainter: () => void;
+  onAddSlide: (layout: SlideLayout) => void;
+  onDeselect: () => void;
   onAddText: () => void;
+  onPickImage: () => void;
   onAddShape: (shape: ShapeType) => void;
-  onInsertImage: () => void;
-  currentTheme: SlideTheme;
-  onSelectTheme: (themeId: string) => void;
-  currentTransition: SlideTransition;
-  onSelectTransition: (tr: SlideTransition) => void;
-  onApplyTransitionToAll?: (tr: SlideTransition) => void;
-  selectedElementId?: string | null;
-  onToggleBold?: () => void;
-  onToggleItalic?: () => void;
-  onToggleUnderline?: () => void;
-  onSetAlign?: (align: "left" | "center" | "right" | "justify") => void;
-  onSetFontSize?: (size: number) => void;
-  onSetFontFamily?: (font: string) => void;
-  onDeleteElement?: () => void;
-  onAddComment?: () => void;
-  onAddTable?: () => void;
+  onAddLine: () => void;
+  onAddTable: () => void;
+  onFocusNotes: () => void;
+  onStyle: (patch: Partial<SlideElement>) => void;
+  onArrange: (direction: "front" | "back") => void;
+  onDelete: () => void;
+  onSelectTheme: (id: string) => void;
+  onOpenCommandSearch: () => void;
+  notesVisible: boolean;
+  onToggleNotes: () => void;
 }
 
+const FONTS = ["Arial", "Calibri", "Georgia", "Times New Roman", "Verdana", "Trebuchet MS", "Courier New", "Hanken Grotesk"];
+
+const LAYOUTS: Array<{ id: SlideLayout; label: string }> = [
+  { id: "title", label: "Diapositiva de título" },
+  { id: "title-content", label: "Título y contenido" },
+  { id: "two-columns", label: "Título y dos columnas" },
+  { id: "section", label: "Encabezado de sección" },
+  { id: "blank", label: "En blanco" },
+];
+
+const SHAPES: Array<{ id: ShapeType; label: string; Icon: React.ComponentType<{ size?: number }> }> = [
+  { id: "rectangle", label: "Rectángulo", Icon: Square },
+  { id: "rounded", label: "Rectángulo redondeado", Icon: RectangleHorizontal },
+  { id: "circle", label: "Elipse", Icon: Circle },
+  { id: "triangle", label: "Triángulo", Icon: Triangle },
+  { id: "diamond", label: "Rombo", Icon: Diamond },
+  { id: "star", label: "Estrella", Icon: Star },
+  { id: "arrow-right", label: "Flecha", Icon: ArrowRight },
+  { id: "callout", label: "Bocadillo", Icon: MessageSquare },
+];
+
+const PALETTE = [
+  "#000000", "#434343", "#666666", "#999999", "#cccccc", "#efefef", "#f8f9fa", "#ffffff",
+  "#b31412", "#ea4335", "#e37400", "#fbbc04", "#34a853", "#00acc1", "#1a73e8", "#0b3d91",
+  "#9334e6", "#d01884", "#f4cccc", "#fce5cd", "#fff2cc", "#d9ead3", "#d0e0e3", "#cfe2f3",
+  "#d9d2e9", "#ead1dc", "#6f4e37", "#e08e45", "#fef7e0", "#1e140f", "#202124", "#188038",
+];
+
+type DropdownId = "layout" | "zoom" | "shape" | "font" | "color" | "fill" | "theme";
+
+const ToolButton: React.FC<{
+  title: string;
+  onClick: () => void;
+  active?: boolean;
+  disabled?: boolean;
+  children: React.ReactNode;
+}> = ({ title, onClick, active, disabled, children }) => (
+  <button
+    type="button"
+    title={title}
+    disabled={disabled}
+    onMouseDown={(e) => e.preventDefault()}
+    onClick={onClick}
+    className={`p-1.5 rounded-full transition-colors disabled:opacity-35 disabled:hover:bg-transparent ${
+      active ? "bg-[#d3e3fd] text-[#041e49]" : "text-[#444746] hover:bg-gray-200/70"
+    }`}
+  >
+    {children}
+  </button>
+);
+
+const Separator = () => <div className="h-4 w-px bg-gray-300 mx-0.5 shrink-0" />;
+
 export const GoogleSlidesToolbar: React.FC<GoogleSlidesToolbarProps> = ({
+  selected,
+  theme,
+  themes,
+  zoom,
+  onZoomChange,
   onUndo,
   onRedo,
   onPrint,
-  onFormatPainter,
-  isFormatPainterActive,
+  painterActive,
+  onTogglePainter,
   onAddSlide,
-  onChangeSlideLayout,
-  onSetSlideBackground,
-  currentSlideBackground,
+  onDeselect,
   onAddText,
+  onPickImage,
   onAddShape,
-  onInsertImage,
-  currentTheme,
-  onSelectTheme,
-  currentTransition,
-  onSelectTransition,
-  onApplyTransitionToAll,
-  selectedElementId,
-  onToggleBold,
-  onToggleItalic,
-  onToggleUnderline,
-  onSetAlign,
-  onSetFontSize,
-  onSetFontFamily,
-  onDeleteElement,
-  onAddComment,
+  onAddLine,
   onAddTable,
+  onFocusNotes,
+  onStyle,
+  onArrange,
+  onDelete,
+  onSelectTheme,
+  onOpenCommandSearch,
+  notesVisible,
+  onToggleNotes,
 }) => {
-  const [zoom, setZoom] = useState(100);
-  const [zoomOpen, setZoomOpen] = useState(false);
-  const [newSlideOpen, setNewSlideOpen] = useState(false);
-  const [shapeOpen, setShapeOpen] = useState(false);
-  const [themeOpen, setThemeOpen] = useState(false);
-  const [transitionOpen, setTransitionOpen] = useState(false);
-  const [layoutOpen, setLayoutOpen] = useState(false);
-  const [bgModalOpen, setBgModalOpen] = useState(false);
-  const [selectedBgColor, setSelectedBgColor] = useState(
-    currentSlideBackground || currentTheme.slideBg
-  );
+  const [open, setOpen] = useState<DropdownId | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setSelectedBgColor(currentSlideBackground || currentTheme.slideBg);
-  }, [currentSlideBackground, currentTheme.slideBg]);
+    if (!open) return;
+    const handleMouseDown = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(null);
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(null);
+    };
+    document.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open]);
+
+  const toggle = (id: DropdownId) => setOpen((current) => (current === id ? null : id));
+  const apply = (patch: Partial<SlideElement>) => {
+    setOpen(null);
+    onStyle(patch);
+  };
+
+  const hasText = Boolean(selected && (TEXT_TYPES.includes(selected.type) || selected.type === "table"));
+  const canFill = Boolean(selected && selected.type !== "image" && selected.type !== "video" && selected.type !== "line");
+  const fontSize = selected?.fontSize || (selected?.type === "title" ? 40 : 20);
+  const isBold = selected ? (selected.fontWeight || (selected.type === "title" ? "bold" : "normal")) === "bold" : false;
+  const align = selected?.align || "center";
+  const valign = selected?.valign || "middle";
+
+  const dropdownClass = "absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50";
+  const optionClass = (isSelected: boolean) =>
+    `w-full text-left px-3 py-1.5 text-xs hover:bg-[#f0f4f9] flex items-center justify-between gap-4 ${
+      isSelected ? "text-[#0b57d0] font-semibold" : "text-[#444746]"
+    }`;
+
+  const colorGrid = (onPick: (color: string) => void, clearLabel: string, onClear: () => void) => (
+    <div className={`${dropdownClass} p-2 w-[196px]`}>
+      <div className="grid grid-cols-8 gap-1">
+        {PALETTE.map((color) => (
+          <button
+            key={color}
+            type="button"
+            title={color}
+            onClick={() => onPick(color)}
+            style={{ backgroundColor: color }}
+            className="w-5 h-5 rounded-full border border-black/10 hover:scale-110 transition-transform"
+          />
+        ))}
+      </div>
+      <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200 text-[11px] text-[#444746]">
+        <button type="button" onClick={onClear} className="hover:text-[#0b57d0]">
+          {clearLabel}
+        </button>
+        <label className="flex items-center gap-1.5 cursor-pointer">
+          <span>Otro</span>
+          <input type="color" onChange={(e) => onPick(e.target.value)} className="w-6 h-6 p-0 border border-gray-300 rounded cursor-pointer" />
+        </label>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="w-full px-4 py-1 flex items-center justify-between select-none bg-white">
-      {/* Contenedor tipo píldora flotante de Google Slides sin saltos de línea */}
-      <div className="bg-[#edf2fa] rounded-full px-2.5 py-1 flex items-center gap-0.5 shadow-xs text-[#444746] text-xs flex-nowrap overflow-x-auto max-w-full">
-        {/* 1. Botón de búsqueda de menús (Menús) */}
+    <div ref={rootRef} className="w-full px-4 py-1 flex items-center justify-between select-none bg-white print:hidden">
+      <div className="bg-[#edf2fa] rounded-full px-3 py-1 flex items-center gap-1 shadow-xs text-[#444746] text-xs flex-wrap max-w-full">
         <button
           type="button"
-          onClick={() => {}}
-          className="flex items-center gap-1.5 bg-white hover:bg-gray-50 border border-gray-200/80 rounded-full px-2.5 py-1 text-xs text-[#444746] shadow-xs cursor-pointer mr-1"
+          onClick={onOpenCommandSearch}
+          className="flex items-center gap-1.5 bg-white hover:bg-gray-50 border border-gray-200/80 rounded-full px-2.5 py-1 text-xs shadow-xs cursor-pointer mr-1"
           title="Buscar en los menús (Alt+/)"
         >
-          <Search size={14} className="text-[#444746]" />
+          <Search size={14} />
           <span className="font-medium text-[11px]">Menús</span>
         </button>
 
-        {/* 2. Botón Nueva diapositiva con desplegable (+) */}
+        {/* Nueva diapositiva */}
         <div className="relative flex items-center">
-          <button
-            type="button"
-            onClick={() => onAddSlide("title-content")}
-            className="p-1.5 rounded-l-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-            title="Nueva diapositiva con diseño actual (Ctrl+M)"
-          >
+          <ToolButton title="Nueva diapositiva (Ctrl+M)" onClick={() => onAddSlide("title-content")}>
             <Plus size={15} />
-          </button>
+          </ToolButton>
           <button
             type="button"
-            onClick={() => setNewSlideOpen(!newSlideOpen)}
-            className="p-1.5 rounded-r-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-            title="Diseño para nueva diapositiva"
+            title="Nueva diapositiva con diseño"
+            onClick={() => toggle("layout")}
+            className="p-1 rounded-full hover:bg-gray-200/70"
           >
             <ChevronDown size={11} />
           </button>
-
-          {newSlideOpen && (
-            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl py-1.5 z-50 min-w-[160px]">
-              {[
-                { id: "title", label: "Diapositiva de título" },
-                { id: "title-content", label: "Título y contenido" },
-                { id: "section-header", label: "Encabezado de sección" },
-                { id: "two-column", label: "Dos columnas" },
-                { id: "blank", label: "En blanco" },
-              ].map((l) => (
+          {open === "layout" && (
+            <div className={`${dropdownClass} min-w-[200px]`}>
+              {LAYOUTS.map((layout) => (
                 <button
-                  key={l.id}
+                  key={layout.id}
                   type="button"
                   onClick={() => {
-                    onAddSlide(l.id as SlideLayout);
-                    setNewSlideOpen(false);
+                    setOpen(null);
+                    onAddSlide(layout.id);
                   }}
-                  className="w-full text-left px-3 py-1.5 text-xs hover:bg-[#f0f4f9] text-[#1f1f1f]"
+                  className={optionClass(false)}
                 >
-                  {l.label}
+                  {layout.label}
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        {/* 3. Deshacer, Rehacer, Imprimir, Copiar formato */}
-        <button
-          type="button"
-          onClick={onUndo}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Deshacer (Ctrl+Z)"
-        >
+        <ToolButton title="Deshacer (Ctrl+Z)" onClick={onUndo}>
           <Undo2 size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={onRedo}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Rehacer (Ctrl+Y)"
-        >
+        </ToolButton>
+        <ToolButton title="Rehacer (Ctrl+Y)" onClick={onRedo}>
           <Redo2 size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={onPrint}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Imprimir (Ctrl+P)"
-        >
+        </ToolButton>
+        <ToolButton title="Imprimir (Ctrl+P)" onClick={onPrint}>
           <Printer size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={onFormatPainter}
-          className={`p-1.5 rounded-full transition-colors ${
-            isFormatPainterActive
-              ? "bg-[#c2e7ff] text-[#001d35]"
-              : "hover:bg-gray-200/70 text-[#444746]"
-          }`}
-          title="Copiar formato"
+        </ToolButton>
+        <ToolButton
+          title="Copiar formato: selecciona un elemento, pulsa y después haz clic en el de destino"
+          onClick={onTogglePainter}
+          active={painterActive}
+          disabled={!selected && !painterActive}
         >
           <Paintbrush size={15} />
-        </button>
+        </ToolButton>
 
-        {/* Zoom */}
         <div className="relative">
           <button
             type="button"
-            onClick={() => setZoomOpen(!zoomOpen)}
-            className="flex items-center gap-1 px-2 py-1 rounded-full hover:bg-gray-200/70 text-[#444746] text-xs font-medium cursor-pointer"
+            onClick={() => toggle("zoom")}
+            className="flex items-center gap-1 px-2 py-1 rounded-full hover:bg-gray-200/70 text-xs font-medium cursor-pointer"
             title="Zoom"
           >
-            <span>{zoom}%</span>
-            <ChevronDown size={11} />
+            <span>{zoom === "fit" ? "Ajustar" : `${zoom}%`}</span>
+            <ChevronDown size={12} />
           </button>
-          {zoomOpen && (
-            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 min-w-[85px]">
-              {[50, 75, 100, 125, 150].map((z) => (
+          {open === "zoom" && (
+            <div className={`${dropdownClass} min-w-[110px]`}>
+              {(["fit", 50, 75, 100, 125, 150, 200] as Array<number | "fit">).map((value) => (
                 <button
-                  key={z}
+                  key={value}
                   type="button"
                   onClick={() => {
-                    setZoom(z);
-                    setZoomOpen(false);
+                    onZoomChange(value);
+                    setOpen(null);
                   }}
-                  className={`w-full text-left px-3 py-1 text-xs hover:bg-[#f0f4f9] flex items-center justify-between ${
-                    zoom === z ? "font-bold text-[#F4B400]" : "text-[#444746]"
-                  }`}
+                  className={optionClass(zoom === value)}
                 >
-                  <span>{z}%</span>
-                  {zoom === z && <Check size={12} />}
+                  <span>{value === "fit" ? "Ajustar" : `${value}%`}</span>
+                  {zoom === value && <Check size={12} />}
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        <div className="h-4 w-px bg-gray-300 mx-0.5" />
+        <Separator />
 
-        {/* 4. Herramientas de Lienzo: Flecha, Cuadro de texto, Imagen, Formas, Línea */}
-        <button
-          type="button"
-          className="p-1.5 rounded-full bg-white text-[#1a73e8] shadow-xs"
-          title="Seleccionar (Flecha)"
-        >
-          <MousePointer size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={onAddText}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Cuadro de texto"
-        >
+        <ToolButton title="Seleccionar: quitar la selección actual (Esc)" onClick={onDeselect} active={!selected}>
+          <MousePointer2 size={15} />
+        </ToolButton>
+        <ToolButton title="Cuadro de texto" onClick={onAddText}>
           <Type size={15} />
-        </button>
-
-        <button
-          type="button"
-          onClick={onInsertImage}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Insertar imagen"
-        >
+        </ToolButton>
+        <ToolButton title="Insertar imagen" onClick={onPickImage}>
           <ImageIcon size={15} />
-        </button>
+        </ToolButton>
 
-        {/* Formas */}
         <div className="relative">
           <button
             type="button"
-            onClick={() => setShapeOpen(!shapeOpen)}
-            className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors flex items-center gap-0.5"
+            onClick={() => toggle("shape")}
+            className="p-1.5 rounded-full hover:bg-gray-200/70 transition-colors flex items-center gap-0.5"
             title="Forma"
           >
-            <Square size={15} />
+            <Shapes size={15} />
             <ChevronDown size={11} />
           </button>
-          {shapeOpen && (
-            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl py-1 z-50 min-w-[130px]">
-              {[
-                { id: "rectangle", label: "Rectángulo" },
-                { id: "rounded", label: "Rectángulo redondeado" },
-                { id: "circle", label: "Círculo / Óvalo" },
-                { id: "callout", label: "Bocadillo de llamada" },
-                { id: "star", label: "Estrella" },
-              ].map((s) => (
+          {open === "shape" && (
+            <div className={`${dropdownClass} p-1.5 grid grid-cols-4 gap-1 w-[160px]`}>
+              {SHAPES.map(({ id, label, Icon }) => (
                 <button
-                  key={s.id}
+                  key={id}
                   type="button"
+                  title={label}
                   onClick={() => {
-                    onAddShape(s.id as ShapeType);
-                    setShapeOpen(false);
+                    setOpen(null);
+                    onAddShape(id);
                   }}
-                  className="w-full text-left px-3 py-1.5 text-xs hover:bg-[#f0f4f9] text-[#1f1f1f]"
+                  className="p-2 rounded hover:bg-[#e8f0fe] text-[#444746] hover:text-[#0b57d0] flex items-center justify-center"
                 >
-                  {s.label}
+                  <Icon size={17} />
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={() => onAddShape("rectangle")}
-          className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-          title="Línea"
-        >
+        <ToolButton title="Línea" onClick={onAddLine}>
           <Minus size={15} />
-        </button>
+        </ToolButton>
+        <ToolButton title="Insertar tabla" onClick={onAddTable}>
+          <Table size={15} />
+        </ToolButton>
+        <ToolButton title="Notas del orador" onClick={onFocusNotes}>
+          <StickyNote size={15} />
+        </ToolButton>
 
-        {onAddTable && (
-          <button
-            type="button"
-            onClick={onAddTable}
-            className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-            title="Insertar tabla"
-          >
-            <TableIcon size={15} />
-          </button>
-        )}
-
-        {onAddComment && (
-          <button
-            type="button"
-            onClick={onAddComment}
-            className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-            title="Agregar comentario"
-          >
-            <MessageSquarePlus size={15} />
-          </button>
-        )}
-
-        {/* Herramientas de texto si hay un elemento activo */}
-        {selectedElementId && (
+        {/* Formato del elemento seleccionado */}
+        {selected && (
           <>
-            <div className="h-4 w-px bg-gray-300 mx-0.5" />
+            <Separator />
+            {hasText && (
+              <>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => toggle("font")}
+                    className="flex items-center justify-between gap-1.5 px-2.5 py-1 rounded-full hover:bg-gray-200/70 text-xs font-medium cursor-pointer w-[104px]"
+                    title="Fuente"
+                  >
+                    <span className="truncate">{selected.fontFamily || theme.fontFamily}</span>
+                    <ChevronDown size={12} className="shrink-0" />
+                  </button>
+                  {open === "font" && (
+                    <div className={`${dropdownClass} min-w-[180px]`}>
+                      {FONTS.map((font) => (
+                        <button
+                          key={font}
+                          type="button"
+                          onClick={() => apply({ fontFamily: font })}
+                          style={{ fontFamily: font }}
+                          className={optionClass((selected.fontFamily || theme.fontFamily) === font)}
+                        >
+                          {font}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
-            {/* Selector de fuente */}
-            <select
-              defaultValue="Arial"
-              onChange={(e) => onSetFontFamily?.(e.target.value)}
-              className="bg-transparent text-xs text-[#444746] font-medium px-1 py-0.5 rounded hover:bg-gray-200/70 cursor-pointer outline-none"
-              title="Fuente"
-            >
-              <option value="Arial">Arial</option>
-              <option value="Roboto">Roboto</option>
-              <option value="Times New Roman">Times New Roman</option>
-              <option value="Courier New">Courier New</option>
-            </select>
+                <div className="flex items-center">
+                  <ToolButton title="Reducir tamaño" onClick={() => onStyle({ fontSize: Math.max(8, fontSize - 2) })}>
+                    <Minus size={12} />
+                  </ToolButton>
+                  <input
+                    type="number"
+                    title="Tamaño de fuente"
+                    min={8}
+                    max={200}
+                    value={fontSize}
+                    onChange={(e) => {
+                      const value = Number(e.target.value);
+                      if (value >= 8 && value <= 200) onStyle({ fontSize: value });
+                    }}
+                    className="w-10 text-center text-xs font-medium text-[#1f1f1f] bg-transparent border border-[#c4c7c5] rounded py-0.5 outline-none focus:border-[#0b57d0] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <ToolButton title="Aumentar tamaño" onClick={() => onStyle({ fontSize: Math.min(200, fontSize + 2) })}>
+                    <Plus size={12} />
+                  </ToolButton>
+                </div>
 
-            {/* Selector de tamaño */}
-            <div className="flex items-center">
-              <button
-                type="button"
-                onClick={() => onSetFontSize?.(18)}
-                className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-200/70 text-[10px] font-bold"
-                title="Reducir tamaño"
-              >
-                -
-              </button>
-              <span className="px-1 text-[11px] font-medium">18</span>
-              <button
-                type="button"
-                onClick={() => onSetFontSize?.(24)}
-                className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-200/70 text-[10px] font-bold"
-                title="Aumentar tamaño"
-              >
-                +
-              </button>
-            </div>
+                <ToolButton title="Negrita (Ctrl+B)" active={isBold} onClick={() => onStyle({ fontWeight: isBold ? "normal" : "bold" })}>
+                  <Bold size={15} />
+                </ToolButton>
+                <ToolButton
+                  title="Cursiva (Ctrl+I)"
+                  active={selected.fontStyle === "italic"}
+                  onClick={() => onStyle({ fontStyle: selected.fontStyle === "italic" ? "normal" : "italic" })}
+                >
+                  <Italic size={15} />
+                </ToolButton>
+                <ToolButton title="Subrayado (Ctrl+U)" active={Boolean(selected.underline)} onClick={() => onStyle({ underline: !selected.underline })}>
+                  <Underline size={15} />
+                </ToolButton>
 
-            {/* Negrita, Cursiva, Subrayado */}
-            <button
-              type="button"
-              onClick={onToggleBold}
-              className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-              title="Negrita (Ctrl+B)"
-            >
-              <Bold size={14} />
-            </button>
+                <div className="relative">
+                  <ToolButton title="Color del texto" onClick={() => toggle("color")}>
+                    <span className="flex flex-col items-center w-[15px]">
+                      <span className="font-bold text-xs leading-none">A</span>
+                      <span className="w-3.5 h-[3px] rounded-full mt-0.5" style={{ backgroundColor: selected.color || theme.textColor }} />
+                    </span>
+                  </ToolButton>
+                  {open === "color" && colorGrid((color) => apply({ color }), "Color del tema", () => apply({ color: undefined }))}
+                </div>
+              </>
+            )}
 
-            <button
-              type="button"
-              onClick={onToggleItalic}
-              className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-              title="Cursiva (Ctrl+I)"
-            >
-              <Italic size={14} />
-            </button>
+            {selected.type === "line" && (
+              <div className="relative">
+                <ToolButton title="Color de la línea" onClick={() => toggle("color")}>
+                  <Palette size={15} />
+                </ToolButton>
+                {open === "color" && colorGrid((color) => apply({ color }), "Color del tema", () => apply({ color: undefined }))}
+              </div>
+            )}
 
-            <button
-              type="button"
-              onClick={onToggleUnderline}
-              className="p-1.5 rounded-full hover:bg-gray-200/70 text-[#444746] transition-colors"
-              title="Subrayado (Ctrl+U)"
-            >
-              <Underline size={14} />
-            </button>
+            {canFill && (
+              <div className="relative">
+                <ToolButton title="Color de relleno" onClick={() => toggle("fill")}>
+                  <span className="flex flex-col items-center w-[15px]">
+                    <PaintBucket size={13} />
+                    <span className="w-3.5 h-[3px] rounded-full mt-px border border-black/10" style={{ backgroundColor: selected.bg || "#ffffff" }} />
+                  </span>
+                </ToolButton>
+                {open === "fill" &&
+                  colorGrid(
+                    (bg) => apply({ bg }),
+                    selected.type === "shape" ? "Color del tema" : "Sin relleno",
+                    () => apply({ bg: undefined })
+                  )}
+              </div>
+            )}
 
-            {/* Alineación */}
-            <button
-              type="button"
-              onClick={() => onSetAlign?.("left")}
-              className="p-1 rounded hover:bg-gray-200/70 text-[#444746]"
-              title="Alinear a la izquierda"
-            >
-              <AlignLeft size={14} />
-            </button>
-            <button
-              type="button"
-              onClick={() => onSetAlign?.("center")}
-              className="p-1 rounded hover:bg-gray-200/70 text-[#444746]"
-              title="Centrar"
-            >
-              <AlignCenter size={14} />
-            </button>
-            <button
-              type="button"
-              onClick={() => onSetAlign?.("right")}
-              className="p-1 rounded hover:bg-gray-200/70 text-[#444746]"
-              title="Alinear a la derecha"
-            >
-              <AlignRight size={14} />
-            </button>
+            {hasText && selected.type !== "table" && (
+              <>
+                {(
+                  [
+                    ["left", "Alinear a la izquierda", AlignLeft],
+                    ["center", "Centrar", AlignCenter],
+                    ["right", "Alinear a la derecha", AlignRight],
+                  ] as const
+                ).map(([value, title, Icon]) => (
+                  <ToolButton key={value} title={title} active={align === value} onClick={() => onStyle({ align: value })}>
+                    <Icon size={15} />
+                  </ToolButton>
+                ))}
+                {(
+                  [
+                    ["top", "Texto arriba", AlignVerticalJustifyStart],
+                    ["middle", "Texto en el centro", AlignVerticalJustifyCenter],
+                    ["bottom", "Texto abajo", AlignVerticalJustifyEnd],
+                  ] as const
+                ).map(([value, title, Icon]) => (
+                  <ToolButton key={value} title={title} active={valign === value} onClick={() => onStyle({ valign: value })}>
+                    <Icon size={15} />
+                  </ToolButton>
+                ))}
+              </>
+            )}
 
-            {/* Eliminar elemento */}
-            <button
-              type="button"
-              onClick={onDeleteElement}
-              className="p-1.5 rounded-full hover:bg-red-100 text-red-600 transition-colors ml-1"
-              title="Eliminar elemento seleccionado (Supr)"
-            >
-              <Trash2 size={14} />
-            </button>
+            <ToolButton title="Traer al frente" onClick={() => onArrange("front")}>
+              <BringToFront size={15} />
+            </ToolButton>
+            <ToolButton title="Enviar al fondo" onClick={() => onArrange("back")}>
+              <SendToBack size={15} />
+            </ToolButton>
+            <ToolButton title="Eliminar el elemento (Supr)" onClick={onDelete}>
+              <Trash2 size={15} />
+            </ToolButton>
           </>
         )}
 
-        <div className="h-4 w-px bg-gray-300 mx-0.5" />
+        <Separator />
 
-        {/* 5. Botones contextuales completamente programados de Google Slides: Fondo, Diseño, Tema, Transición */}
-        {/* Fondo */}
+        {/* Tema de la presentación */}
         <div className="relative">
           <button
             type="button"
-            onClick={() => setBgModalOpen(true)}
-            className="px-2 py-0.5 rounded-full hover:bg-gray-200/70 text-[#444746] font-medium text-xs whitespace-nowrap transition-colors"
-            title="Cambiar fondo de diapositiva"
+            onClick={() => toggle("theme")}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full hover:bg-gray-200/70 text-xs font-medium cursor-pointer"
+            title="Tema de la presentación"
           >
-            Fondo
+            <span>Tema</span>
+            <ChevronDown size={12} />
           </button>
-        </div>
-
-        {/* Diseño */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setLayoutOpen(!layoutOpen)}
-            className="px-2 py-0.5 rounded-full hover:bg-gray-200/70 text-[#444746] font-medium text-xs whitespace-nowrap transition-colors"
-            title="Aplicar diseño a la diapositiva actual"
-          >
-            Diseño
-          </button>
-          {layoutOpen && (
-            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl py-2 z-50 min-w-[200px] text-[#1f1f1f]">
-              <div className="px-3 py-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                Diseños disponibles
-              </div>
-              {[
-                {
-                  id: "title",
-                  label: "Diapositiva de título",
-                  preview: (
-                    <div className="w-8 h-5 border border-gray-300 rounded-xs flex flex-col items-center justify-center gap-0.5 bg-gray-50 p-0.5">
-                      <div className="w-5 h-1 bg-gray-700 rounded-xs" />
-                      <div className="w-3 h-0.5 bg-gray-400 rounded-xs" />
-                    </div>
-                  ),
-                },
-                {
-                  id: "title-content",
-                  label: "Título y contenido",
-                  preview: (
-                    <div className="w-8 h-5 border border-gray-300 rounded-xs flex flex-col gap-0.5 bg-gray-50 p-0.5">
-                      <div className="w-6 h-1 bg-gray-700 rounded-xs" />
-                      <div className="w-6 h-2.5 bg-gray-300 rounded-xs" />
-                    </div>
-                  ),
-                },
-                {
-                  id: "two-columns",
-                  label: "Dos columnas",
-                  preview: (
-                    <div className="w-8 h-5 border border-gray-300 rounded-xs flex flex-col gap-0.5 bg-gray-50 p-0.5">
-                      <div className="w-6 h-1 bg-gray-700 rounded-xs" />
-                      <div className="flex gap-0.5 flex-1">
-                        <div className="flex-1 bg-gray-300 rounded-xs" />
-                        <div className="flex-1 bg-gray-300 rounded-xs" />
-                      </div>
-                    </div>
-                  ),
-                },
-                {
-                  id: "blank",
-                  label: "En blanco",
-                  preview: (
-                    <div className="w-8 h-5 border border-gray-300 rounded-xs bg-white" />
-                  ),
-                },
-              ].map((l) => (
+          {open === "theme" && (
+            <div className={`${dropdownClass} left-auto right-0 p-2 w-[250px] grid grid-cols-2 gap-2`}>
+              {themes.map((item) => (
                 <button
-                  key={l.id}
+                  key={item.id}
                   type="button"
                   onClick={() => {
-                    onChangeSlideLayout?.(l.id as SlideLayout);
-                    setLayoutOpen(false);
+                    setOpen(null);
+                    onSelectTheme(item.id);
                   }}
-                  className="w-full text-left px-3 py-2 text-xs hover:bg-[#f0f4f9] text-[#1f1f1f] flex items-center gap-2.5 transition-colors cursor-pointer"
+                  className={`rounded-lg border-2 overflow-hidden text-left ${
+                    item.id === theme.id ? "border-[#1a73e8]" : "border-gray-200 hover:border-gray-400"
+                  }`}
                 >
-                  {l.preview}
-                  <span className="font-medium">{l.label}</span>
+                  <div className="h-14 px-2 py-1.5 flex flex-col justify-center" style={{ backgroundColor: item.slideBg, fontFamily: item.fontFamily }}>
+                    <span className="text-[11px] font-bold leading-tight" style={{ color: item.titleColor }}>
+                      Título
+                    </span>
+                    <span className="text-[9px]" style={{ color: item.textColor }}>
+                      Texto de ejemplo
+                    </span>
+                    <span className="w-8 h-1 rounded-full mt-1" style={{ backgroundColor: item.accentColor }} />
+                  </div>
+                  <div className="px-2 py-1 text-[10px] text-[#444746] bg-white border-t border-gray-200 truncate">{item.name}</div>
                 </button>
               ))}
-            </div>
-          )}
-        </div>
-
-        {/* Tema */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setThemeOpen(!themeOpen)}
-            className="px-2 py-0.5 rounded-full hover:bg-gray-200/70 text-[#444746] font-medium text-xs whitespace-nowrap transition-colors"
-            title="Cambiar tema de la presentación"
-          >
-            Tema
-          </button>
-          {themeOpen && (
-            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl p-2 z-50 min-w-[220px] text-[#1f1f1f]">
-              <div className="px-2 py-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                Temas de presentación
-              </div>
-              <div className="flex flex-col gap-1.5 mt-1">
-                {SLIDE_THEMES.map((th) => {
-                  const isActive = currentTheme.id === th.id;
-                  return (
-                    <button
-                      key={th.id}
-                      type="button"
-                      onClick={() => {
-                        onSelectTheme(th.id);
-                        setThemeOpen(false);
-                      }}
-                      className={`w-full text-left p-2 rounded-lg border transition-all flex items-center gap-2.5 cursor-pointer ${
-                        isActive
-                          ? "border-[#1a73e8] bg-blue-50/50 ring-1 ring-[#1a73e8]"
-                          : "border-gray-200 hover:border-gray-300 hover:bg-[#f0f4f9]"
-                      }`}
-                    >
-                      {/* Miniatura del tema */}
-                      <div
-                        style={{ backgroundColor: th.slideBg }}
-                        className="w-10 h-7 rounded-sm border border-gray-300 shadow-2xs flex flex-col justify-center px-1 shrink-0"
-                      >
-                        <div
-                          style={{ color: th.titleColor }}
-                          className="text-[7px] font-bold leading-none truncate"
-                        >
-                          Aa
-                        </div>
-                        <div
-                          style={{ backgroundColor: th.accentColor }}
-                          className="h-0.5 w-4 mt-0.5 rounded-full"
-                        />
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium text-[#1f1f1f] truncate">
-                          {th.name}
-                        </div>
-                      </div>
-
-                      {isActive && <Check size={14} className="text-[#1a73e8] shrink-0" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Transición */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setTransitionOpen(!transitionOpen)}
-            className="px-2 py-0.5 rounded-full hover:bg-gray-200/70 text-[#444746] font-medium text-xs whitespace-nowrap transition-colors"
-            title="Transición de diapositiva"
-          >
-            Transición
-          </button>
-          {transitionOpen && (
-            <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl p-3 z-50 min-w-[210px] text-[#1f1f1f]">
-              <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">
-                Transición de diapositiva
-              </div>
-              <div className="flex flex-col gap-1">
-                {[
-                  { id: "none", label: "Sin transición" },
-                  { id: "fade", label: "Disolver" },
-                  { id: "slide-left", label: "Deslizar izquierda" },
-                  { id: "zoom", label: "Zoom" },
-                  { id: "flip", label: "Voltear" },
-                ].map((tr) => (
-                  <button
-                    key={tr.id}
-                    type="button"
-                    onClick={() => {
-                      onSelectTransition(tr.id as SlideTransition);
-                    }}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-md text-xs hover:bg-[#f0f4f9] flex items-center justify-between transition-colors cursor-pointer ${
-                      currentTransition === tr.id
-                        ? "font-bold text-[#1a73e8] bg-blue-50"
-                        : "text-[#1f1f1f]"
-                    }`}
-                  >
-                    <span>{tr.label}</span>
-                    {currentTransition === tr.id && <Check size={14} />}
-                  </button>
-                ))}
-              </div>
-
-              {/* Botón Aplicar a todas las diapositivas */}
-              <button
-                type="button"
-                onClick={() => {
-                  onApplyTransitionToAll?.(currentTransition);
-                  setTransitionOpen(false);
-                }}
-                className="w-full mt-2.5 pt-2 border-t border-gray-200 text-center text-xs font-semibold text-[#1a73e8] hover:text-[#1557b0] hover:underline cursor-pointer py-1"
-              >
-                Aplicar a todas las diapositivas
-              </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* Flecha colapsar */}
       <button
         type="button"
-        className="p-1.5 rounded-full hover:bg-gray-100 text-[#444746] transition-colors ml-2 shrink-0"
-        title="Ocultar menús"
+        onClick={onToggleNotes}
+        className="p-1.5 rounded-full hover:bg-gray-100 text-[#444746] transition-colors shrink-0 ml-2"
+        title={notesVisible ? "Ocultar las notas del orador" : "Mostrar las notas del orador"}
       >
-        <ChevronUp size={15} />
+        {notesVisible ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
       </button>
-
-      {/* Modal flotante de Fondo */}
-      {bgModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs select-none">
-          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-96 p-5 flex flex-col gap-4 text-[#1f1f1f] animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="font-semibold text-sm text-[#1f1f1f]">Fondo de diapositiva</h3>
-              <button
-                type="button"
-                onClick={() => setBgModalOpen(false)}
-                className="p-1 hover:bg-gray-100 rounded-full text-gray-500 transition-colors"
-                title="Cerrar"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Muestra de color y selector libre */}
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-medium text-[#444746]">Color de fondo:</label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={selectedBgColor}
-                  onChange={(e) => setSelectedBgColor(e.target.value)}
-                  className="w-9 h-9 rounded cursor-pointer border border-gray-300 p-0.5"
-                  title="Elegir color personalizado"
-                />
-                <span className="text-xs font-mono font-medium text-[#444746] uppercase">
-                  {selectedBgColor}
-                </span>
-              </div>
-
-              {/* Paleta rápida de 16 colores */}
-              <div className="grid grid-cols-8 gap-1.5 mt-2">
-                {[
-                  "#ffffff",
-                  "#f8f9fa",
-                  "#e8eaed",
-                  "#dadce0",
-                  "#fce8e6",
-                  "#fef7e0",
-                  "#e6f4ea",
-                  "#e8f0fe",
-                  "#202124",
-                  "#1e140f",
-                  "#2b2523",
-                  "#3c4043",
-                  "#ea4335",
-                  "#fbbc04",
-                  "#34a853",
-                  "#1a73e8",
-                ].map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setSelectedBgColor(c)}
-                    style={{ backgroundColor: c }}
-                    className={`w-6 h-6 rounded-full border border-gray-300 transition-transform hover:scale-110 shadow-2xs cursor-pointer ${
-                      selectedBgColor.toLowerCase() === c.toLowerCase()
-                        ? "ring-2 ring-[#1a73e8] scale-110"
-                        : ""
-                    }`}
-                    title={c}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Acciones del Modal */}
-            <div className="flex items-center justify-between pt-3 border-t mt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedBgColor(currentTheme.slideBg);
-                  onSetSlideBackground?.(currentTheme.slideBg, false);
-                }}
-                className="px-3 py-1.5 text-xs text-[#1a73e8] hover:bg-blue-50 rounded-lg font-medium transition-colors"
-              >
-                Restablecer
-              </button>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onSetSlideBackground?.(selectedBgColor, true);
-                    setBgModalOpen(false);
-                  }}
-                  className="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 text-[#1f1f1f] rounded-lg font-medium transition-colors"
-                  title="Aplicar a todas las diapositivas"
-                >
-                  Agregar al tema
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onSetSlideBackground?.(selectedBgColor, false);
-                    setBgModalOpen(false);
-                  }}
-                  className="px-4 py-1.5 text-xs bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-lg font-medium shadow-xs transition-colors"
-                >
-                  Listo
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -1,6 +1,6 @@
-// Tipos de datos para CoffeView (Herramienta de Presentaciones estilo Microsoft PowerPoint)
+// Tipos de datos de CoffeView (presentaciones de la suite CoffeWorks)
 
-export type ElementType = "title" | "subtitle" | "text" | "shape" | "image" | "table" | "video";
+export type ElementType = "title" | "subtitle" | "text" | "shape" | "image" | "table" | "video" | "line";
 
 export type ShapeType =
   | "rectangle"
@@ -14,40 +14,50 @@ export type ShapeType =
 
 export type TextAlign = "left" | "center" | "right" | "justify";
 
+export type VerticalAlign = "top" | "middle" | "bottom";
+
 export interface SlideElement {
   id: string;
   type: ElementType;
-  x: number; // Porcentaje relativo al ancho (0 - 100)
-  y: number; // Porcentaje relativo al alto (0 - 100)
-  width: number; // Porcentaje de ancho (0 - 100)
-  height: number; // Porcentaje de alto (0 - 100)
-  content: string; // Texto, JSON de celdas o URL de imagen
+  /** Posición y tamaño en porcentaje de la diapositiva (0 - 100). */
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Texto, o dirección / datos de la imagen o del vídeo. */
+  content: string;
+  /** Celdas de una tabla, por filas. */
+  rows?: string[][];
   fontSize?: number;
   fontFamily?: string;
   fontWeight?: "normal" | "bold";
   fontStyle?: "normal" | "italic";
   underline?: boolean;
   align?: TextAlign;
+  valign?: VerticalAlign;
   color?: string;
   bg?: string;
+  borderColor?: string;
+  borderWidth?: number;
   shapeType?: ShapeType;
-  zIndex?: number;
-  animation?: "none" | "entrada-desvanecer" | "entrada-zoom" | "enfasis-girar" | "salida-desvanecer";
+  /** En líneas: dibujar de abajo-izquierda a arriba-derecha. */
+  flip?: boolean;
 }
 
-export type SlideLayout = "title" | "title-content" | "two-columns" | "blank";
+export type SlideLayout = "title" | "title-content" | "two-columns" | "section" | "blank";
 
 export type SlideTransition = "none" | "fade" | "push" | "wipe" | "zoom";
 
 export interface Slide {
   id: string;
-  slideNumber: number;
   layout: SlideLayout;
   background?: string;
   elements: SlideElement[];
   notes: string;
   transition: SlideTransition;
   hidden?: boolean;
+  /** Segundos antes de avanzar automáticamente (intervalos ensayados). */
+  duration?: number;
 }
 
 export interface SlideTheme {
@@ -57,7 +67,10 @@ export interface SlideTheme {
   titleColor: string;
   textColor: string;
   accentColor: string;
+  fontFamily: string;
 }
+
+export type AspectRatio = "16:9" | "4:3";
 
 export interface PresentationMetadata {
   id: string;
@@ -66,16 +79,30 @@ export interface PresentationMetadata {
   createdAt: string;
   updatedAt: string;
   themeId: string;
+  aspectRatio: AspectRatio;
+  /** Avanzar solo usando los intervalos ensayados de cada diapositiva. */
+  autoAdvance?: boolean;
 }
 
-export type PowerPointRibbonTab =
-  | "inicio"
-  | "insertar"
-  | "dibujo"
-  | "diseno"
-  | "transiciones"
-  | "animaciones"
-  | "presentacion"
-  | "revisar"
-  | "vista"
-  | "ayuda";
+/** Imagen subida a la biblioteca de la presentación. */
+export interface MediaAsset {
+  id: string;
+  name: string;
+  dataUrl: string;
+}
+
+export interface Presentation {
+  metadata: PresentationMetadata;
+  slides: Slide[];
+  assets: MediaAsset[];
+}
+
+export type ExportFormat = "csl" | "pptx" | "html" | "pdf";
+
+/** Tamaño lógico de la diapositiva en píxeles; todo se dibuja a esta escala. */
+export const SLIDE_SIZE: Record<AspectRatio, { width: number; height: number }> = {
+  "16:9": { width: 960, height: 540 },
+  "4:3": { width: 960, height: 720 },
+};
+
+export const TEXT_TYPES: ElementType[] = ["title", "subtitle", "text", "shape"];
