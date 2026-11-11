@@ -31,6 +31,10 @@ pub struct CatalogApp {
     pub file_type: (&'static str, &'static str),
     /// Otras extensiones que la aplicación sabe abrir.
     pub extra_extensions: &'static [&'static str],
+    /// Si se convierte en el programa predeterminado de su extensión. Los PDF
+    /// suelen tener ya un lector elegido, así que CoffePDF solo se ofrece en
+    /// "Abrir con".
+    pub claim_default: bool,
 }
 
 pub const CATALOG: &[CatalogApp] = &[
@@ -47,6 +51,7 @@ pub const CATALOG: &[CatalogApp] = &[
         category: "Office",
         file_type: ("cfd", "Documento de CoffeDoc"),
         extra_extensions: &["docx", "doc", "md", "txt", "html", "htm"],
+        claim_default: true,
     },
     CatalogApp {
         id: "coffecalc",
@@ -61,6 +66,7 @@ pub const CATALOG: &[CatalogApp] = &[
         category: "Office",
         file_type: ("cfs", "Libro de CoffeCalc"),
         extra_extensions: &["xlsx", "xls", "csv"],
+        claim_default: true,
     },
     CatalogApp {
         id: "coffeview",
@@ -75,6 +81,22 @@ pub const CATALOG: &[CatalogApp] = &[
         category: "Office",
         file_type: ("csl", "Presentación de CoffeView"),
         extra_extensions: &["pptx"],
+        claim_default: true,
+    },
+    CatalogApp {
+        id: "coffepdf",
+        aliases: &[],
+        name: "CoffePDF",
+        subtitle: "Editor de documentos PDF",
+        description: "Abre, anota y edita PDF: texto, resaltado, formas, firmas e imágenes, formularios, y organiza, gira, une o extrae páginas.",
+        version: "v1.0",
+        color_badge: "error",
+        icon_name: "file-pen",
+        icon_url: "/icons/CoffePDF.ico",
+        category: "Office",
+        file_type: ("pdf", "Documento PDF"),
+        extra_extensions: &[],
+        claim_default: false,
     },
 ];
 
@@ -240,7 +262,13 @@ pub fn install(id: &str) -> Result<SuiteApp, String> {
     // La integración con el sistema es opcional: si falla, la aplicación sigue
     // instalada y se puede abrir desde el Launcher.
     platform::create_shortcut(app.name, &target, app.subtitle);
-    platform::register_file_type(app.name, app.file_type.0, app.file_type.1, &target);
+    platform::register_file_type(
+        app.name,
+        app.file_type.0,
+        app.file_type.1,
+        &target,
+        app.claim_default,
+    );
 
     Ok(describe(app))
 }

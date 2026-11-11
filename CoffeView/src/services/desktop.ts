@@ -348,22 +348,31 @@ export function relativeTime(timestamp: number): string {
 // Ventana y sistema
 // ---------------------------------------------------------------------------
 
+/** Ejecuta una orden de ventana sin dejar errores sin capturar. */
+async function windowCommand(command: string, args?: Record<string, unknown>): Promise<void> {
+  try {
+    await invoke(command, args);
+  } catch (err) {
+    console.warn(`No se pudo ejecutar ${command}:`, err);
+  }
+}
+
 export const appWindow = {
   async minimize(): Promise<void> {
-    if (isTauri) await invoke("core_window_minimize");
+    if (isTauri) await windowCommand("core_window_minimize");
   },
   async toggleMaximize(): Promise<void> {
     if (isTauri) {
-      await invoke("core_window_toggle_maximize");
+      await windowCommand("core_window_toggle_maximize");
     } else if (document.fullscreenElement) {
-      await document.exitFullscreen();
+      await document.exitFullscreen().catch(() => undefined);
     } else {
       await document.documentElement.requestFullscreen().catch(() => undefined);
     }
   },
   async setFullscreen(fullscreen: boolean): Promise<void> {
     if (isTauri) {
-      await invoke("core_window_set_fullscreen", { fullscreen });
+      await windowCommand("core_window_set_fullscreen", { fullscreen });
       return;
     }
     if (fullscreen && !document.fullscreenElement) {
@@ -374,16 +383,14 @@ export const appWindow = {
   },
   async close(): Promise<void> {
     if (isTauri) {
-      await invoke("core_window_close");
+      await windowCommand("core_window_close");
     } else {
       window.close();
     }
   },
   async setTitle(title: string): Promise<void> {
     document.title = title;
-    if (isTauri) {
-      await invoke("core_window_set_title", { title }).catch(() => undefined);
-    }
+    if (isTauri) await windowCommand("core_window_set_title", { title });
   },
 };
 

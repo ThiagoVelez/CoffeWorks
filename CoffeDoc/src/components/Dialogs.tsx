@@ -38,7 +38,15 @@ interface ConfirmRequest {
   resolve: (ok: boolean) => void;
 }
 
-type DialogRequest = FormRequest | ConfirmRequest;
+interface ChoiceRequest {
+  kind: "choice";
+  title: string;
+  message: string;
+  choices: Array<{ id: string; label: string; primary?: boolean; danger?: boolean }>;
+  resolve: (choice: string | null) => void;
+}
+
+type DialogRequest = FormRequest | ConfirmRequest | ChoiceRequest;
 
 export type ToastTone = "success" | "error" | "info";
 
@@ -95,6 +103,7 @@ export function askConfirm(options: {
   title: string;
   message: string;
   confirmLabel?: string;
+  cancelLabel?: string;
   danger?: boolean;
 }): Promise<boolean> {
   return new Promise((resolve) => {
@@ -103,6 +112,24 @@ export function askConfirm(options: {
       return;
     }
     pushDialog({ kind: "confirm", ...options, resolve });
+  });
+}
+
+/**
+ * Pregunta con varias respuestas (por ejemplo "Guardar", "No guardar").
+ * Devuelve el identificador elegido, o `null` si se cierra el diálogo.
+ */
+export function askChoice(options: {
+  title: string;
+  message: string;
+  choices: Array<{ id: string; label: string; primary?: boolean; danger?: boolean }>;
+}): Promise<string | null> {
+  return new Promise((resolve) => {
+    if (!pushDialog) {
+      resolve(null);
+      return;
+    }
+    pushDialog({ kind: "choice", ...options, resolve });
   });
 }
 
@@ -250,7 +277,7 @@ export const DialogHost: React.FC = () => {
 
   const cancelCurrent = () => {
     if (!current) return;
-    if (current.kind === "form") current.resolve(null);
+    if (current.kind === "form" || current.kind === "choice") current.resolve(null);
     else current.resolve(false);
     dismiss();
   };
@@ -296,6 +323,32 @@ export const DialogHost: React.FC = () => {
 
             {current.kind === "form" ? (
               <FormDialog key={queue.length} request={current} onDone={dismiss} />
+            ) : current.kind === "choice" ? (
+              <>
+                <p className="text-sm text-[#444746] leading-relaxed whitespace-pre-line">{current.message}</p>
+                <div className="flex justify-end gap-2 pt-2 flex-wrap">
+                  {current.choices.map((choice) => (
+                    <button
+                      key={choice.id}
+                      type="button"
+                      autoFocus={choice.primary}
+                      onClick={() => {
+                        current.resolve(choice.id);
+                        dismiss();
+                      }}
+                      className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                        choice.primary
+                          ? "text-white bg-[#0b57d0] hover:bg-[#0a4cb8]"
+                          : choice.danger
+                          ? "text-[#b3261e] hover:bg-[#fce8e6]"
+                          : "text-[#0b57d0] hover:bg-[#e8f0fe]"
+                      }`}
+                    >
+                      {choice.label}
+                    </button>
+                  ))}
+                </div>
+              </>
             ) : (
               <>
                 <p className="text-sm text-[#444746] leading-relaxed whitespace-pre-line">

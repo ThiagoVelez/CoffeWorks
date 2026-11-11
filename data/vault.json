@@ -1,5 +1,85 @@
 [
   {
+    "id": "pres_mwcc1syxe4vlc",
+    "name": "Plan 2027.csl",
+    "app_id": "coffeview",
+    "category": "Presentación",
+    "last_modified": "",
+    "is_pinned": false,
+    "path": "web:pres_mwcc1syxe4vlc",
+    "updated_at": 1794414478577
+  },
+  {
+    "id": "pres_mwcc1jodd9g98",
+    "name": "Plan 2027.csl",
+    "app_id": "coffeview",
+    "category": "Presentación",
+    "last_modified": "",
+    "is_pinned": false,
+    "path": "web:pres_mwcc1jodd9g98",
+    "updated_at": 1794414474910
+  },
+  {
+    "id": "cfs_mwcc1g76922j8",
+    "name": "Ventas 2026.cfs",
+    "app_id": "coffecalc",
+    "category": "Hoja de cálculo",
+    "last_modified": "",
+    "is_pinned": false,
+    "path": "web:cfs_mwcc1g76922j8",
+    "updated_at": 1794414462019
+  },
+  {
+    "id": "cfs_mwcc15cjgfmwp",
+    "name": "Ventas 2026.cfs",
+    "app_id": "coffecalc",
+    "category": "Hoja de cálculo",
+    "last_modified": "",
+    "is_pinned": false,
+    "path": "web:cfs_mwcc15cjgfmwp",
+    "updated_at": 1794414459841
+  },
+  {
+    "id": "doc_mwcc12axc02gg",
+    "name": "Informe Q4.cfd",
+    "app_id": "coffedoc",
+    "category": "Documento",
+    "last_modified": "",
+    "is_pinned": false,
+    "path": "web:doc_mwcc12axc02gg",
+    "updated_at": 1794414444009
+  },
+  {
+    "id": "doc_mwcc0vh1hbx94",
+    "name": "Informe Q4.cfd",
+    "app_id": "coffedoc",
+    "category": "Documento",
+    "last_modified": "",
+    "is_pinned": false,
+    "path": "web:doc_mwcc0vh1hbx94",
+    "updated_at": 1794414442098
+  },
+  {
+    "id": "doc_mwcc0m00dlkg7",
+    "name": "Currículum Vitae Profesional.cfd",
+    "app_id": "coffedoc",
+    "category": "Documento",
+    "last_modified": "",
+    "is_pinned": false,
+    "path": "web:doc_mwcc0m00dlkg7",
+    "updated_at": 1794414425273
+  },
+  {
+    "id": "cfs_mwcc0isxk98vs",
+    "name": "Factura Comercial con Cálculo de Impuestos.cfs",
+    "app_id": "coffecalc",
+    "category": "Hoja de cálculo",
+    "last_modified": "",
+    "is_pinned": false,
+    "path": "web:cfs_mwcc0isxk98vs",
+    "updated_at": 1794414420517
+  },
+  {
     "id": "doc_1791986702724",
     "name": "Nuevo Documento.cfd",
     "app_id": "coffedoc",

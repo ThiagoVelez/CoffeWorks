@@ -12,7 +12,7 @@ const INSTALLED_KEY = "coffeeworks_installed_apps";
 const FOCUS_KEY = "coffeeworks_focus_mode";
 
 /** Puertos de los servidores de desarrollo de cada aplicación. */
-const DEV_PORTS: Record<string, number> = { coffedoc: 1421, coffecalc: 1422, coffeview: 1423 };
+const DEV_PORTS: Record<string, number> = { coffedoc: 1421, coffecalc: 1422, coffeview: 1423, coffepdf: 1424 };
 
 const ALIASES: Record<string, string> = { coffesheet: "coffecalc", coffeslides: "coffeview" };
 
@@ -25,6 +25,7 @@ export function appForDocument(doc: Pick<RecentDocument, "app_id" | "name">): st
   const extension = doc.name.split(".").pop()?.toLowerCase() || "";
   if (["cfs", "xlsx", "xls", "csv"].includes(extension)) return "coffecalc";
   if (["csl", "pptx"].includes(extension)) return "coffeview";
+  if (extension === "pdf") return "coffepdf";
   return "coffedoc";
 }
 
@@ -76,6 +77,22 @@ const WEB_CATALOG: SuiteApp[] = [
     color_badge: "tertiary",
     icon_name: "presentation",
     icon_url: "/icons/CoffeSlides.ico",
+    category: "Office",
+  },
+  {
+    id: "coffepdf",
+    name: "CoffePDF",
+    subtitle: "Editor de documentos PDF",
+    description:
+      "Abre, anota y edita PDF: texto, resaltado, formas, firmas e imágenes, formularios, y organiza, gira, une o extrae páginas.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "error",
+    icon_name: "file-pen",
+    icon_url: "/icons/CoffePDF.ico",
     category: "Office",
   },
 ];

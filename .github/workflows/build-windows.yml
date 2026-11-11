@@ -93,11 +93,15 @@ jobs:
           Assert ((Run "$dir\CoffeWorks.exe" @("--install-all")) -eq 0) "instalar todas las apps"
           Assert (Test-Path "$apps\CoffeCalc\CoffeCalc.exe") "CoffeCalc queda instalado"
           Assert (Test-Path "$apps\CoffeView\CoffeView.exe") "CoffeView queda instalado"
+          Assert (Test-Path "$apps\CoffePDF\CoffePDF.exe") "CoffePDF queda instalado"
+          $pdfDefault = (Get-ItemProperty "HKCU:\Software\Classes\.pdf" -ErrorAction SilentlyContinue).'(default)'
+          Assert ($pdfDefault -ne "CoffeWorks.CoffePDF.pdf") "CoffePDF no reemplaza el lector de PDF predeterminado"
+          Assert ((Get-ItemProperty "HKCU:\Software\Classes\.pdf\OpenWithProgids" -ErrorAction SilentlyContinue).'CoffeWorks.CoffePDF.pdf' -ne $null) "CoffePDF aparece en Abrir con"
 
           # Las ventanas deben arrancar y seguir abiertas
           New-Item -ItemType Directory -Force screenshots | Out-Null
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-          foreach ($exe in @("$dir\CoffeWorks.exe", "$apps\CoffeDoc\CoffeDoc.exe", "$apps\CoffeCalc\CoffeCalc.exe", "$apps\CoffeView\CoffeView.exe")) {
+          foreach ($exe in @("$dir\CoffeWorks.exe", "$apps\CoffeDoc\CoffeDoc.exe", "$apps\CoffeCalc\CoffeCalc.exe", "$apps\CoffeView\CoffeView.exe", "$apps\CoffePDF\CoffePDF.exe")) {
             $name = [IO.Path]::GetFileNameWithoutExtension($exe)
             $process = Start-Process $exe -PassThru
             Start-Sleep -Seconds 12
@@ -115,6 +119,9 @@ jobs:
           Assert ((Run "$dir\CoffeWorks.exe" @("--uninstall", "coffecalc")) -eq 0) "desinstalar CoffeCalc"
           Assert (-not (Test-Path "$apps\CoffeCalc")) "CoffeCalc se elimina"
           Assert (-not (Test-Path "$menu\CoffeCalc.lnk")) "se quita su acceso directo"
+          Assert ((Run "$dir\CoffeWorks.exe" @("--uninstall", "coffepdf")) -eq 0) "desinstalar CoffePDF"
+          Assert (-not (Test-Path "$apps\CoffePDF")) "CoffePDF se elimina"
+          Assert ((Get-ItemProperty "HKCU:\Software\Classes\.pdf\OpenWithProgids" -ErrorAction SilentlyContinue).'CoffeWorks.CoffePDF.pdf' -eq $null) "se retira CoffePDF de Abrir con"
 
           $uninstaller = (Get-ChildItem "$dir\unins*.exe" | Select-Object -First 1).FullName
           Assert ((Run $uninstaller @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART")) -eq 0) "el desinstalador termina sin errores"

@@ -12,6 +12,7 @@ import {
   ArrowRight,
   Clock,
   BookOpen,
+  FilePen,
 } from "lucide-react";
 import type { SuiteApp } from "../types";
 
@@ -87,6 +88,8 @@ export const AppGrid: React.FC<AppGridProps> = ({
         return GitBranch;
       case "mail":
         return Mail;
+      case "file-pen":
+        return FilePen;
       default:
         return FileText;
     }
