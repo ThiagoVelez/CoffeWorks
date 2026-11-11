@@ -100,7 +100,13 @@ mod imp {
         }
     }
 
-    pub fn register_file_type(app_name: &str, extension: &str, description: &str, exe: &Path) {
+    pub fn register_file_type(
+        app_name: &str,
+        extension: &str,
+        description: &str,
+        exe: &Path,
+        claim_default: bool,
+    ) {
         let classes = match RegKey::predef(HKEY_CURRENT_USER).create_subkey("Software\\Classes") {
             Ok((key, _)) => key,
             Err(_) => return,
@@ -110,7 +116,12 @@ mod imp {
 
         let result: std::io::Result<()> = (|| {
             let (ext_key, _) = classes.create_subkey(format!(".{extension}"))?;
-            ext_key.set_value("", &id)?;
+            if claim_default {
+                ext_key.set_value("", &id)?;
+            }
+            // Siempre aparece en "Abrir con" sin quitarle el tipo a otro programa.
+            let (open_with, _) = ext_key.create_subkey("OpenWithProgids")?;
+            open_with.set_value(&id, &"")?;
 
             let (prog_key, _) = classes.create_subkey(&id)?;
             prog_key.set_value("", &description)?;
@@ -143,6 +154,11 @@ mod imp {
             .unwrap_or(false);
         if owned {
             let _ = classes.delete_subkey_all(&ext_name);
+        } else if let Ok(open_with) = classes.open_subkey_with_flags(
+            format!("{ext_name}\\OpenWithProgids"),
+            winreg::enums::KEY_SET_VALUE,
+        ) {
+            let _ = open_with.delete_value(&id);
         }
         let _ = classes.delete_subkey_all(&id);
         notify_shell();
@@ -155,7 +171,14 @@ mod imp {
 
     pub fn create_shortcut(_name: &str, _target: &Path, _description: &str) {}
     pub fn remove_shortcut(_name: &str) {}
-    pub fn register_file_type(_app: &str, _extension: &str, _description: &str, _exe: &Path) {}
+    pub fn register_file_type(
+        _app: &str,
+        _extension: &str,
+        _description: &str,
+        _exe: &Path,
+        _claim_default: bool,
+    ) {
+    }
     pub fn unregister_file_type(_app: &str, _extension: &str) {}
 }
 
@@ -167,8 +190,16 @@ pub fn remove_shortcut(name: &str) {
     imp::remove_shortcut(name);
 }
 
-pub fn register_file_type(app_name: &str, extension: &str, description: &str, exe: &Path) {
-    imp::register_file_type(app_name, extension, description, exe);
+/// Registra el tipo de archivo. Con `claim_default` la aplicación pasa a ser
+/// la predeterminada; sin él solo se ofrece en "Abrir con".
+pub fn register_file_type(
+    app_name: &str,
+    extension: &str,
+    description: &str,
+    exe: &Path,
+    claim_default: bool,
+) {
+    imp::register_file_type(app_name, extension, description, exe, claim_default);
 }
 
 pub fn unregister_file_type(app_name: &str, extension: &str) {

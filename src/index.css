@@ -38,11 +38,3 @@
   background: #a1887f;
 }
 
-/* Región de arrastre para ventana de escritorio Tauri */
-[data-tauri-drag-region] {
-  -webkit-app-region: drag;
-}
-
-button, input, select, a {
-  -webkit-app-region: no-drag;
-}

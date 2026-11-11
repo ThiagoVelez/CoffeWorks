@@ -115,6 +115,7 @@ export default defineConfig({
         "**/CoffeDoc/dist/**",
         "**/CoffeCalc/dist/**",
         "**/CoffeView/dist/**",
+        "**/CoffePDF/dist/**",
         "**/data/vault.json",
       ],
     },

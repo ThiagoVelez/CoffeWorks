@@ -377,6 +377,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "coffepdf"
+version = "2.4.0"
+dependencies = [
+ "coffe-core",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+]
+
+[[package]]
 name = "coffeview"
 version = "2.4.0"
 dependencies = [

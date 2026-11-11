@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpRight,
   FilePlus,
@@ -119,7 +119,14 @@ interface TabHistory {
   index: number;
 }
 
-const HISTORY_LIMIT = 200;
+const HISTORY_LIMIT = 100;
+/**
+ * Memoria máxima del historial de deshacer de cada pestaña, en caracteres.
+ * Cada paso guarda una copia completa del documento; con imágenes pegadas
+ * (que viajan dentro del HTML) 200 copias ocupaban cientos de MB y el
+ * WebView terminaba cerrándose.
+ */
+const HISTORY_MAX_CHARS = 24_000_000;
 
 const DocsLogo = (
   <svg viewBox="0 0 40 40" fill="none" className="w-full h-full">
@@ -134,9 +141,15 @@ const DocsLogo = (
   </svg>
 );
 
-function computeStats(html: string, pages: number): DocumentStats {
-  const holder = document.createElement("div");
-  holder.innerHTML = html;
+/**
+ * Analiza el HTML en un documento inerte: a diferencia de un <div> del propio
+ * documento, no descarga ni decodifica las imágenes en cada pulsación.
+ */
+function parseInert(html: string): HTMLElement {
+  return new DOMParser().parseFromString(html, "text/html").body;
+}
+
+function computeStats(holder: HTMLElement, pages: number): DocumentStats {
   const text = holder.textContent || "";
   const words = text.trim() ? text.trim().split(/\s+/).length : 0;
   const paragraphs = Array.from(holder.querySelectorAll("p, h1, h2, h3, h4, h5, h6, li, blockquote, pre")).filter(
@@ -152,9 +165,7 @@ function computeStats(html: string, pages: number): DocumentStats {
   };
 }
 
-function extractHeadings(html: string): DocumentHeading[] {
-  const holder = document.createElement("div");
-  holder.innerHTML = html;
+function extractHeadings(holder: HTMLElement): DocumentHeading[] {
   return Array.from(holder.querySelectorAll("h1, h2, h3")).map((el, index) => ({
     index,
     text: (el.textContent || "").trim(),
@@ -281,7 +292,11 @@ export const App: React.FC = () => {
     if (history.stack[history.index]?.html === tab.content) return;
     history.stack = history.stack.slice(0, history.index + 1);
     history.stack.push({ html: tab.content, caret: getCaretOffset() });
-    if (history.stack.length > HISTORY_LIMIT) history.stack.shift();
+    let total = history.stack.reduce((sum, entry) => sum + entry.html.length, 0);
+    while (history.stack.length > 1 && (history.stack.length > HISTORY_LIMIT || total > HISTORY_MAX_CHARS)) {
+      total -= history.stack[0].html.length;
+      history.stack.shift();
+    }
     history.index = history.stack.length - 1;
   }, []);
 
@@ -525,10 +540,30 @@ export const App: React.FC = () => {
     toast("Documento guardado");
   };
 
+  // La vista de impresión solo se monta mientras se imprime: tenerla siempre en
+  // el DOM obligaba a reconstruirla (con todas sus imágenes) en cada pulsación.
+  const [printing, setPrinting] = useState(false);
+
   const handlePrint = useCallback(() => {
     commitHistory();
-    window.setTimeout(() => window.print(), 50);
+    setPrinting(true);
   }, [commitHistory]);
+
+  useEffect(() => {
+    if (!printing) return;
+    const finish = () => setPrinting(false);
+    window.addEventListener("afterprint", finish);
+    // Se espera a que la vista de impresión (y sus imágenes) esté pintada
+    const timer = window.setTimeout(() => {
+      window.print();
+      // Algunos motores no emiten "afterprint": se desmonta igualmente
+      window.setTimeout(finish, 1000);
+    }, 150);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("afterprint", finish);
+    };
+  }, [printing]);
 
   const handleExport = async (exportFormat: ExportFormat) => {
     const current = docRef.current;
@@ -977,8 +1012,12 @@ export const App: React.FC = () => {
     },
   ];
 
-  const stats = useMemo(() => computeStats(content, pages), [content, pages]);
-  const headings = useMemo(() => extractHeadings(content), [content]);
+  // El recuento se calcula sobre una versión diferida del contenido para no
+  // frenar la escritura en documentos largos.
+  const deferredContent = useDeferredValue(content);
+  const parsedContent = useMemo(() => parseInert(deferredContent), [deferredContent]);
+  const stats = useMemo(() => computeStats(parsedContent, pages), [parsedContent, pages]);
+  const headings = useMemo(() => extractHeadings(parsedContent), [parsedContent]);
 
   // Tamaño y márgenes de página para la impresión
   const printCss = useMemo(() => {
@@ -1116,7 +1155,7 @@ export const App: React.FC = () => {
       )}
 
       {/* Vista de impresión: todas las pestañas del documento, una tras otra */}
-      {doc && (
+      {doc && printing && (
         <div className="cfd-print-view">
           {doc.tabs.map((tab) => (
             <div

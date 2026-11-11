@@ -21,15 +21,6 @@
   }
 }
 
-/* Región de arrastre para la ventana sin marco de Tauri */
-[data-tauri-drag-region] {
-  -webkit-app-region: drag;
-}
-
-button, input, select, textarea, a {
-  -webkit-app-region: no-drag;
-}
-
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;

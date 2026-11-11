@@ -18,6 +18,7 @@ import {
   FileText,
   Table,
   Presentation,
+  FilePen,
   ArrowRightLeft,
 } from "lucide-react";
 
@@ -51,6 +52,14 @@ const FORMAT_SUPPORT = [
     native: ".csl",
     opens: "PowerPoint (.pptx)",
     exports: "PowerPoint (.pptx), HTML y PDF",
+  },
+  {
+    app: "CoffePDF",
+    icon: FilePen,
+    color: "text-[#c62828]",
+    native: ".pdf",
+    opens: "PDF (.pdf), imágenes para insertar (PNG, JPG)",
+    exports: "PDF editado, páginas extraídas y PNG por página",
   },
 ];
 

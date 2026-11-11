@@ -1,20 +1,21 @@
 # CoffeWorks
 
-Suite ofimática de escritorio para Windows, de código abierto y sin conexión. Se compone de un **Launcher** que instala y gestiona las aplicaciones y de tres editores:
+Suite ofimática de escritorio para Windows, de código abierto y sin conexión. Se compone de un **Launcher** que instala y gestiona las aplicaciones y de cuatro editores:
 
 | Aplicación | Qué es | Formato propio | Abre | Exporta |
 | :--- | :--- | :--- | :--- | :--- |
 | **CoffeDoc** | Procesador de textos | `.cfd` | Word (`.docx`), Markdown, HTML, texto | Word (`.docx`), Markdown, HTML, texto, PDF |
 | **CoffeCalc** | Hoja de cálculo | `.cfs` | Excel (`.xlsx`, `.xls`), CSV | Excel (`.xlsx`) con formato, CSV, PDF |
 | **CoffeView** | Presentaciones | `.csl` | PowerPoint (`.pptx`) | PowerPoint (`.pptx`), HTML, PDF |
+| **CoffePDF** | Editor de PDF | `.pdf` | PDF | PDF, páginas sueltas, PNG |
 
 Cada aplicación es un ejecutable independiente construido con **Tauri 2** (Rust + WebView2) y **React + TypeScript**.
 
 ## Cómo funciona la instalación
 
-1. El instalador (`CoffeWorks-Setup-2.4.0.exe`, hecho con **Inno Setup**) instala solo el Launcher y deja los paquetes de las tres aplicaciones en su carpeta `packages`.
+1. El instalador (`CoffeWorks-Setup-2.4.0.exe`, hecho con **Inno Setup**) instala solo el Launcher y deja los paquetes de las cuatro aplicaciones en su carpeta `packages`.
 2. Dentro del Launcher, en la **Tienda de Apps**, cada aplicación tiene sus botones **Instalar**, **Abrir App** y **Desinstalar**:
-   - *Instalar* copia la aplicación a `%LOCALAPPDATA%\CoffeWorks\Apps\<App>`, crea su acceso directo en el menú Inicio (carpeta *CoffeWorks*) y asocia su tipo de archivo, de modo que un doble clic sobre un `.cfd`, `.cfs` o `.csl` lo abre.
+   - *Instalar* copia la aplicación a `%LOCALAPPDATA%\CoffeWorks\Apps\<App>`, crea su acceso directo en el menú Inicio (carpeta *CoffeWorks*) y asocia su tipo de archivo, de modo que un doble clic sobre un `.cfd`, `.cfs` o `.csl` lo abre. CoffePDF no reemplaza tu lector de PDF predeterminado: aparece en *Abrir con* del Explorador.
    - *Desinstalar* borra la aplicación, su acceso directo y su asociación. **Los documentos no se tocan.**
 3. Los documentos se guardan como archivos normales en `Documentos\CoffeWorks` y aparecen en *Documentos recientes* del Launcher.
 4. Al desinstalar CoffeWorks desde *Aplicaciones* de Windows se quitan también las aplicaciones instaladas; los documentos se conservan.
@@ -61,7 +62,7 @@ node scripts/build.mjs
 & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\CoffeWorks.iss
 ```
 
-El primer comando deja los ejecutables en `installer\build` (`CoffeWorks.exe` y `packages\CoffeDoc.exe`, `CoffeCalc.exe`, `CoffeView.exe`); el segundo los empaqueta. También puedes abrir `installer\CoffeWorks.iss` con el editor de Inno Setup y pulsar **Compile** (Ctrl+F9).
+El primer comando deja los ejecutables en `installer\build` (`CoffeWorks.exe` y `packages\CoffeDoc.exe`, `CoffeCalc.exe`, `CoffeView.exe`, `CoffePDF.exe`); el segundo los empaqueta. También puedes abrir `installer\CoffeWorks.iss` con el editor de Inno Setup y pulsar **Compile** (Ctrl+F9).
 
 ## Desarrollo
 
@@ -75,11 +76,11 @@ npm install
 npm run dev:all
 ```
 
-Antes de la primera vez, instala también las dependencias de cada aplicación (`npm install` dentro de `CoffeDoc`, `CoffeCalc` y `CoffeView`). Los servidores quedan en:
+Antes de la primera vez, instala también las dependencias de cada aplicación (`npm install` dentro de `CoffeDoc`, `CoffeCalc`, `CoffeView` y `CoffePDF`). Los servidores quedan en:
 
-| Launcher | CoffeDoc | CoffeCalc | CoffeView |
-| :--- | :--- | :--- | :--- |
-| <http://localhost:1420> | <http://localhost:1421> | <http://localhost:1422> | <http://localhost:1423> |
+| Launcher | CoffeDoc | CoffeCalc | CoffeView | CoffePDF |
+| :--- | :--- | :--- | :--- | :--- |
+| <http://localhost:1420> | <http://localhost:1421> | <http://localhost:1422> | <http://localhost:1423> | <http://localhost:1424> |
 
 En el navegador los documentos se guardan en `localStorage` y el Launcher abre las aplicaciones en pestañas; en el ejecutable se usan archivos reales y ventanas nativas.
 
@@ -100,6 +101,7 @@ CoffeWorks/
 ├── CoffeDoc/               Procesador de textos (src/ + src-tauri/)
 ├── CoffeCalc/              Hoja de cálculo (src/ + src-tauri/)
 ├── CoffeView/              Presentaciones (src/ + src-tauri/)
+├── CoffePDF/               Editor de PDF (src/ + src-tauri/)
 ├── crates/coffe-core/      Código Rust compartido: bóveda, recientes, archivos y diálogos
 ├── installer/CoffeWorks.iss  Script de Inno Setup
 ├── scripts/                build.mjs, build-windows.ps1 y dev.mjs
@@ -130,4 +132,6 @@ También existen `--install-all` y `--uninstall-all`.
 
 **CoffeView** — diseños y temas, cuadros de texto, formas, líneas, tablas, imágenes y vídeos que se mueven y redimensionan con el ratón, notas del orador, transiciones, ensayo de intervalos con avance automático, vista de cuadrícula y modo presentación a pantalla completa.
 
-En las tres: autoguardado, *Guardar como*, deshacer y rehacer, impresión y PDF, buscador de menús (`Alt+/`) y documentos fijados en el Launcher.
+**CoffePDF** — añadir y editar texto, reemplazar texto existente, resaltar, tachar con corrector blanco, rectángulos, elipses, líneas, flechas, dibujo a mano, imágenes y firmas (dibujadas o escritas); rellenar formularios; buscar texto y resaltar los resultados; reordenar, girar, duplicar, eliminar e insertar páginas; unir otros PDF, extraer páginas, exportar páginas a PNG, imprimir y editar las propiedades del documento.
+
+En CoffeDoc, CoffeCalc y CoffeView: autoguardado, *Guardar como*, deshacer y rehacer, impresión y PDF, buscador de menús (`Alt+/`) y documentos fijados en el Launcher.

@@ -43,6 +43,8 @@ interface SuiteHeaderProps {
   actions?: React.ReactNode;
   /** Se ejecuta antes de cerrar la ventana para guardar cambios pendientes. */
   onBeforeClose?: () => Promise<void> | void;
+  /** Pregunta previa al cierre; si devuelve `false` la ventana no se cierra. */
+  onRequestClose?: () => Promise<boolean>;
 }
 
 const STATUS_TEXT: Record<SaveStatus, string> = {
@@ -66,6 +68,7 @@ export const SuiteHeader: React.FC<SuiteHeaderProps> = ({
   onToggleStar,
   actions,
   onBeforeClose,
+  onRequestClose,
 }) => {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -89,11 +92,31 @@ export const SuiteHeader: React.FC<SuiteHeaderProps> = ({
     };
   }, [activeMenu]);
 
+  const closingRef = useRef(false);
+
+  /**
+   * Guarda lo pendiente y cierra. Si el guardado no termina en 4 segundos la
+   * ventana se cierra igualmente: el botón nunca debe quedarse "trabado".
+   */
   const handleClose = async () => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    if (onRequestClose) {
+      const proceed = await onRequestClose().catch(() => true);
+      if (!proceed) {
+        closingRef.current = false;
+        return;
+      }
+    }
     try {
-      await onBeforeClose?.();
+      await Promise.race([
+        Promise.resolve(onBeforeClose?.()).catch(() => undefined),
+        new Promise((resolve) => window.setTimeout(resolve, 4000)),
+      ]);
     } finally {
-      await appWindow.close();
+      await appWindow.close().catch(() => {
+        closingRef.current = false;
+      });
     }
   };
 
@@ -103,11 +126,6 @@ export const SuiteHeader: React.FC<SuiteHeaderProps> = ({
   return (
     <header
       data-tauri-drag-region
-      onDoubleClick={(e) => {
-        if ((e.target as HTMLElement).hasAttribute("data-tauri-drag-region")) {
-          void appWindow.toggleMaximize();
-        }
-      }}
       className="bg-[#f9fbfd] border-b border-[#e1dfdd]/60 select-none px-4 pt-2 pb-1 text-xs text-[#444746] relative z-40 print:hidden"
     >
       <div data-tauri-drag-region className="flex items-center justify-between gap-4">

@@ -105,7 +105,8 @@ pub fn sanitize_file_name(name: &str) -> String {
 
 pub(crate) fn same_path(a: &str, b: &str) -> bool {
     if cfg!(windows) {
-        a.replace('/', "\\").eq_ignore_ascii_case(&b.replace('/', "\\"))
+        a.replace('/', "\\")
+            .eq_ignore_ascii_case(&b.replace('/', "\\"))
     } else {
         a == b
     }
@@ -206,7 +207,9 @@ pub fn parse_launch_args<I: Iterator<Item = String>>(args: I) -> LaunchArgs {
 /// `canonicalize` en Windows.
 pub fn display_path(path: &Path) -> String {
     let text = path.to_string_lossy().to_string();
-    text.strip_prefix(r"\\?\").map(str::to_string).unwrap_or(text)
+    text.strip_prefix(r"\\?\")
+        .map(str::to_string)
+        .unwrap_or(text)
 }
 
 /// Genera el manejador de comandos de un editor de la suite. Las tres
@@ -246,14 +249,21 @@ mod tests {
 
     #[test]
     fn sanitiza_nombres_de_archivo() {
-        assert_eq!(sanitize_file_name("Informe: Q4/2026?.cfd"), "Informe_ Q4_2026_.cfd");
+        assert_eq!(
+            sanitize_file_name("Informe: Q4/2026?.cfd"),
+            "Informe_ Q4_2026_.cfd"
+        );
         assert_eq!(sanitize_file_name("  "), "Sin título");
         assert_eq!(sanitize_file_name("nombre. "), "nombre");
     }
 
     #[test]
     fn interpreta_argumentos_de_arranque() {
-        let args = vec!["app".to_string(), "--new".to_string(), "Mi informe".to_string()];
+        let args = vec![
+            "app".to_string(),
+            "--new".to_string(),
+            "Mi informe".to_string(),
+        ];
         let parsed = parse_launch_args(args.into_iter());
         assert_eq!(parsed.new_title.as_deref(), Some("Mi informe"));
         assert!(parsed.file.is_none());

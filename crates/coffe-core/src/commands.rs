@@ -16,48 +16,77 @@ use crate::{
     vault_dir, write_atomic, LaunchArgs, RecentDocument,
 };
 
+// Todos los comandos son `async`: Tauri ejecuta los comandos síncronos en el
+// hilo principal, el mismo que atiende la ventana. Si un guardado tarda (disco
+// lento, carpeta sincronizada con OneDrive...) la ventana dejaba de responder
+// y los botones de minimizar, maximizar y cerrar se quedaban trabados. El
+// trabajo de disco se hace además en un hilo aparte con `spawn_blocking`.
+
+/// Ejecuta una tarea de disco en un hilo de trabajo y espera su resultado.
+async fn blocking<T, F>(task: F) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Result<T, String> + Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(task)
+        .await
+        .map_err(|e| format!("La operación se interrumpió: {e}"))?
+}
+
 #[tauri::command]
-pub fn core_launch_args() -> LaunchArgs {
+pub async fn core_launch_args() -> LaunchArgs {
     parse_launch_args(std::env::args())
 }
 
 #[tauri::command]
-pub fn core_read_text(path: String) -> Result<String, String> {
-    fs::read_to_string(&path).map_err(|e| format!("No se pudo leer {path}: {e}"))
+pub async fn core_read_text(path: String) -> Result<String, String> {
+    blocking(move || fs::read_to_string(&path).map_err(|e| format!("No se pudo leer {path}: {e}")))
+        .await
 }
 
 #[tauri::command]
-pub fn core_write_text(path: String, contents: String) -> Result<(), String> {
-    write_atomic(Path::new(&path), contents.as_bytes())
-        .map_err(|e| format!("No se pudo escribir {path}: {e}"))
+pub async fn core_write_text(path: String, contents: String) -> Result<(), String> {
+    blocking(move || {
+        write_atomic(Path::new(&path), contents.as_bytes())
+            .map_err(|e| format!("No se pudo escribir {path}: {e}"))
+    })
+    .await
 }
 
 /// Lee un archivo binario y lo devuelve codificado en base64.
 #[tauri::command]
-pub fn core_read_binary(path: String) -> Result<String, String> {
-    let bytes = fs::read(&path).map_err(|e| format!("No se pudo leer {path}: {e}"))?;
-    Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
+pub async fn core_read_binary(path: String) -> Result<String, String> {
+    blocking(move || {
+        let bytes = fs::read(&path).map_err(|e| format!("No se pudo leer {path}: {e}"))?;
+        Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
+    })
+    .await
 }
 
 /// Escribe un archivo binario a partir de su contenido en base64.
 #[tauri::command]
-pub fn core_write_binary(path: String, data: String) -> Result<(), String> {
-    let bytes = base64::engine::general_purpose::STANDARD
-        .decode(data.as_bytes())
-        .map_err(|e| format!("Datos no válidos: {e}"))?;
-    write_atomic(Path::new(&path), &bytes).map_err(|e| format!("No se pudo escribir {path}: {e}"))
+pub async fn core_write_binary(path: String, data: String) -> Result<(), String> {
+    blocking(move || {
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(data.as_bytes())
+            .map_err(|e| format!("Datos no válidos: {e}"))?;
+        write_atomic(Path::new(&path), &bytes)
+            .map_err(|e| format!("No se pudo escribir {path}: {e}"))
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn core_file_exists(path: String) -> bool {
-    Path::new(&path).is_file()
+pub async fn core_file_exists(path: String) -> bool {
+    blocking(move || Ok(Path::new(&path).is_file()))
+        .await
+        .unwrap_or(false)
 }
 
 /// Devuelve la ruta dentro de la bóveda donde debe guardarse un documento.
 /// Si ya existe un archivo con ese nombre que pertenece a otro documento, se
 /// añade un sufijo numérico para no sobrescribirlo.
-#[tauri::command]
-pub fn core_vault_path(file_name: String, doc_id: String) -> Result<String, String> {
+pub fn reserve_vault_path(file_name: String, doc_id: String) -> Result<String, String> {
     let dir = vault_dir();
     fs::create_dir_all(&dir).map_err(|e| format!("No se pudo crear la bóveda: {e}"))?;
 
@@ -88,12 +117,7 @@ pub fn core_vault_path(file_name: String, doc_id: String) -> Result<String, Stri
 /// Renombra un documento de la bóveda cuando cambia su título. Si el archivo
 /// no está dentro de la bóveda (el usuario eligió su ubicación con "Guardar
 /// como") se respeta su ruta y se devuelve sin cambios.
-#[tauri::command]
-pub fn core_rename_in_vault(
-    path: String,
-    file_name: String,
-    doc_id: String,
-) -> Result<String, String> {
+pub fn rename_in_vault(path: String, file_name: String, doc_id: String) -> Result<String, String> {
     let current = Path::new(&path);
     let vault = vault_dir();
     if !current.is_file() || !current.starts_with(&vault) {
@@ -107,35 +131,52 @@ pub fn core_rename_in_vault(
     if same_path(&current_name, &wanted) {
         return Ok(path);
     }
-    let target = core_vault_path(wanted, doc_id)?;
+    let target = reserve_vault_path(wanted, doc_id)?;
     fs::rename(current, &target).map_err(|e| format!("No se pudo renombrar el documento: {e}"))?;
     Ok(target)
 }
 
 #[tauri::command]
-pub fn core_vault_dir() -> String {
+pub async fn core_vault_path(file_name: String, doc_id: String) -> Result<String, String> {
+    blocking(move || reserve_vault_path(file_name, doc_id)).await
+}
+
+#[tauri::command]
+pub async fn core_rename_in_vault(
+    path: String,
+    file_name: String,
+    doc_id: String,
+) -> Result<String, String> {
+    blocking(move || rename_in_vault(path, file_name, doc_id)).await
+}
+
+#[tauri::command]
+pub async fn core_vault_dir() -> String {
     display_path(&vault_dir())
 }
 
 #[tauri::command]
-pub fn core_register_recent(doc: RecentDocument) -> Result<(), String> {
-    upsert_recent(doc).map(|_| ())
+pub async fn core_register_recent(doc: RecentDocument) -> Result<(), String> {
+    blocking(move || upsert_recent(doc).map(|_| ())).await
 }
 
 /// Fija o desfija un documento en la lista de recientes del Launcher.
 #[tauri::command]
-pub fn core_set_pinned(id: String, pinned: bool) -> Result<(), String> {
-    let mut docs = load_recent();
-    if let Some(doc) = docs.iter_mut().find(|d| d.id == id) {
-        doc.is_pinned = pinned;
-        crate::save_recent(&docs)?;
-    }
-    Ok(())
+pub async fn core_set_pinned(id: String, pinned: bool) -> Result<(), String> {
+    blocking(move || {
+        let mut docs = load_recent();
+        if let Some(doc) = docs.iter_mut().find(|d| d.id == id) {
+            doc.is_pinned = pinned;
+            crate::save_recent(&docs)?;
+        }
+        Ok(())
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn core_list_recent() -> Vec<RecentDocument> {
-    load_recent()
+pub async fn core_list_recent() -> Vec<RecentDocument> {
+    blocking(|| Ok(load_recent())).await.unwrap_or_default()
 }
 
 /// Filtro de tipos de archivo para los diálogos nativos.
@@ -206,17 +247,17 @@ pub async fn core_pick_save(
 
 /// Abre una URL, archivo o carpeta con el programa predeterminado del sistema.
 #[tauri::command]
-pub fn core_open_external(target: String) -> Result<(), String> {
+pub async fn core_open_external(target: String) -> Result<(), String> {
     open::that_detached(&target).map_err(|e| format!("No se pudo abrir {target}: {e}"))
 }
 
 #[tauri::command]
-pub fn core_window_minimize(window: WebviewWindow) {
+pub async fn core_window_minimize(window: WebviewWindow) {
     let _ = window.minimize();
 }
 
 #[tauri::command]
-pub fn core_window_toggle_maximize(window: WebviewWindow) {
+pub async fn core_window_toggle_maximize(window: WebviewWindow) {
     if window.is_maximized().unwrap_or(false) {
         let _ = window.unmaximize();
     } else {
@@ -225,23 +266,23 @@ pub fn core_window_toggle_maximize(window: WebviewWindow) {
 }
 
 #[tauri::command]
-pub fn core_window_toggle_fullscreen(window: WebviewWindow) -> bool {
+pub async fn core_window_toggle_fullscreen(window: WebviewWindow) -> bool {
     let next = !window.is_fullscreen().unwrap_or(false);
     let _ = window.set_fullscreen(next);
     next
 }
 
 #[tauri::command]
-pub fn core_window_set_fullscreen(window: WebviewWindow, fullscreen: bool) {
+pub async fn core_window_set_fullscreen(window: WebviewWindow, fullscreen: bool) {
     let _ = window.set_fullscreen(fullscreen);
 }
 
 #[tauri::command]
-pub fn core_window_close(window: WebviewWindow) {
+pub async fn core_window_close(window: WebviewWindow) {
     let _ = window.close();
 }
 
 #[tauri::command]
-pub fn core_window_set_title(window: WebviewWindow, title: String) {
+pub async fn core_window_set_title(window: WebviewWindow, title: String) {
     let _ = window.set_title(&title);
 }

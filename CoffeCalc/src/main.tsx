@@ -7,13 +7,16 @@ import "@fontsource/hanken-grotesk/700.css";
 import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/600.css";
 import { App } from "./App";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./index.css";
 
 const rootElement = document.getElementById("root");
 if (rootElement) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
-      <App />
+      <ErrorBoundary appName="CoffeCalc">
+        <App />
+      </ErrorBoundary>
     </React.StrictMode>
   );
 }

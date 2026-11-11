@@ -3,13 +3,14 @@
 //
 //   node scripts/build.mjs [--target <triple>] [--skip-frontend]
 //
-// 1. Compila la interfaz web del Launcher y de las tres aplicaciones.
-// 2. Compila los cuatro ejecutables nativos (Tauri) en modo producción.
+// 1. Compila la interfaz web del Launcher y de las cuatro aplicaciones.
+// 2. Compila los cinco ejecutables nativos (Tauri) en modo producción.
 // 3. Los reúne en installer/build con la estructura que espera el instalador:
 //      installer/build/CoffeWorks(.exe)            Launcher
 //      installer/build/packages/CoffeDoc(.exe)     paquetes que instala el Launcher
 //      installer/build/packages/CoffeCalc(.exe)
 //      installer/build/packages/CoffeView(.exe)
+//      installer/build/packages/CoffePDF(.exe)
 
 import { execSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, rmSync, statSync } from "node:fs";
@@ -27,7 +28,7 @@ const run = (command, cwd = root) => {
   execSync(command, { cwd, stdio: "inherit" });
 };
 
-const frontends = [".", "CoffeDoc", "CoffeCalc", "CoffeView"];
+const frontends = [".", "CoffeDoc", "CoffeCalc", "CoffeView", "CoffePDF"];
 
 if (!skipFrontend) {
   for (const dir of frontends) {
@@ -56,7 +57,7 @@ const stage = (name, destination) => {
 
 console.log(`\nEjecutables en ${path.relative(root, outDir)}:`);
 stage("CoffeWorks", "");
-for (const app of ["CoffeDoc", "CoffeCalc", "CoffeView"]) stage(app, "packages");
+for (const app of ["CoffeDoc", "CoffeCalc", "CoffeView", "CoffePDF"]) stage(app, "packages");
 
 // Las compilaciones con MinGW necesitan el cargador de WebView2 junto a cada ejecutable
 const loader = path.join(releaseDir, "WebView2Loader.dll");

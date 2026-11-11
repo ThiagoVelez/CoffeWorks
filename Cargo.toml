@@ -9,6 +9,7 @@ members = [
   "CoffeDoc/src-tauri",
   "CoffeCalc/src-tauri",
   "CoffeView/src-tauri",
+  "CoffePDF/src-tauri",
 ]
 
 [workspace.package]
