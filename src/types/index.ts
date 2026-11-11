@@ -1,4 +1,4 @@
-// Definiciones de tipos para el Launcher de CoffeWorks
+// Definiciones de tipos para el Launcher de CoffeeWorks
 
 export interface SuiteApp {
   id: string;

@@ -1,9 +1,9 @@
 //! Catálogo de aplicaciones de la suite y su ciclo de vida:
 //! instalar, desinstalar y ejecutar.
 //!
-//! El instalador de CoffeWorks deja los paquetes de cada aplicación en la
+//! El instalador de CoffeeWorks deja los paquetes de cada aplicación en la
 //! carpeta `packages` junto al Launcher. "Instalar" copia el paquete a
-//! `%LOCALAPPDATA%\CoffeWorks\Apps\<App>`, crea su acceso directo en el menú
+//! `%LOCALAPPDATA%\CoffeeWorks\Apps\<App>`, crea su acceso directo en el menú
 //! Inicio y registra sus tipos de archivo; "desinstalar" deshace todo eso.
 
 use std::fs;
@@ -32,99 +32,99 @@ pub struct CatalogApp {
     /// Otras extensiones que la aplicación sabe abrir.
     pub extra_extensions: &'static [&'static str],
     /// Si se convierte en el programa predeterminado de su extensión. Los PDF
-    /// suelen tener ya un lector elegido, así que CoffePDF solo se ofrece en
+    /// suelen tener ya un lector elegido, así que CoffeePDF solo se ofrece en
     /// "Abrir con".
     pub claim_default: bool,
 }
 
 pub const CATALOG: &[CatalogApp] = &[
     CatalogApp {
-        id: "coffedoc",
+        id: "coffeedoc",
         aliases: &[],
-        name: "CoffeDoc",
+        name: "CoffeeDoc",
         subtitle: "Procesador de textos con formato enriquecido",
         description: "Documentos con estilos, tablas, imágenes y esquema automático. Abre y guarda Word (.docx), Markdown, HTML y PDF.",
         version: "v1.4",
         color_badge: "primary",
         icon_name: "file-text",
-        icon_url: "/icons/CoffeText.ico",
+        icon_url: "/icons/CoffeeText.ico",
         category: "Office",
-        file_type: ("cfd", "Documento de CoffeDoc"),
+        file_type: ("cfd", "Documento de CoffeeDoc"),
         extra_extensions: &["docx", "doc", "md", "txt", "html", "htm"],
         claim_default: true,
     },
     CatalogApp {
-        id: "coffecalc",
-        aliases: &["coffesheet"],
-        name: "CoffeCalc",
+        id: "coffeecalc",
+        aliases: &["coffeesheet"],
+        name: "CoffeeCalc",
         subtitle: "Hoja de cálculo con fórmulas y gráficos",
         description: "Libros con varias hojas, más de 80 funciones, formato de celdas, filtros y gráficos. Compatible con Excel (.xlsx) y CSV.",
         version: "v1.0",
         color_badge: "secondary",
         icon_name: "table",
-        icon_url: "/icons/CoffeSheet.ico",
+        icon_url: "/icons/CoffeeSheet.ico",
         category: "Office",
-        file_type: ("cfs", "Libro de CoffeCalc"),
+        file_type: ("cfs", "Libro de CoffeeCalc"),
         extra_extensions: &["xlsx", "xls", "csv"],
         claim_default: true,
     },
     CatalogApp {
-        id: "coffeview",
-        aliases: &["coffeslides"],
-        name: "CoffeView",
+        id: "coffeeview",
+        aliases: &["coffeeslides"],
+        name: "CoffeeView",
         subtitle: "Presentaciones y diapositivas",
         description: "Diseñador de diapositivas con temas, formas, imágenes, transiciones, notas del orador y exportación a PowerPoint (.pptx) y PDF.",
         version: "v1.0",
         color_badge: "tertiary",
         icon_name: "presentation",
-        icon_url: "/icons/CoffeSlides.ico",
+        icon_url: "/icons/CoffeeSlides.ico",
         category: "Office",
-        file_type: ("csl", "Presentación de CoffeView"),
+        file_type: ("csl", "Presentación de CoffeeView"),
         extra_extensions: &["pptx"],
         claim_default: true,
     },
     CatalogApp {
-        id: "coffepdf",
+        id: "coffeepdf",
         aliases: &[],
-        name: "CoffePDF",
+        name: "CoffeePDF",
         subtitle: "Editor de documentos PDF",
         description: "Abre, anota y edita PDF: texto, resaltado, formas, firmas e imágenes, formularios, y organiza, gira, une o extrae páginas.",
         version: "v1.0",
         color_badge: "error",
         icon_name: "file-pen",
-        icon_url: "/icons/CoffePDF.ico",
+        icon_url: "/icons/CoffeePDF.ico",
         category: "Office",
         file_type: ("pdf", "Documento PDF"),
         extra_extensions: &[],
         claim_default: false,
     },
     CatalogApp {
-        id: "coffepage",
+        id: "coffeepage",
         aliases: &[],
-        name: "CoffePage",
+        name: "CoffeePage",
         subtitle: "Cuaderno digital de notas",
         description: "Notas en secciones y páginas: escribe en cualquier parte, dibuja a mano, pega imágenes, marca tareas y busca en todo el cuaderno.",
         version: "v1.0",
         color_badge: "notes",
         icon_name: "notebook",
-        icon_url: "/icons/CoffePage.ico",
+        icon_url: "/icons/CoffeePage.ico",
         category: "Office",
-        file_type: ("cpg", "Cuaderno de CoffePage"),
+        file_type: ("cpg", "Cuaderno de CoffeePage"),
         extra_extensions: &[],
         claim_default: true,
     },
     CatalogApp {
-        id: "coffecams",
+        id: "coffeecams",
         aliases: &[],
-        name: "CoffeCams",
+        name: "CoffeeCams",
         subtitle: "Editor de video, grabación y streaming",
         description: "Edita videos con varias pistas, cortes, velocidad, filtros, textos y transiciones; graba la pantalla y la cámara, y transmite en directo.",
         version: "v1.0",
         color_badge: "media",
         icon_name: "video",
-        icon_url: "/icons/CoffeCams.ico",
+        icon_url: "/icons/CoffeeCams.ico",
         category: "Multimedia",
-        file_type: ("ccm", "Proyecto de CoffeCams"),
+        file_type: ("ccm", "Proyecto de CoffeeCams"),
         extra_extensions: &["mp4", "webm", "mov", "mkv"],
         claim_default: true,
     },
@@ -151,7 +151,7 @@ pub struct SuiteApp {
 }
 
 pub fn find_app(id: &str) -> Option<&'static CatalogApp> {
-    let id = id.to_ascii_lowercase();
+    let id = coffee_core::canonical_app_id(id);
     CATALOG
         .iter()
         .find(|app| app.id == id || app.aliases.contains(&id.as_str()))
@@ -199,7 +199,7 @@ fn package_path(app: &CatalogApp) -> Option<PathBuf> {
 }
 
 fn install_dir(app: &CatalogApp) -> PathBuf {
-    coffe_core::apps_dir().join(app.name)
+    coffee_core::apps_dir().join(app.name)
 }
 
 pub fn installed_exe(app: &CatalogApp) -> PathBuf {
@@ -246,7 +246,7 @@ fn describe(app: &CatalogApp) -> SuiteApp {
         icon_name: app.icon_name.to_string(),
         icon_url: app.icon_url.to_string(),
         category: app.category.to_string(),
-        install_path: coffe_core::display_path(&installed_path),
+        install_path: coffee_core::display_path(&installed_path),
     }
 }
 
@@ -259,9 +259,9 @@ pub fn install(id: &str) -> Result<SuiteApp, String> {
     let app = find_app(id).ok_or_else(|| format!("Aplicación desconocida: {id}"))?;
     let package = package_path(app).ok_or_else(|| {
         format!(
-            "No se encontró el paquete de {} en {}. Reinstala CoffeWorks para restaurarlo.",
+            "No se encontró el paquete de {} en {}. Reinstala CoffeeWorks para restaurarlo.",
             app.name,
-            coffe_core::display_path(&packages_dir())
+            coffee_core::display_path(&packages_dir())
         )
     })?;
 
@@ -301,6 +301,54 @@ pub fn install(id: &str) -> Result<SuiteApp, String> {
     );
 
     Ok(describe(app))
+}
+
+/// Las aplicaciones instaladas con la versión anterior (llamadas «Coffe…»)
+/// se sustituyen por las nuevas: se quita la copia antigua, su acceso directo
+/// y su asociación, y se instala la nueva si su paquete está disponible.
+pub fn migrate_legacy_apps() {
+    let legacy_apps = coffee_core::local_dir()
+        .parent()
+        .map(|p| p.join(coffee_core::LEGACY_SUITE_DIR).join("Apps"));
+    for app in CATALOG {
+        let legacy = coffee_core::legacy_name(app.name);
+        let mut was_installed = false;
+        for dir in [Some(coffee_core::apps_dir()), legacy_apps.clone()]
+            .into_iter()
+            .flatten()
+        {
+            let old = dir.join(&legacy);
+            if old.is_dir() {
+                was_installed |= old
+                    .join(format!("{legacy}{}", std::env::consts::EXE_SUFFIX))
+                    .is_file();
+                let _ = fs::remove_dir_all(&old);
+            }
+        }
+        if was_installed {
+            platform::remove_legacy(&legacy, app.file_type.0);
+            if is_installed(app) {
+                // La asociación pudo apuntar a la copia antigua: se restaura
+                let target = installed_exe(app);
+                platform::register_file_type(
+                    app.name,
+                    app.file_type.0,
+                    app.file_type.1,
+                    &target,
+                    app.claim_default,
+                );
+            } else if package_path(app).is_some() {
+                let _ = install(app.id);
+            }
+        }
+    }
+    // La carpeta antigua de aplicaciones se borra si quedó vacía
+    if let Some(dir) = legacy_apps {
+        let _ = fs::remove_dir(&dir);
+        if let Some(parent) = dir.parent() {
+            let _ = fs::remove_dir(parent);
+        }
+    }
 }
 
 /// Desinstala una aplicación: borra sus archivos, su acceso directo y sus

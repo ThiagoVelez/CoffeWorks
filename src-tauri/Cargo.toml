@@ -1,12 +1,12 @@
 [package]
-name = "coffeworks-launcher"
-description = "Launcher y gestor de aplicaciones de la suite ofimática CoffeWorks"
+name = "coffeeworks-launcher"
+description = "Launcher y gestor de aplicaciones de la suite ofimática CoffeeWorks"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
 
 [[bin]]
-name = "CoffeWorks"
+name = "CoffeeWorks"
 path = "src/main.rs"
 
 [features]
@@ -21,7 +21,7 @@ tauri = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 open = { workspace = true }
-coffe-core = { workspace = true }
+coffee-core = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52"

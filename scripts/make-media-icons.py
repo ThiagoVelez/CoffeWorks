@@ -1,4 +1,4 @@
-"""Genera los iconos de CoffePage (morado) y CoffeCams (verde menta) con el
+"""Genera los iconos de CoffeePage (morado) y CoffeeCams (verde menta) con el
 mismo estilo que el resto de la suite: cuadrado redondeado de color con un
 símbolo plano en blanco."""
 
@@ -26,13 +26,13 @@ def canvas(color):
 
 def save(img, name):
     icon = img.resize((256, 256), Image.LANCZOS)
-    out = ROOT / "CoffeWorks_Icon" / f"{name}.ico"
+    out = ROOT / "CoffeeWorks_Icon" / f"{name}.ico"
     icon.save(out, sizes=SIZES)
-    icon.save(ROOT / "CoffeWorks_Icon" / f"{name}.png")
+    icon.save(ROOT / "CoffeeWorks_Icon" / f"{name}.png")
     print("Icono creado en", out)
 
 
-# --- CoffePage: cuaderno con anillas y pestañas de sección -----------------
+# --- CoffeePage: cuaderno con anillas y pestañas de sección -----------------
 PURPLE = (123, 31, 162, 255)
 DARK_PURPLE = (74, 20, 140, 255)
 LILAC = (225, 190, 231, 255)
@@ -54,9 +54,9 @@ for y in (72, 104, 136, 168):
 # Líneas de escritura
 for y, length in ((84, 64), (108, 72), (132, 52), (156, 66)):
     d.rounded_rectangle(box(106, y, 106 + length, y + 8), radius=4 * S, fill=LILAC)
-save(img, "CoffePage")
+save(img, "CoffeePage")
 
-# --- CoffeCams: videocámara ------------------------------------------------
+# --- CoffeeCams: videocámara ------------------------------------------------
 MINT = (38, 166, 128, 255)
 DARK_MINT = (16, 110, 82, 255)
 LIGHT_MINT = (178, 235, 214, 255)
@@ -74,4 +74,4 @@ d.ellipse(box(90, 114, 122, 146), fill=LIGHT_MINT)
 d.ellipse(box(98, 120, 110, 132), fill=WHITE)
 # Piloto de grabación
 d.ellipse(box(146, 94, 160, 108), fill=REC)
-save(img, "CoffeCams")
+save(img, "CoffeeCams")

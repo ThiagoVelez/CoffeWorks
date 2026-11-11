@@ -32,7 +32,7 @@ interface Toast {
 /** Formatos que cada aplicación abre y guarda (pantalla de Integraciones). */
 const FORMAT_SUPPORT = [
   {
-    app: "CoffeDoc",
+    app: "CoffeeDoc",
     icon: FileText,
     color: "text-[#185abd]",
     native: ".cfd",
@@ -40,7 +40,7 @@ const FORMAT_SUPPORT = [
     exports: "Word (.docx), Markdown, HTML, texto y PDF",
   },
   {
-    app: "CoffeCalc",
+    app: "CoffeeCalc",
     icon: Table,
     color: "text-[#107c41]",
     native: ".cfs",
@@ -48,7 +48,7 @@ const FORMAT_SUPPORT = [
     exports: "Excel (.xlsx) con formato, CSV y PDF",
   },
   {
-    app: "CoffeView",
+    app: "CoffeeView",
     icon: Presentation,
     color: "text-[#c43e1c]",
     native: ".csl",
@@ -56,7 +56,7 @@ const FORMAT_SUPPORT = [
     exports: "PowerPoint (.pptx), HTML y PDF",
   },
   {
-    app: "CoffePDF",
+    app: "CoffeePDF",
     icon: FilePen,
     color: "text-[#c62828]",
     native: ".pdf",
@@ -64,15 +64,15 @@ const FORMAT_SUPPORT = [
     exports: "PDF editado, páginas extraídas y PNG por página",
   },
   {
-    app: "CoffePage",
+    app: "CoffeePage",
     icon: NotebookPen,
     color: "text-[#7b1fa2]",
     native: ".cpg",
-    opens: "Cuadernos de CoffePage; imágenes y texto (.txt, .md) para insertar",
+    opens: "Cuadernos de CoffeePage; imágenes y texto (.txt, .md) para insertar",
     exports: "HTML (página, sección o cuaderno), Markdown y PDF (imprimir)",
   },
   {
-    app: "CoffeCams",
+    app: "CoffeeCams",
     icon: Video,
     color: "text-[#26a680]",
     native: ".ccm",
@@ -91,7 +91,7 @@ export const App: React.FC = () => {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [createModal, setCreateModal] = useState<{ open: boolean; docType: string }>({
     open: false,
-    docType: "coffedoc",
+    docType: "coffeedoc",
   });
   const [toast, setToast] = useState<Toast | null>(null);
 
@@ -254,7 +254,7 @@ export const App: React.FC = () => {
   }, [apps]);
   const infoRows: Array<[string, string]> = suiteInfo
     ? [
-        ["Versión de CoffeWorks", suiteInfo.version],
+        ["Versión de CoffeeWorks", suiteInfo.version],
         ["Carpeta de documentos (bóveda)", suiteInfo.vault_dir],
         ["Aplicaciones instaladas en", suiteInfo.apps_dir],
         ["Paquetes de instalación", suiteInfo.packages_dir],
@@ -263,7 +263,7 @@ export const App: React.FC = () => {
         ["Sistema", suiteInfo.platform],
       ]
     : [
-        ["Versión de CoffeWorks", "2.4.0 (modo web de desarrollo)"],
+        ["Versión de CoffeeWorks", "2.5.0 (modo web de desarrollo)"],
         ["Documentos", "Se guardan en el almacenamiento de este navegador"],
       ];
 
@@ -292,7 +292,7 @@ export const App: React.FC = () => {
                 onToggleFocusMode={handleToggleFocus}
                 installedCount={installedCount}
                 appCount={apps.length}
-                onCreateNewDoc={() => setCreateModal({ open: true, docType: "coffedoc" })}
+                onCreateNewDoc={() => setCreateModal({ open: true, docType: "coffeedoc" })}
               />
 
               <AppGrid
@@ -325,7 +325,7 @@ export const App: React.FC = () => {
                 <div>
                   <h1 className="font-display text-2xl font-bold text-[#2c1b12]">Integraciones y formatos</h1>
                   <p className="text-xs text-[#795548] mt-0.5">
-                    CoffeWorks trabaja con los archivos de Microsoft Office y con formatos abiertos, sin conexión a Internet.
+                    CoffeeWorks trabaja con los archivos de Microsoft Office y con formatos abiertos, sin conexión a Internet.
                   </p>
                 </div>
               </div>
@@ -356,11 +356,11 @@ export const App: React.FC = () => {
                   Integración con Windows
                 </div>
                 <p>
-                  Al instalar una aplicación desde la Tienda de Apps se crea su acceso directo en el menú Inicio (carpeta CoffeWorks) y se
+                  Al instalar una aplicación desde la Tienda de Apps se crea su acceso directo en el menú Inicio (carpeta CoffeeWorks) y se
                   asocia su tipo de archivo (.cfd, .cfs o .csl), de modo que un doble clic en el Explorador abre el documento directamente.
                 </p>
                 <p>
-                  Todos los documentos se guardan como archivos normales en la carpeta <strong>Documentos\CoffeWorks</strong>: puedes copiarlos,
+                  Todos los documentos se guardan como archivos normales en la carpeta <strong>Documentos\CoffeeWorks</strong>: puedes copiarlos,
                   respaldarlos o sincronizarlos con el servicio que prefieras.
                 </p>
                 {isTauri && (
@@ -437,7 +437,7 @@ export const App: React.FC = () => {
       <CreateDocModal
         isOpen={createModal.open}
         docType={createModal.docType}
-        onClose={() => setCreateModal({ open: false, docType: "coffedoc" })}
+        onClose={() => setCreateModal({ open: false, docType: "coffeedoc" })}
         onCreate={(docType, title) => void handleCreateDocument(docType, title)}
       />
 

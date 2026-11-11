@@ -43,12 +43,12 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
     if (activeFilter === "pinned") return doc.is_pinned;
     const lower = doc.name.toLowerCase();
     const app = doc.app_id?.toLowerCase() || "";
-    if (activeFilter === "documents") return app === "coffedoc" || lower.endsWith(".cfd") || lower.endsWith(".docx");
-    if (activeFilter === "spreadsheets") return app === "coffecalc" || app === "coffesheet" || lower.endsWith(".cfs") || lower.endsWith(".xlsx");
-    if (activeFilter === "presentations") return app === "coffeview" || app === "coffeslides" || lower.endsWith(".csl") || lower.endsWith(".pptx");
-    if (activeFilter === "pdf") return app === "coffepdf" || lower.endsWith(".pdf");
-    if (activeFilter === "notes") return app === "coffepage" || lower.endsWith(".cpg");
-    if (activeFilter === "videos") return app === "coffecams" || lower.endsWith(".ccm");
+    if (activeFilter === "documents") return app === "coffeedoc" || lower.endsWith(".cfd") || lower.endsWith(".docx");
+    if (activeFilter === "spreadsheets") return app === "coffeecalc" || app === "coffeesheet" || lower.endsWith(".cfs") || lower.endsWith(".xlsx");
+    if (activeFilter === "presentations") return app === "coffeeview" || app === "coffeeslides" || lower.endsWith(".csl") || lower.endsWith(".pptx");
+    if (activeFilter === "pdf") return app === "coffeepdf" || lower.endsWith(".pdf");
+    if (activeFilter === "notes") return app === "coffeepage" || lower.endsWith(".cpg");
+    if (activeFilter === "videos") return app === "coffeecams" || lower.endsWith(".ccm");
     return true;
   });
 
@@ -60,12 +60,12 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
       lowerName.endsWith(".cfs") ||
       lowerName.endsWith(".xlsx") ||
       lowerName.endsWith(".xls") ||
-      appId === "coffecalc" ||
-      appId === "coffesheet"
+      appId === "coffeecalc" ||
+      appId === "coffeesheet"
     ) {
       return {
-        iconUrl: "/icons/CoffeSheet.ico",
-        alt: "CoffeCalc / Hoja de Cálculo",
+        iconUrl: "/icons/CoffeeSheet.ico",
+        alt: "CoffeeCalc / Hoja de Cálculo",
         bg: "bg-[#dff6dd]",
         border: "border-[#b2e2b0]",
       };
@@ -76,11 +76,11 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
       lowerName.endsWith(".doc") ||
       lowerName.endsWith(".txt") ||
       lowerName.endsWith(".md") ||
-      appId === "coffedoc"
+      appId === "coffeedoc"
     ) {
       return {
-        iconUrl: "/icons/CoffeText.ico",
-        alt: "CoffeDoc / Documento de Texto",
+        iconUrl: "/icons/CoffeeText.ico",
+        alt: "CoffeeDoc / Documento de Texto",
         bg: "bg-[#eeddd0]",
         border: "border-[#dfd3c7]",
       };
@@ -89,43 +89,43 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
       lowerName.endsWith(".csl") ||
       lowerName.endsWith(".pptx") ||
       lowerName.endsWith(".ppt") ||
-      appId === "coffeview" ||
-      appId === "coffeslides"
+      appId === "coffeeview" ||
+      appId === "coffeeslides"
     ) {
       return {
-        iconUrl: "/icons/CoffeSlides.ico",
-        alt: "CoffeView / Presentación",
+        iconUrl: "/icons/CoffeeSlides.ico",
+        alt: "CoffeeView / Presentación",
         bg: "bg-[#faede4]",
         border: "border-[#dfd3c7]",
       };
     }
-    if (lowerName.endsWith(".cpg") || appId === "coffepage") {
+    if (lowerName.endsWith(".cpg") || appId === "coffeepage") {
       return {
-        iconUrl: "/icons/CoffePage.ico",
-        alt: "CoffePage / Cuaderno",
+        iconUrl: "/icons/CoffeePage.ico",
+        alt: "CoffeePage / Cuaderno",
         bg: "bg-[#f3e5f5]",
         border: "border-[#e1bee7]",
       };
     }
-    if (lowerName.endsWith(".ccm") || appId === "coffecams") {
+    if (lowerName.endsWith(".ccm") || appId === "coffeecams") {
       return {
-        iconUrl: "/icons/CoffeCams.ico",
-        alt: "CoffeCams / Proyecto de video",
+        iconUrl: "/icons/CoffeeCams.ico",
+        alt: "CoffeeCams / Proyecto de video",
         bg: "bg-[#e3f6ef]",
         border: "border-[#b2e3d2]",
       };
     }
-    if (lowerName.endsWith(".pdf") || appId === "coffepdf") {
+    if (lowerName.endsWith(".pdf") || appId === "coffeepdf") {
       return {
-        iconUrl: "/icons/CoffePDF.ico",
-        alt: "CoffePDF / Documento PDF",
+        iconUrl: "/icons/CoffeePDF.ico",
+        alt: "CoffeePDF / Documento PDF",
         bg: "bg-[#fdecea]",
         border: "border-[#f4c7c3]",
       };
     }
     return {
-      iconUrl: "/icons/CoffeWorks.ico",
-      alt: "CoffeWorks Document",
+      iconUrl: "/icons/CoffeeWorks.ico",
+      alt: "CoffeeWorks Document",
       bg: "bg-[#f4ede6]",
       border: "border-[#dfd3c7]",
     };

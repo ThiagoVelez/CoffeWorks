@@ -1,9 +1,9 @@
-# Compila CoffeWorks y genera el instalador para Windows.
+# Compila CoffeeWorks y genera el instalador para Windows.
 #
 #   powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 #
 # Requisitos: Node.js 20+, Rust (rustup, toolchain MSVC) e Inno Setup 6.
-# Resultado:  installer\Output\CoffeWorks-Setup-<versión>.exe
+# Resultado:  installer\Output\CoffeeWorks-Setup-<versión>.exe
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
@@ -48,7 +48,7 @@ if (-not (Test-Path $bootstrapper)) {
 }
 
 Write-Host "==> Creando el instalador con Inno Setup" -ForegroundColor Cyan
-& $iscc (Join-Path $root "installer\CoffeWorks.iss")
+& $iscc (Join-Path $root "installer\CoffeeWorks.iss")
 if ($LASTEXITCODE -ne 0) { throw "Inno Setup devolvió un error" }
 
 $setup = Get-ChildItem (Join-Path $root "installer\Output\*.exe") | Sort-Object LastWriteTime -Descending | Select-Object -First 1

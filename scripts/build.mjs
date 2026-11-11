@@ -1,18 +1,18 @@
 #!/usr/bin/env node
-// Compila la suite CoffeWorks para escritorio.
+// Compila la suite CoffeeWorks para escritorio.
 //
 //   node scripts/build.mjs [--target <triple>] [--skip-frontend]
 //
 // 1. Compila la interfaz web del Launcher y de las seis aplicaciones.
 // 2. Compila los siete ejecutables nativos (Tauri) en modo producción.
 // 3. Los reúne en installer/build con la estructura que espera el instalador:
-//      installer/build/CoffeWorks(.exe)            Launcher
-//      installer/build/packages/CoffeDoc(.exe)     paquetes que instala el Launcher
-//      installer/build/packages/CoffeCalc(.exe)
-//      installer/build/packages/CoffeView(.exe)
-//      installer/build/packages/CoffePDF(.exe)
-//      installer/build/packages/CoffePage(.exe)
-//      installer/build/packages/CoffeCams(.exe)
+//      installer/build/CoffeeWorks(.exe)            Launcher
+//      installer/build/packages/CoffeeDoc(.exe)     paquetes que instala el Launcher
+//      installer/build/packages/CoffeeCalc(.exe)
+//      installer/build/packages/CoffeeView(.exe)
+//      installer/build/packages/CoffeePDF(.exe)
+//      installer/build/packages/CoffeePage(.exe)
+//      installer/build/packages/CoffeeCams(.exe)
 
 import { execSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, rmSync, statSync } from "node:fs";
@@ -30,7 +30,7 @@ const run = (command, cwd = root) => {
   execSync(command, { cwd, stdio: "inherit" });
 };
 
-const frontends = [".", "CoffeDoc", "CoffeCalc", "CoffeView", "CoffePDF", "CoffePage", "CoffeCams"];
+const frontends = [".", "CoffeeDoc", "CoffeeCalc", "CoffeeView", "CoffeePDF", "CoffeePage", "CoffeeCams"];
 
 if (!skipFrontend) {
   for (const dir of frontends) {
@@ -58,8 +58,8 @@ const stage = (name, destination) => {
 };
 
 console.log(`\nEjecutables en ${path.relative(root, outDir)}:`);
-stage("CoffeWorks", "");
-for (const app of ["CoffeDoc", "CoffeCalc", "CoffeView", "CoffePDF", "CoffePage", "CoffeCams"]) stage(app, "packages");
+stage("CoffeeWorks", "");
+for (const app of ["CoffeeDoc", "CoffeeCalc", "CoffeeView", "CoffeePDF", "CoffeePage", "CoffeeCams"]) stage(app, "packages");
 
 // Las compilaciones con MinGW necesitan el cargador de WebView2 junto a cada ejecutable
 const loader = path.join(releaseDir, "WebView2Loader.dll");
@@ -69,4 +69,4 @@ if (isWindows && existsSync(loader)) {
   console.log("  WebView2Loader.dll (compilación MinGW)");
 }
 
-console.log("\nListo. Para crear el instalador compila installer/CoffeWorks.iss con Inno Setup.");
+console.log("\nListo. Para crear el instalador compila installer/CoffeeWorks.iss con Inno Setup.");

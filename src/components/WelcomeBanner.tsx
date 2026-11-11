@@ -1,5 +1,5 @@
 import React from "react";
-import { Command, Coffee, Plus } from "lucide-react";
+import { Command, Plus } from "lucide-react";
 
 interface WelcomeBannerProps {
   focusMode: boolean;
@@ -60,11 +60,9 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
 
           {/* Título de bienvenida con alusión a café */}
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#eeddd0] flex items-center justify-center text-[#6f4e37] shrink-0 border border-[#dfd3c7]">
-              <Coffee size={18} strokeWidth={2.4} />
-            </div>
+            <img src="/icons/CoffeeWorks.png" alt="" className="w-9 h-9 shrink-0" draggable={false} />
             <h1 className="font-display text-2xl lg:text-3xl text-[#2c1b12] font-bold tracking-tight">
-              {greeting}, bienvenido a CoffeWorks
+              {greeting}, bienvenido a CoffeeWorks
             </h1>
           </div>
           <p className="text-sm text-[#5c3a21] leading-relaxed">

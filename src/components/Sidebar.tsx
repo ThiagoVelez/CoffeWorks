@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  Coffee,
   LayoutGrid,
   Package,
   ChevronDown,
@@ -54,12 +53,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="px-1">
           <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-[#dfd3c7] shadow-xs">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-[#eeddd0] border border-[#dfd3c7] flex items-center justify-center text-[#6f4e37] shrink-0">
-                <Coffee size={18} strokeWidth={2.4} />
-              </div>
+              <img src="/icons/CoffeeWorks.png" alt="" className="w-8 h-8 shrink-0" draggable={false} />
               <div className="flex flex-col min-w-0">
                 <span className="text-xs font-bold text-[#2c1b12] truncate">
-                  CoffeWorks
+                  CoffeeWorks
                 </span>
                 <span className="font-mono text-[10px] text-[#795548] truncate">
                   Suite ofimática local

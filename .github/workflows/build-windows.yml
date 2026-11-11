@@ -36,7 +36,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Pruebas del núcleo
-        run: cargo test -p coffe-core
+        run: cargo test -p coffee-core
 
       - name: Compilar la suite
         run: node scripts/build.mjs
@@ -57,7 +57,7 @@ jobs:
       - name: Crear el instalador
         shell: pwsh
         run: |
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\CoffeWorks.iss
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\CoffeeWorks.iss
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup devolvió un error" }
           Get-ChildItem installer\Output
 
@@ -77,37 +77,37 @@ jobs:
           $dir = "C:\cw-test"
           $code = Run $setup @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=$dir")
           Assert ($code -eq 0) "el instalador termina sin errores"
-          Assert (Test-Path "$dir\CoffeWorks.exe") "el Launcher queda instalado"
-          Assert (Test-Path "$dir\packages\CoffeDoc.exe") "los paquetes de las apps quedan disponibles"
+          Assert (Test-Path "$dir\CoffeeWorks.exe") "el Launcher queda instalado"
+          Assert (Test-Path "$dir\packages\CoffeeDoc.exe") "los paquetes de las apps quedan disponibles"
 
-          $apps = "$env:LOCALAPPDATA\CoffeWorks\Apps"
-          $menu = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\CoffeWorks"
-          Assert (-not (Test-Path "$apps\CoffeDoc\CoffeDoc.exe")) "las apps no se instalan hasta pedirlo"
+          $apps = "$env:LOCALAPPDATA\CoffeeWorks\Apps"
+          $menu = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\CoffeeWorks"
+          Assert (-not (Test-Path "$apps\CoffeeDoc\CoffeeDoc.exe")) "las apps no se instalan hasta pedirlo"
 
-          Assert ((Run "$dir\CoffeWorks.exe" @("--install", "coffedoc")) -eq 0) "instalar CoffeDoc desde el Launcher"
-          Assert (Test-Path "$apps\CoffeDoc\CoffeDoc.exe") "CoffeDoc queda instalado"
-          Assert (Test-Path "$menu\CoffeDoc.lnk") "se crea el acceso directo del menú Inicio"
+          Assert ((Run "$dir\CoffeeWorks.exe" @("--install", "coffeedoc")) -eq 0) "instalar CoffeeDoc desde el Launcher"
+          Assert (Test-Path "$apps\CoffeeDoc\CoffeeDoc.exe") "CoffeeDoc queda instalado"
+          Assert (Test-Path "$menu\CoffeeDoc.lnk") "se crea el acceso directo del menú Inicio"
           $association = (Get-ItemProperty "HKCU:\Software\Classes\.cfd" -ErrorAction SilentlyContinue).'(default)'
-          Assert ($association -eq "CoffeWorks.CoffeDoc.cfd") "se asocia el tipo de archivo .cfd"
+          Assert ($association -eq "CoffeeWorks.CoffeeDoc.cfd") "se asocia el tipo de archivo .cfd"
 
-          Assert ((Run "$dir\CoffeWorks.exe" @("--install-all")) -eq 0) "instalar todas las apps"
-          Assert (Test-Path "$apps\CoffeCalc\CoffeCalc.exe") "CoffeCalc queda instalado"
-          Assert (Test-Path "$apps\CoffeView\CoffeView.exe") "CoffeView queda instalado"
-          Assert (Test-Path "$apps\CoffePDF\CoffePDF.exe") "CoffePDF queda instalado"
-          Assert (Test-Path "$apps\CoffePage\CoffePage.exe") "CoffePage queda instalado"
-          Assert (Test-Path "$apps\CoffeCams\CoffeCams.exe") "CoffeCams queda instalado"
+          Assert ((Run "$dir\CoffeeWorks.exe" @("--install-all")) -eq 0) "instalar todas las apps"
+          Assert (Test-Path "$apps\CoffeeCalc\CoffeeCalc.exe") "CoffeeCalc queda instalado"
+          Assert (Test-Path "$apps\CoffeeView\CoffeeView.exe") "CoffeeView queda instalado"
+          Assert (Test-Path "$apps\CoffeePDF\CoffeePDF.exe") "CoffeePDF queda instalado"
+          Assert (Test-Path "$apps\CoffeePage\CoffeePage.exe") "CoffeePage queda instalado"
+          Assert (Test-Path "$apps\CoffeeCams\CoffeeCams.exe") "CoffeeCams queda instalado"
           $cpg = (Get-ItemProperty "HKCU:\Software\Classes\.cpg" -ErrorAction SilentlyContinue).'(default)'
-          Assert ($cpg -eq "CoffeWorks.CoffePage.cpg") "se asocia el tipo de archivo .cpg"
+          Assert ($cpg -eq "CoffeeWorks.CoffeePage.cpg") "se asocia el tipo de archivo .cpg"
           $ccm = (Get-ItemProperty "HKCU:\Software\Classes\.ccm" -ErrorAction SilentlyContinue).'(default)'
-          Assert ($ccm -eq "CoffeWorks.CoffeCams.ccm") "se asocia el tipo de archivo .ccm"
+          Assert ($ccm -eq "CoffeeWorks.CoffeeCams.ccm") "se asocia el tipo de archivo .ccm"
           $pdfDefault = (Get-ItemProperty "HKCU:\Software\Classes\.pdf" -ErrorAction SilentlyContinue).'(default)'
-          Assert ($pdfDefault -ne "CoffeWorks.CoffePDF.pdf") "CoffePDF no reemplaza el lector de PDF predeterminado"
-          Assert ((Get-ItemProperty "HKCU:\Software\Classes\.pdf\OpenWithProgids" -ErrorAction SilentlyContinue).'CoffeWorks.CoffePDF.pdf' -ne $null) "CoffePDF aparece en Abrir con"
+          Assert ($pdfDefault -ne "CoffeeWorks.CoffeePDF.pdf") "CoffeePDF no reemplaza el lector de PDF predeterminado"
+          Assert ((Get-ItemProperty "HKCU:\Software\Classes\.pdf\OpenWithProgids" -ErrorAction SilentlyContinue).'CoffeeWorks.CoffeePDF.pdf' -ne $null) "CoffeePDF aparece en Abrir con"
 
           # Las ventanas deben arrancar y seguir abiertas
           New-Item -ItemType Directory -Force screenshots | Out-Null
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-          foreach ($exe in @("$dir\CoffeWorks.exe", "$apps\CoffeDoc\CoffeDoc.exe", "$apps\CoffeCalc\CoffeCalc.exe", "$apps\CoffeView\CoffeView.exe", "$apps\CoffePDF\CoffePDF.exe", "$apps\CoffePage\CoffePage.exe", "$apps\CoffeCams\CoffeCams.exe")) {
+          foreach ($exe in @("$dir\CoffeeWorks.exe", "$apps\CoffeeDoc\CoffeeDoc.exe", "$apps\CoffeeCalc\CoffeeCalc.exe", "$apps\CoffeeView\CoffeeView.exe", "$apps\CoffeePDF\CoffeePDF.exe", "$apps\CoffeePage\CoffeePage.exe", "$apps\CoffeeCams\CoffeeCams.exe")) {
             $name = [IO.Path]::GetFileNameWithoutExtension($exe)
             $process = Start-Process $exe -PassThru
             Start-Sleep -Seconds 12
@@ -122,23 +122,40 @@ jobs:
             Start-Sleep -Seconds 2
           }
 
-          Assert ((Run "$dir\CoffeWorks.exe" @("--uninstall", "coffecalc")) -eq 0) "desinstalar CoffeCalc"
-          Assert (-not (Test-Path "$apps\CoffeCalc")) "CoffeCalc se elimina"
-          Assert (-not (Test-Path "$menu\CoffeCalc.lnk")) "se quita su acceso directo"
-          Assert ((Run "$dir\CoffeWorks.exe" @("--uninstall", "coffepdf")) -eq 0) "desinstalar CoffePDF"
-          Assert (-not (Test-Path "$apps\CoffePDF")) "CoffePDF se elimina"
-          Assert ((Get-ItemProperty "HKCU:\Software\Classes\.pdf\OpenWithProgids" -ErrorAction SilentlyContinue).'CoffeWorks.CoffePDF.pdf' -eq $null) "se retira CoffePDF de Abrir con"
+          Assert ((Run "$dir\CoffeeWorks.exe" @("--uninstall", "coffeecalc")) -eq 0) "desinstalar CoffeeCalc"
+          Assert (-not (Test-Path "$apps\CoffeeCalc")) "CoffeeCalc se elimina"
+          Assert (-not (Test-Path "$menu\CoffeeCalc.lnk")) "se quita su acceso directo"
+          Assert ((Run "$dir\CoffeeWorks.exe" @("--uninstall", "coffeepdf")) -eq 0) "desinstalar CoffeePDF"
+          Assert (-not (Test-Path "$apps\CoffeePDF")) "CoffeePDF se elimina"
+          Assert ((Get-ItemProperty "HKCU:\Software\Classes\.pdf\OpenWithProgids" -ErrorAction SilentlyContinue).'CoffeeWorks.CoffeePDF.pdf' -eq $null) "se retira CoffeePDF de Abrir con"
+
+          # Migración desde la versión anterior («CoffeWorks»): se simula una
+          # instalación antigua de CoffeDoc con un documento y su asociación
+          $legacyApp = "$env:LOCALAPPDATA\CoffeWorks\Apps\CoffeDoc"
+          New-Item -ItemType Directory -Force $legacyApp | Out-Null
+          Copy-Item "$apps\CoffeeDoc\CoffeeDoc.exe" "$legacyApp\CoffeDoc.exe"
+          $docs = [Environment]::GetFolderPath("MyDocuments")
+          New-Item -ItemType Directory -Force "$docs\CoffeWorks" | Out-Null
+          Set-Content "$docs\CoffeWorks\viejo.cfd" '{"format":"coffedoc","content":"<p>hola</p>"}'
+          New-Item -Force "HKCU:\Software\Classes\.cfd" -Value "CoffeWorks.CoffeDoc.cfd" | Out-Null
+          New-Item -Force "HKCU:\Software\Classes\CoffeWorks.CoffeDoc.cfd" -Value "Documento antiguo" | Out-Null
+          Assert ((Run "$dir\CoffeeWorks.exe" @("--list")) -eq 0) "el Launcher arranca con restos de la versión anterior"
+          Assert (-not (Test-Path $legacyApp)) "se retira la copia antigua de CoffeDoc"
+          Assert (Test-Path "$docs\CoffeeWorks\viejo.cfd") "los documentos antiguos pasan a Documentos\CoffeeWorks"
+          Assert (-not (Test-Path "HKCU:\Software\Classes\CoffeWorks.CoffeDoc.cfd")) "se quita la asociación antigua"
+          $association = (Get-ItemProperty "HKCU:\Software\Classes\.cfd" -ErrorAction SilentlyContinue).'(default)'
+          Assert ($association -eq "CoffeeWorks.CoffeeDoc.cfd") ".cfd vuelve a abrirse con CoffeeDoc"
 
           $uninstaller = (Get-ChildItem "$dir\unins*.exe" | Select-Object -First 1).FullName
           Assert ((Run $uninstaller @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART")) -eq 0) "el desinstalador termina sin errores"
           Start-Sleep -Seconds 5
-          Assert (-not (Test-Path "$dir\CoffeWorks.exe")) "el Launcher se elimina"
-          Assert (-not (Test-Path "$apps\CoffeDoc\CoffeDoc.exe")) "las apps instaladas se eliminan"
+          Assert (-not (Test-Path "$dir\CoffeeWorks.exe")) "el Launcher se elimina"
+          Assert (-not (Test-Path "$apps\CoffeeDoc\CoffeeDoc.exe")) "las apps instaladas se eliminan"
 
       - name: Publicar el instalador
         uses: actions/upload-artifact@v4
         with:
-          name: CoffeWorks-Setup
+          name: CoffeeWorks-Setup
           path: installer/Output/*.exe
           if-no-files-found: error
 
