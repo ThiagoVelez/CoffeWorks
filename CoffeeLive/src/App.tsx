@@ -273,6 +273,11 @@ export const App: React.FC = () => {
             return;
           }
         }
+        if (args.payload) {
+          // Plantilla del Launcher en el modo web
+          await loadDoc({ name: `${DEFAULT_TITLE}.${EXTENSION}`, doc: parseDocument(args.payload), location: null, docId: newId("clv") });
+          return;
+        }
         if (args.newTitle !== null) {
           await handleNew(args.newTitle || DEFAULT_TITLE);
           return;

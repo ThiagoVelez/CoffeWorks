@@ -40,3 +40,20 @@ export interface SuiteInfo {
   webview_version: string;
   platform: string;
 }
+
+/** Complemento opcional de la suite (Launcher › Complementos). */
+export interface AddonInfo {
+  id: string;
+  name: string;
+  summary: string;
+  description: string;
+  apps: string[];
+  version: string;
+  download_size: string;
+  publisher: string;
+  license: string;
+  installed: boolean;
+  installed_bytes: number;
+  can_install: boolean;
+  manual_hint: string;
+}

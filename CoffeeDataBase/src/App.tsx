@@ -43,9 +43,9 @@ import { RelationsView } from "./components/RelationsView";
 import { AssistantView } from "./components/AssistantView";
 import { EtlView } from "./components/EtlView";
 import { ManualDialog } from "./components/ManualDialog";
-import { CoffeeDb, quoteId } from "./services/engine";
+import { CoffeeDb, quoteId, templateScript } from "./services/engine";
 import { explain } from "./services/doctor";
-import { importDesktopDb, importExcel, importMatrix, parseCsv, printHtml, reportHtml, sqlDump, toCsv, toXlsx } from "./services/io";
+import { accessExportJson, importDesktopDb, importExcel, importMatrix, parseCsv, printHtml, reportHtml, sqlDump, toCsv, toXlsx } from "./services/io";
 import {
   APP_ID,
   DEFAULT_TITLE,
@@ -74,6 +74,10 @@ import {
   setPinned,
   stripExtension,
   writeFileBytes,
+  addonStatus,
+  installAddon,
+  pickSavePath,
+  runAddon,
   type RecentEntry,
 } from "./services/desktop";
 import { ACCENT, ACCENT_DARK, type Schema, type ViewId } from "./types";
@@ -86,6 +90,7 @@ const EXPORT_OPTIONS: ExportOption[] = [
   { id: "csv", name: "Tabla actual a CSV", description: "Separado por punto y coma, listo para abrir en Excel o CoffeeCalc.", badge: "CSV", icon: FileText },
   { id: "sql", name: "Copia en script SQL", description: "Estructura y datos de toda la base como instrucciones SQL.", badge: "SQL", icon: Code2 },
   { id: "print", name: "Informe de la tabla actual", description: "Vista para imprimir o guardar como PDF.", badge: "PDF", icon: Printer },
+  { id: "accdb", name: "Base de Access (.accdb)", description: "Tablas, datos, claves y relaciones para abrir en Microsoft Access. Usa el complemento «Compatibilidad con Access».", badge: "ACCDB", icon: Database },
   { id: "copy", name: "Copia de la base de datos", description: "Archivo .cdb (SQLite) que se abre en CoffeeDataBase y en cualquier herramienta SQLite.", badge: "CDB", icon: Database },
 ];
 
@@ -196,6 +201,9 @@ export const App: React.FC = () => {
     }, AUTOSAVE_DELAY);
   }, [saveNow]);
 
+  const scheduleSaveRef = useRef(scheduleSave);
+  scheduleSaveRef.current = scheduleSave;
+
   /** Se llama después de cualquier cambio en la base. */
   const changed = useCallback(() => {
     const current = dbRef.current;
@@ -216,7 +224,9 @@ export const App: React.FC = () => {
 
   const loadDb = useCallback(async (file: OpenedFile, pinned = false) => {
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
-    const next = await CoffeeDb.open(file.bytes);
+    // Las plantillas del Launcher llegan como script SQL y se convierten en SQLite al guardar
+    const script = templateScript(file.bytes);
+    const next = script ? await CoffeeDb.fromScript(script) : await CoffeeDb.open(file.bytes);
     dbRef.current?.close();
     dbRef.current = next;
     const sc = next.schema();
@@ -235,6 +245,7 @@ export const App: React.FC = () => {
     setShowStartScreen(false);
     stateRef.current = { title: name, docId: file.docId, location: file.location, isStarred: pinned };
     if (file.location) await rememberOpened(file);
+    if (script) scheduleSaveRef.current();
   }, []);
 
   const flush = useCallback(async () => {
@@ -335,6 +346,13 @@ export const App: React.FC = () => {
             await loadDb(file);
             return;
           }
+        }
+        if (args.payload) {
+          // Plantilla del Launcher en el modo web
+          const bytes = new TextEncoder().encode(args.payload);
+          const name = args.payload.split("\n")[0].split(":").slice(1).join(":").trim() || DEFAULT_TITLE;
+          await loadDb({ name: `${name}.${EXTENSION}`, bytes, location: null, docId: newId("cdb") });
+          return;
         }
         if (args.newTitle !== null) {
           await handleNew(args.newTitle || DEFAULT_TITLE);
@@ -512,6 +530,36 @@ export const App: React.FC = () => {
     }
   };
 
+  /** Exporta a Access con el complemento; si falta, ofrece instalarlo. */
+  const exportAccess = async (current: CoffeeDb, base: string) => {
+    const addon = await addonStatus("accdb");
+    if (!addon) throw new Error("Exportar a Access solo está disponible en la aplicación de escritorio.");
+    if (!current.schema().tables.length) throw new Error("La base no tiene tablas.");
+    if (!addon.installed) {
+      if (!addon.can_install) throw new Error(addon.manual_hint);
+      const ok = await askConfirm({
+        title: "Complemento necesario",
+        message: `Para guardar en formato Access necesitas el complemento «${addon.name}» (${addon.download_size}). Se descarga una sola vez y también puedes gestionarlo en el Launcher › Complementos. ¿Instalarlo ahora?`,
+        confirmLabel: "Instalar",
+      });
+      if (!ok) return;
+      toast("Descargando el complemento…");
+      await installAddon("accdb");
+      toast("Complemento instalado");
+    }
+    const path = await pickSavePath(
+      `${base}.accdb`,
+      [
+        { name: "Base de datos de Access", extensions: ["accdb"] },
+        { name: "Access 2000-2003", extensions: ["mdb"] },
+      ],
+      "Exportar a Access"
+    );
+    if (!path) return;
+    await runAddon("accdb", ["export", "{input}", path], accessExportJson(current));
+    toast("Exportado a Access");
+  };
+
   const handleExport = async (id: string) => {
     setExportOpen(false);
     const current = dbRef.current;
@@ -533,6 +581,8 @@ export const App: React.FC = () => {
       } else if (id === "sql") {
         const path = await saveFileAs(`${base}.sql`, [{ name: "Script SQL", extensions: ["sql"] }], sqlDump(current), "Exportar script SQL");
         if (path !== null) toast("Script SQL exportado");
+      } else if (id === "accdb") {
+        await exportAccess(current, base);
       } else if (id === "copy") {
         const path = await saveFileAs(`${base} (copia).${EXTENSION}`, [{ name: "Base de datos", extensions: [EXTENSION] }], current.export(), "Guardar copia");
         if (path !== null) toast("Copia guardada");

@@ -419,6 +419,11 @@ export const App: React.FC = () => {
             return;
           }
         }
+        if (args.payload) {
+          // Plantilla del Launcher en el modo web (PDF en texto ASCII)
+          await loadFile({ name: `${DEFAULT_TITLE}.pdf`, bytes: new TextEncoder().encode(args.payload), location: null, docId: newId("pdf") });
+          return;
+        }
         if (args.newTitle !== null) {
           const bytes = await emptyPdfBytes();
           await loadFile({ name: `${args.newTitle || DEFAULT_TITLE}.pdf`, bytes, location: null, docId: newId("pdf") });

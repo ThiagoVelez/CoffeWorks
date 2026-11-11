@@ -1,19 +1,12 @@
 import React, { useState } from "react";
-import {
-  LayoutTemplate,
-  Search,
-  FileText,
-  Table as TableIcon,
-  Presentation,
-  CheckCircle2,
-  ArrowUpRight,
-} from "lucide-react";
+import { LayoutTemplate, Search, CheckCircle2, ArrowUpRight } from "lucide-react";
 import { tauriBridge } from "../services/tauriBridge";
 import { buildTemplateFile } from "../services/templates";
+import { APP_STYLE, MORE_TEMPLATES } from "../services/templateCatalog";
 
 export interface TemplateItem {
   id: string;
-  appId: "coffeedoc" | "coffeecalc" | "coffeeview";
+  appId: "coffeedoc" | "coffeecalc" | "coffeeview" | "coffeepdf" | "coffeepage" | "coffeedatabase" | "coffeeedit" | "coffeelive";
   appName: string;
   title: string;
   category: string;
@@ -26,7 +19,7 @@ export interface TemplateItem {
   initialData?: { title: string; content: string };
 }
 
-const TEMPLATES: TemplateItem[] = [
+const BASE_TEMPLATES: TemplateItem[] = [
   // --- COFFEEDOC (3 PLANTILLAS) ---
   {
     id: "doc-informe-ejecutivo",
@@ -302,6 +295,22 @@ const TEMPLATES: TemplateItem[] = [
   },
 ];
 
+/** Catálogo completo, agrupado por aplicación. */
+const TEMPLATES: TemplateItem[] = Object.keys(APP_STYLE).flatMap((appId) =>
+  [...BASE_TEMPLATES, ...MORE_TEMPLATES].filter((t) => t.appId === appId)
+);
+
+const APP_ICONS: Record<string, string> = {
+  coffeedoc: "/icons/CoffeeText.ico",
+  coffeecalc: "/icons/CoffeeSheet.ico",
+  coffeeview: "/icons/CoffeeSlides.ico",
+  coffeepdf: "/icons/CoffeePDF.ico",
+  coffeepage: "/icons/CoffeePage.ico",
+  coffeedatabase: "/icons/CoffeeDataBase.ico",
+  coffeeedit: "/icons/CoffeeEdit.ico",
+  coffeelive: "/icons/CoffeeLive.ico",
+};
+
 interface TemplatesViewProps {
   onNotify: (msg: string, isError?: boolean) => void;
 }
@@ -334,11 +343,8 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onNotify }) => {
     }
   };
 
-  const getAppIcon = (appId: string) => {
-    if (appId === "coffeedoc") return <FileText size={18} className="text-[#185abd]" />;
-    if (appId === "coffeecalc") return <TableIcon size={18} className="text-[#107c41]" />;
-    return <Presentation size={18} className="text-[#c43e1c]" />;
-  };
+  const getAppIcon = (appId: string) => <img src={APP_ICONS[appId]} alt="" className="w-[18px] h-[18px]" draggable={false} />;
+
 
   return (
     <div className="flex flex-col gap-6 w-full animate-in fade-in select-none">
@@ -353,7 +359,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onNotify }) => {
               Catálogo de Plantillas Ejecutivas
             </h1>
             <p className="text-xs text-[#795548] font-sans mt-0.5">
-              9 plantillas profesionales listas para usar en CoffeeDoc, CoffeeCalc y CoffeeView.
+              {TEMPLATES.length} plantillas listas para usar en las {Object.keys(APP_STYLE).length} aplicaciones de la suite.
             </p>
           </div>
         </div>
@@ -374,10 +380,8 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onNotify }) => {
       {/* Barra de Filtros por Aplicación */}
       <div className="flex items-center gap-2 flex-wrap">
         {[
-          { id: "all", label: "Todas las plantillas (9)" },
-          { id: "coffeedoc", label: "CoffeeDoc (3 Documentos)", color: "text-[#185abd]" },
-          { id: "coffeecalc", label: "CoffeeCalc (3 Hojas de cálculo)", color: "text-[#107c41]" },
-          { id: "coffeeview", label: "CoffeeView (3 Presentaciones)", color: "text-[#c43e1c]" },
+          { id: "all", label: `Todas (${TEMPLATES.length})` },
+          ...Object.entries(APP_STYLE).map(([id, style]) => ({ id, label: `${style.name} (${TEMPLATES.filter((t) => t.appId === id).length})` })),
         ].map((tab) => {
           const isActive = selectedAppFilter === tab.id;
           return (
@@ -397,12 +401,15 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onNotify }) => {
         })}
       </div>
 
-      {/* Cuadrícula de 9 Plantillas */}
+      {/* Cuadrícula de plantillas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {filteredTemplates.map((tpl) => (
           <div
             key={tpl.id}
-            className={`flex flex-col justify-between p-5 rounded-2xl bg-white border border-[#e8dfd8] ${tpl.accentBorder} transition-all hover:shadow-md group`}
+            data-template={tpl.id}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = APP_STYLE[tpl.appId].color)}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "")}
+            className="flex flex-col justify-between p-5 rounded-2xl bg-white border border-[#e8dfd8] transition-all hover:shadow-md group"
           >
             <div>
               {/* Encabezado de la card con Badges */}
@@ -412,7 +419,8 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onNotify }) => {
                     {getAppIcon(tpl.appId)}
                   </span>
                   <span
-                    className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded-full ${tpl.badgeBg} ${tpl.badgeText}`}
+                    className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-full"
+                    style={{ background: APP_STYLE[tpl.appId].bg, color: APP_STYLE[tpl.appId].color }}
                   >
                     {tpl.appName}
                   </span>

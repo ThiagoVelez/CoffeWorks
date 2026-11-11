@@ -167,14 +167,7 @@ const FFMPEG_EXE: &str = if cfg!(windows) {
     "ffmpeg"
 };
 
-/// Builds de ffmpeg para Windows (con x264 y AAC). Se prueba en orden.
-const FFMPEG_DOWNLOADS: &[&str] = &[
-    "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
-    "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip",
-];
-
-/// Carpeta donde se instala ffmpeg: junto a CoffeeCams, para que se borre al
-/// desinstalar la aplicación desde el Launcher.
+/// Carpeta donde instalaban ffmpeg las versiones anteriores (junto a la app).
 fn tools_dir() -> PathBuf {
     std::env::current_exe()
         .ok()
@@ -183,6 +176,10 @@ fn tools_dir() -> PathBuf {
 }
 
 fn find_ffmpeg() -> Option<PathBuf> {
+    // Complemento compartido de la suite (Launcher › Complementos)
+    if let Some(addon) = coffee_core::addons::addon_executable("ffmpeg") {
+        return Some(addon);
+    }
     let local = tools_dir().join(FFMPEG_EXE);
     if local.is_file() {
         return Some(local);
@@ -288,61 +285,12 @@ pub async fn cams_ffmpeg_status() -> Result<FfmpegStatus, String> {
     blocking(|| Ok(ffmpeg_status())).await
 }
 
-fn ps_quote(value: &str) -> String {
-    format!("'{}'", value.replace('\'', "''"))
-}
-
 /// Descarga ffmpeg (una sola vez) para poder transmitir.
 #[tauri::command]
 pub async fn cams_ffmpeg_install() -> Result<FfmpegStatus, String> {
     blocking(|| {
-        if !cfg!(windows) {
-            return Err("Instala ffmpeg con el gestor de paquetes del sistema (por ejemplo: sudo apt install ffmpeg).".into());
-        }
-        let target_dir = tools_dir();
-        fs::create_dir_all(&target_dir).map_err(|e| format!("No se pudo preparar la carpeta: {e}"))?;
-        let target = target_dir.join(FFMPEG_EXE);
-        let temp = std::env::temp_dir();
-        let zip = temp.join("coffeecams-ffmpeg.zip");
-        let unpack = temp.join("coffeecams-ffmpeg");
-        let mut last_error = String::new();
-        for url in FFMPEG_DOWNLOADS {
-            let script = format!(
-                "$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'; \
-                 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; \
-                 Invoke-WebRequest -UseBasicParsing -Uri {url} -OutFile {zip}; \
-                 if (Test-Path {unpack}) {{ Remove-Item {unpack} -Recurse -Force }}; \
-                 Expand-Archive -Path {zip} -DestinationPath {unpack} -Force; \
-                 $exe = Get-ChildItem {unpack} -Recurse -Filter ffmpeg.exe | Select-Object -First 1; \
-                 if (-not $exe) {{ throw 'El paquete no contiene ffmpeg.exe' }}; \
-                 Copy-Item $exe.FullName {target} -Force",
-                url = ps_quote(url),
-                zip = ps_quote(&zip.to_string_lossy()),
-                unpack = ps_quote(&unpack.to_string_lossy()),
-                target = ps_quote(&target.to_string_lossy()),
-            );
-            let output = hidden(Command::new("powershell").args([
-                "-NoProfile",
-                "-NonInteractive",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-Command",
-                &script,
-            ]))
-            .stdin(Stdio::null())
-            .output()
-            .map_err(|e| format!("No se pudo iniciar PowerShell: {e}"))?;
-            let _ = fs::remove_file(&zip);
-            let _ = fs::remove_dir_all(&unpack);
-            if output.status.success() && target.is_file() {
-                return Ok(ffmpeg_status());
-            }
-            last_error = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        }
-        Err(format!(
-            "No se pudo descargar ffmpeg. Revisa la conexión a Internet e inténtalo de nuevo.\n{}",
-            last_error.lines().last().unwrap_or_default()
-        ))
+        coffee_core::addons::install_addon("ffmpeg")?;
+        Ok(ffmpeg_status())
     })
     .await
 }

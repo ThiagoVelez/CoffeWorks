@@ -294,3 +294,31 @@ export function printHtml(html: string) {
     window.setTimeout(() => frame.remove(), 1500);
   }, 250);
 }
+
+// ---------------------------------------------------------------------------
+// Access (.accdb / .mdb) mediante el complemento «Compatibilidad con Access»
+// ---------------------------------------------------------------------------
+
+/** Describe la base (tablas, filas y relaciones) para el complemento coffee-accdb. */
+export function accessExportJson(db: CoffeeDb): string {
+  const schema = db.schema();
+  const tables = schema.tables.map((t) => {
+    const r = db.query(`SELECT ${t.columns.map((c) => quoteId(c.name)).join(", ")} FROM ${quoteId(t.name)}`, [], Number.MAX_SAFE_INTEGER);
+    return {
+      name: t.name,
+      columns: t.columns.map((c) => ({ name: c.name, type: c.autoIncrement ? "autonumber" : c.type, pk: c.pk })),
+      rows: r.rows.map((row) => row.map((v) => (v instanceof Uint8Array ? `base64:${Buffer.from(v).toString("base64")}` : v))),
+    };
+  });
+  const relationships = schema.tables.flatMap((t) =>
+    t.foreignKeys.map((fk) => ({
+      parent: fk.table,
+      parentColumn: fk.to,
+      child: t.name,
+      childColumn: fk.column,
+      cascadeDelete: fk.onDelete === "CASCADE",
+      cascadeNull: fk.onDelete === "SET NULL",
+    }))
+  );
+  return JSON.stringify({ tables, relationships });
+}

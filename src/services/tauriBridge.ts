@@ -3,7 +3,7 @@
 // desarrollo y el estado se guarda en localStorage y en /api/vault.
 
 import { invoke } from "@tauri-apps/api/core";
-import type { RecentDocument, SuiteApp, SuiteInfo } from "../types";
+import type { AddonInfo, RecentDocument, SuiteApp, SuiteInfo } from "../types";
 
 export const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
@@ -36,6 +36,42 @@ export function appForDocument(doc: Pick<RecentDocument, "app_id" | "name">): st
   if (["cdb", "db", "sqlite", "sqlite3"].includes(extension)) return "coffeedatabase";
   return "coffeedoc";
 }
+
+// Complementos en el navegador (solo para mostrar el catálogo; se instalan en escritorio)
+const WEB_ADDONS: AddonInfo[] = [
+  {
+    id: "accdb",
+    name: "Compatibilidad con Access",
+    summary: "Guarda bases de CoffeeDataBase en formato .accdb y .mdb",
+    description:
+      "Exporta tablas, datos, claves principales y relaciones a archivos .accdb (Access 2010 o posterior) y .mdb. Es un programa pequeño que solo se ejecuta al exportar: no necesita Java ni deja nada abierto.",
+    apps: ["coffeedatabase"],
+    version: "1.0.0",
+    download_size: "8 MB",
+    publisher: "CoffeeWorks",
+    license: "Apache 2.0 (Jackcess)",
+    installed: false,
+    installed_bytes: 0,
+    can_install: false,
+    manual_hint: "Los complementos se instalan en la aplicación de escritorio de CoffeeWorks.",
+  },
+  {
+    id: "ffmpeg",
+    name: "Motor de video FFmpeg",
+    summary: "Transmisión en directo y codificación por hardware en CoffeeLive",
+    description:
+      "Codifica el video para Twitch, YouTube, Facebook o cualquier servidor RTMP/SRT, con aceleración NVIDIA NVENC, Intel Quick Sync o AMD AMF si el equipo la tiene. Solo hace falta para transmitir: grabar funciona sin él.",
+    apps: ["coffeelive"],
+    version: "7.x",
+    download_size: "90 MB",
+    publisher: "Proyecto FFmpeg",
+    license: "GPL",
+    installed: false,
+    installed_bytes: 0,
+    can_install: false,
+    manual_hint: "Los complementos se instalan en la aplicación de escritorio de CoffeeWorks.",
+  },
+];
 
 // Catálogo usado en el navegador; en escritorio lo proporciona el backend
 const WEB_CATALOG: SuiteApp[] = [
@@ -290,6 +326,25 @@ export const tauriBridge = {
       return invoke<string>("create_document_file", { appId, docId, fileName, contents });
     }
     return openDevApp(appId, `#cfw=${encodeURIComponent(contents)}`);
+  },
+
+  async getAddons(): Promise<AddonInfo[]> {
+    if (isTauri) return invoke<AddonInfo[]>("get_addons");
+    return WEB_ADDONS;
+  },
+
+  async installAddon(id: string): Promise<AddonInfo> {
+    if (isTauri) return invoke<AddonInfo>("install_addon", { id });
+    throw new Error("Los complementos se instalan en la aplicación de escritorio de CoffeeWorks.");
+  },
+
+  async uninstallAddon(id: string): Promise<AddonInfo> {
+    if (isTauri) return invoke<AddonInfo>("uninstall_addon", { id });
+    throw new Error("Los complementos se gestionan en la aplicación de escritorio de CoffeeWorks.");
+  },
+
+  async openAddonsFolder(): Promise<void> {
+    if (isTauri) await invoke("open_addons_folder");
   },
 
   async openVaultFolder(): Promise<string> {

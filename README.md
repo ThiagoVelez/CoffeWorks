@@ -9,7 +9,7 @@ Suite ofimática de escritorio para Windows, de código abierto y sin conexión.
 | **CoffeeView** | Presentaciones | `.csl` | PowerPoint (`.pptx`) | PowerPoint (`.pptx`), HTML, PDF |
 | **CoffeePDF** | Editor de PDF | `.pdf` | PDF | PDF, páginas sueltas, PNG |
 | **CoffeePage** | Cuaderno de notas | `.cpg` | Cuadernos `.cpg`; imágenes y texto para insertar | HTML, Markdown, PDF (imprimir) |
-| **CoffeeDataBase** | Bases de datos | `.cdb` (SQLite) | SQLite (`.db`, `.sqlite`); importa Excel, CSV y `.accdb`/`.mdb` | Excel, CSV, script SQL, informes |
+| **CoffeeDataBase** | Bases de datos | `.cdb` (SQLite) | SQLite (`.db`, `.sqlite`); importa Excel, CSV y `.accdb`/`.mdb` | Excel, CSV, script SQL, informes, Access (`.accdb`/`.mdb`, con complemento) |
 | **CoffeeEdit** *(Multimedia)* | Editor de video | `.ccm` | Video (MP4, WebM, MOV, MKV), audio e imágenes | Video MP4/WebM |
 | **CoffeeLive** *(Multimedia)* | Grabación y transmisión en directo | `.clv` | Pantalla, cámara, imágenes y videos como fuentes | Grabaciones MP4/WebM, transmisión RTMP/SRT |
 
@@ -25,6 +25,16 @@ Cada aplicación es un ejecutable independiente construido con **Tauri 2** (Rust
 4. Si tenías instalada una versión anterior (cuando la suite se llamaba «CoffeWorks»), al abrir el Launcher por primera vez se migra todo solo: los documentos pasan de `Documentos\CoffeWorks` a `Documentos\CoffeeWorks`, los recientes se conservan y las aplicaciones instaladas se reinstalan con sus nombres nuevos.
 5. CoffeeCams (versión 2.5) se dividió en **CoffeeEdit** y **CoffeeLive**: si la tenías instalada, el Launcher instala las dos en su lugar y los proyectos `.ccm` se abren en CoffeeEdit.
 6. Al desinstalar CoffeeWorks desde *Aplicaciones* de Windows se quitan también las aplicaciones instaladas; los documentos se conservan.
+
+## Complementos y plantillas
+
+El Launcher tiene dos secciones más en la barra lateral:
+
+- **Complementos**: un mercado de herramientas opcionales para las apps. No vienen en el instalador para que la suite siga siendo ligera; se descargan una sola vez en `%LOCALAPPDATA%\CoffeeWorks\Addons` y se quitan con un clic. Cada app también ofrece instalar el suyo en el momento en que lo necesita.
+  - *Compatibilidad con Access* (CoffeeDataBase, ~8 MB): exporta tablas, datos, claves y relaciones a `.accdb` y `.mdb`. Es [Jackcess](https://jackcess.sourceforge.io) compilado a un ejecutable nativo con GraalVM, así que no necesita Java (código en `addons/coffee-accdb`).
+  - *Motor de video FFmpeg* (CoffeeLive, ~90 MB): necesario para transmitir en directo.
+  - La pestaña *Formatos e integración* resume qué abre y exporta cada app.
+- **Plantillas**: 36 plantillas para las ocho apps (actas, cartas, planes de proyecto, trabajos académicos; presupuestos, cronogramas, calificaciones y nómina; clases y sustentaciones; formularios, actas y certificados en PDF; cuadernos de clase, bitácoras y planificadores; bases de tienda, semilleros, biblioteca e inventario; proyectos de video para YouTube, Reels y tutoriales; y escenas para clases, videojuegos y podcasts).
 
 No hacen falta permisos de administrador: todo se instala por usuario. El instalador incluye el motor **WebView2** para los equipos con Windows 10 que aún no lo tengan (Windows 11 lo trae de serie).
 
@@ -112,10 +122,11 @@ CoffeeWorks/
 ├── CoffeeDataBase/          Bases de datos (src/ + src-tauri/)
 ├── CoffeeEdit/              Editor de video (src/ + src-tauri/)
 ├── CoffeeLive/              Grabación y transmisión en directo (src/ + src-tauri/)
-├── crates/coffee-core/      Código Rust compartido: bóveda, recientes, archivos y diálogos
+├── crates/coffee-core/      Código Rust compartido: bóveda, recientes, archivos, diálogos y complementos
+├── addons/coffee-accdb/     Complemento de compatibilidad con Access (Java + GraalVM)
 ├── installer/CoffeeWorks.iss  Script de Inno Setup
 ├── scripts/                build.mjs, build-windows.ps1 y dev.mjs
-└── .github/workflows/      Compilación y prueba automática del instalador
+└── .github/workflows/      Compilación y prueba del instalador y de los complementos
 ```
 
 El Launcher admite además un modo de línea de comandos, que usan el instalador y las pruebas:
@@ -146,7 +157,7 @@ También existen `--install-all` y `--uninstall-all`.
 
 **CoffeePage** — cuadernos con secciones de colores, páginas y subpáginas; notas que se colocan en cualquier punto de la página y se mueven arrastrándolas; formato de texto, listas, tablas, vínculos y fecha; etiquetas (tarea pendiente, importante, pregunta, idea); dibujo a mano con bolígrafo, marcador y borrador; imágenes pegadas o arrastradas; papel liso, rayado o cuadriculado; búsqueda en todo el cuaderno; guardado automático; exportación a HTML y Markdown e impresión.
 
-**CoffeeDataBase** — bases de datos de escritorio sobre SQLite (archivos `.cdb`, también abre `.db` y `.sqlite`): diseñador de tablas con tipos de campo (autonumérico, texto, números, moneda, fecha, sí/no, binario), clave principal, requeridos, únicos y valores predeterminados; hoja de datos con edición, búsqueda, orden y listas para los campos relacionados; formularios registro a registro; consola SQL con colores, historial y explicación de errores en español; diseñador visual de consultas; diagrama de relaciones (uno a varios, uno a uno y varios a varios con tabla intermedia); asistente con plantillas, datos de prueba y revisión del diseño; importación de Excel, CSV, scripts SQL y bases `.accdb`/`.mdb`; exportación a Excel, CSV, script SQL e informes.
+**CoffeeDataBase** — bases de datos de escritorio sobre SQLite (archivos `.cdb`, también abre `.db` y `.sqlite`): diseñador de tablas con tipos de campo (autonumérico, texto, números, moneda, fecha, sí/no, binario), clave principal, requeridos, únicos y valores predeterminados; hoja de datos con edición, búsqueda, orden y listas para los campos relacionados; formularios registro a registro; consola SQL con colores, historial y explicación de errores en español; diseñador visual de consultas; diagrama de relaciones (uno a varios, uno a uno y varios a varios con tabla intermedia); asistente con plantillas, datos de prueba y revisión del diseño; importación de Excel, CSV, scripts SQL y bases `.accdb`/`.mdb`; exportación a Excel, CSV, script SQL, informes y Access (con el complemento); ETL de semilleros; tema oscuro, manual de usuario (F1), búsqueda de comandos (Ctrl+K) y copias de seguridad con fecha.
 
 **CoffeeEdit** — editor de video: biblioteca de medios (video, audio, imágenes), línea de tiempo con varias pistas de video, texto y audio, recortar y dividir clips, moverlos entre pistas con ajuste magnético, velocidad (0,25x a 4x), volumen, fundidos, encuadre (escala, posición, rotación, opacidad), filtros y ajustes de color, títulos animados y exportación a MP4 o WebM en horizontal, vertical, cuadrado o 4K. Abre las grabaciones de CoffeeLive.
 
@@ -157,7 +168,7 @@ También existen `--install-all` y `--uninstall-all`.
 - *Modo estudio*: vista previa y programa por separado, con transiciones (corte, fundido, deslizar, barrido, zoom).
 - *Mezclador*: micrófono con supresión de ruido, cancelación de eco, ganancia, compresor y puerta de ruido; audio del escritorio y de los videos; vúmetros, silencio y escucha.
 - *Grabación*: MP4 o WebM con la calidad, carpeta y nombre de archivo que elijas, con pausa y capturas PNG.
-- *Transmisión*: Twitch, YouTube, Facebook, Kick o cualquier servidor RTMP/SRT; codificación por hardware (NVIDIA, Intel, AMD) o x264, CBR/VBR, intervalo de fotogramas clave, preajuste y perfil; resolución base y de salida, FPS y filtro de escalado; reconexión automática y grabación simultánea. Usa ffmpeg, que CoffeeLive descarga la primera vez que transmites (unos 90 MB) en su propia carpeta; si ya tienes ffmpeg en el PATH, lo usa.
+- *Transmisión*: Twitch, YouTube, Facebook, Kick o cualquier servidor RTMP/SRT; codificación por hardware (NVIDIA, Intel, AMD) o x264, CBR/VBR, intervalo de fotogramas clave, preajuste y perfil; resolución base y de salida, FPS y filtro de escalado; reconexión automática y grabación simultánea. Usa el complemento *Motor de video FFmpeg* (unos 90 MB), que se instala desde Complementos o la primera vez que transmites; si ya tienes ffmpeg en el PATH, lo usa.
 - *Atajos globales* configurables (también con la ventana minimizada): grabar, pausar, transmitir, silenciar, pulsar para hablar, transición, cambiar de escena y captura.
 - *Estadísticas*: FPS, tiempo de render, fotogramas perdidos, tasa de bits y tamaño de la grabación.
 

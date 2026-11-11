@@ -117,6 +117,7 @@ const TOPICS: Topic[] = [
     points: [
       "Importar: Excel (una tabla por hoja), CSV, scripts SQL y bases .accdb/.mdb (se copian sus tablas y datos).",
       "Exportar: todas las tablas a Excel, la tabla actual a CSV, un script SQL completo, un informe o una copia .cdb.",
+      "Exportar › Base de Access (.accdb) guarda tablas, datos, claves y relaciones para Microsoft Access. Usa el complemento «Compatibilidad con Access»: la primera vez se ofrece instalarlo (unos 8 MB) y luego se gestiona en el Launcher › Complementos.",
       "Los tipos de campo se deducen al importar (números, fechas, sí/no o texto).",
     ],
   },

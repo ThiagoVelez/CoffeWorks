@@ -7,97 +7,15 @@ import { RecentDocuments } from "./components/RecentDocuments";
 import { CommandPalette } from "./components/CommandPalette";
 import { CreateDocModal } from "./components/CreateDocModal";
 import { TemplatesView } from "./components/TemplatesView";
+import { AddonsView } from "./components/AddonsView";
 import { isTauri, tauriBridge } from "./services/tauriBridge";
 import type { RecentDocument, SuiteApp, SuiteInfo } from "./types";
-import {
-  GitFork,
-  Settings,
-  CheckCircle2,
-  AlertTriangle,
-  FolderOpen,
-  FileText,
-  Table,
-  Presentation,
-  FilePen,
-  NotebookPen,
-  Scissors,
-  Radio,
-  Database,
-  ArrowRightLeft,
-} from "lucide-react";
+import { Settings, CheckCircle2, AlertTriangle, FolderOpen } from "lucide-react";
 
 interface Toast {
   message: string;
   isError: boolean;
 }
-
-/** Formatos que cada aplicación abre y guarda (pantalla de Integraciones). */
-const FORMAT_SUPPORT = [
-  {
-    app: "CoffeeDoc",
-    icon: FileText,
-    color: "text-[#185abd]",
-    native: ".cfd",
-    opens: "Word (.docx), Markdown (.md), HTML, texto (.txt)",
-    exports: "Word (.docx), Markdown, HTML, texto y PDF",
-  },
-  {
-    app: "CoffeeCalc",
-    icon: Table,
-    color: "text-[#107c41]",
-    native: ".cfs",
-    opens: "Excel (.xlsx, .xls), CSV",
-    exports: "Excel (.xlsx) con formato, CSV y PDF",
-  },
-  {
-    app: "CoffeeView",
-    icon: Presentation,
-    color: "text-[#c43e1c]",
-    native: ".csl",
-    opens: "PowerPoint (.pptx)",
-    exports: "PowerPoint (.pptx), HTML y PDF",
-  },
-  {
-    app: "CoffeePDF",
-    icon: FilePen,
-    color: "text-[#c62828]",
-    native: ".pdf",
-    opens: "PDF (.pdf), imágenes para insertar (PNG, JPG)",
-    exports: "PDF editado, páginas extraídas y PNG por página",
-  },
-  {
-    app: "CoffeePage",
-    icon: NotebookPen,
-    color: "text-[#7b1fa2]",
-    native: ".cpg",
-    opens: "Cuadernos de CoffeePage; imágenes y texto (.txt, .md) para insertar",
-    exports: "HTML (página, sección o cuaderno), Markdown y PDF (imprimir)",
-  },
-  {
-    app: "CoffeeDataBase",
-    icon: Database,
-    color: "text-[#9b111e]",
-    native: ".cdb (SQLite)",
-    opens: "SQLite (.db, .sqlite); importa Excel (.xlsx), CSV y bases .accdb/.mdb",
-    exports: "Excel (una hoja por tabla), CSV, script SQL e informes en PDF",
-  },
-  {
-    app: "CoffeeEdit",
-    icon: Scissors,
-    color: "text-[#26a680]",
-    native: ".ccm",
-    opens: "Video (MP4, WebM, MOV, MKV), audio (MP3, WAV, M4A…) e imágenes",
-    exports: "Video MP4 o WebM",
-  },
-  {
-    app: "CoffeeLive",
-    icon: Radio,
-    color: "text-[#ef6c00]",
-    native: ".clv (colección de escenas)",
-    opens: "Pantalla, cámara, imágenes, videos y audio como fuentes",
-    exports: "Grabaciones MP4/WebM, capturas PNG y transmisión RTMP/SRT",
-  },
-];
 
 export const App: React.FC = () => {
   const [apps, setApps] = useState<SuiteApp[]>([]);
@@ -336,63 +254,8 @@ export const App: React.FC = () => {
 
           {currentTab === "templates" && <TemplatesView onNotify={showNotification} />}
 
-          {currentTab === "integrations" && (
-            <div className="flex flex-col gap-5">
-              <div className="flex items-center gap-3">
-                <GitFork size={24} className="text-[#6f4e37]" />
-                <div>
-                  <h1 className="font-display text-2xl font-bold text-[#2c1b12]">Integraciones y formatos</h1>
-                  <p className="text-xs text-[#795548] mt-0.5">
-                    CoffeeWorks trabaja con los archivos de Microsoft Office y con formatos abiertos, sin conexión a Internet.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {FORMAT_SUPPORT.map((item) => (
-                  <div key={item.app} className="p-5 rounded-2xl bg-white border border-[#dfd3c7] flex flex-col gap-3">
-                    <div className="flex items-center gap-2">
-                      <item.icon size={18} className={item.color} />
-                      <span className="font-display font-bold text-[#2c1b12]">{item.app}</span>
-                      <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-[#f4ede6] text-[#6f4e37] border border-[#dfd3c7]">
-                        {item.native}
-                      </span>
-                    </div>
-                    <div className="text-xs text-[#5c3a21] leading-relaxed">
-                      <span className="font-semibold">Abre:</span> {item.opens}
-                    </div>
-                    <div className="text-xs text-[#5c3a21] leading-relaxed">
-                      <span className="font-semibold">Exporta:</span> {item.exports}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="p-5 rounded-2xl bg-white border border-[#dfd3c7] flex flex-col gap-2 text-xs text-[#5c3a21] leading-relaxed">
-                <div className="flex items-center gap-2 font-display font-bold text-sm text-[#2c1b12]">
-                  <ArrowRightLeft size={16} className="text-[#6f4e37]" />
-                  Integración con Windows
-                </div>
-                <p>
-                  Al instalar una aplicación desde la Tienda de Apps se crea su acceso directo en el menú Inicio (carpeta CoffeeWorks) y se
-                  asocia su tipo de archivo (.cfd, .cfs o .csl), de modo que un doble clic en el Explorador abre el documento directamente.
-                </p>
-                <p>
-                  Todos los documentos se guardan como archivos normales en la carpeta <strong>Documentos\CoffeeWorks</strong>: puedes copiarlos,
-                  respaldarlos o sincronizarlos con el servicio que prefieras.
-                </p>
-                {isTauri && (
-                  <button
-                    type="button"
-                    onClick={() => void handleOpenVault()}
-                    className="self-start mt-1 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#6f4e37] hover:bg-[#5c3a21] text-white font-bold transition-colors"
-                  >
-                    <FolderOpen size={14} />
-                    Abrir la carpeta de documentos
-                  </button>
-                )}
-              </div>
-            </div>
+          {currentTab === "addons" && (
+            <AddonsView apps={apps} onNotify={showNotification} onOpenVault={isTauri ? () => void handleOpenVault() : undefined} />
           )}
 
           {currentTab === "settings" && (

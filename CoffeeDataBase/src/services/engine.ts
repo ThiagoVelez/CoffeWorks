@@ -55,6 +55,15 @@ export class CoffeeDb {
     return new CoffeeDb(new SQL.Database(bytes && bytes.length ? bytes : undefined));
   }
 
+  /** Crea una base nueva ejecutando un script de plantilla del Launcher. */
+  static async fromScript(sql: string): Promise<CoffeeDb> {
+    const db = await CoffeeDb.open();
+    db.db.exec("PRAGMA foreign_keys = OFF");
+    db.db.exec(sql);
+    db.db.exec("PRAGMA foreign_keys = ON");
+    return db;
+  }
+
   close() {
     this.db.close();
   }
@@ -468,4 +477,14 @@ export function formatCell(value: unknown, type?: FieldType): string {
   if (type === "currency" && typeof value === "number") return value.toLocaleString("es", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (type === "boolean") return Number(value) ? "Sí" : "No";
   return String(value);
+}
+
+/** Primera línea de las plantillas del Launcher (un script SQL en lugar de SQLite). */
+export const TEMPLATE_MARK = "-- CoffeeWorks plantilla";
+
+/** Si los bytes son una plantilla, devuelve el script; si no, `null`. */
+export function templateScript(bytes: Uint8Array): string | null {
+  if (bytes.length < TEMPLATE_MARK.length) return null;
+  const head = new TextDecoder().decode(bytes.slice(0, 64)).replace(/^\uFEFF/, "");
+  return head.startsWith(TEMPLATE_MARK) ? new TextDecoder().decode(bytes) : null;
 }

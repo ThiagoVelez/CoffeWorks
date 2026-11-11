@@ -403,3 +403,37 @@ export async function openExternal(target: string): Promise<void> {
     window.open(target, "_blank", "noopener");
   }
 }
+
+// ---------------------------------------------------------------------------
+// Complementos de la suite (Launcher › Complementos)
+// ---------------------------------------------------------------------------
+
+export interface AddonInfo {
+  id: string;
+  name: string;
+  summary: string;
+  installed: boolean;
+  can_install: boolean;
+  download_size: string;
+  manual_hint: string;
+}
+
+export async function addonStatus(id: string): Promise<AddonInfo | null> {
+  return isTauri ? invoke<AddonInfo>("core_addon_status", { id }) : null;
+}
+
+export async function installAddon(id: string): Promise<AddonInfo> {
+  return invoke<AddonInfo>("core_addon_install", { id });
+}
+
+export async function runAddon(id: string, args: string[], input?: string): Promise<string> {
+  return invoke<string>("core_addon_run", { id, args, input: input ?? null });
+}
+
+/** Pide una ruta para guardar sin escribir nada (la escribe otro programa). */
+export async function pickSavePath(defaultName: string, filters: FileFilter[], title: string): Promise<string | null> {
+  const path = await invoke<string | null>("core_pick_save", { title, defaultName, filters });
+  if (!path) return null;
+  const wanted = filters[0]?.extensions[0];
+  return wanted && !extensionOf(path) ? `${path}.${wanted}` : path;
+}
