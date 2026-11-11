@@ -15,6 +15,9 @@ import {
   FilePen,
   NotebookPen,
   Video,
+  Scissors,
+  Radio,
+  Database,
 } from "lucide-react";
 import type { SuiteApp } from "../types";
 
@@ -96,6 +99,12 @@ export const AppGrid: React.FC<AppGridProps> = ({
         return NotebookPen;
       case "video":
         return Video;
+      case "scissors":
+        return Scissors;
+      case "radio":
+        return Radio;
+      case "database":
+        return Database;
       default:
         return FileText;
     }

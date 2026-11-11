@@ -95,11 +95,17 @@ jobs:
           Assert (Test-Path "$apps\CoffeeView\CoffeeView.exe") "CoffeeView queda instalado"
           Assert (Test-Path "$apps\CoffeePDF\CoffeePDF.exe") "CoffeePDF queda instalado"
           Assert (Test-Path "$apps\CoffeePage\CoffeePage.exe") "CoffeePage queda instalado"
-          Assert (Test-Path "$apps\CoffeeCams\CoffeeCams.exe") "CoffeeCams queda instalado"
+          Assert (Test-Path "$apps\CoffeeDataBase\CoffeeDataBase.exe") "CoffeeDataBase queda instalado"
+          Assert (Test-Path "$apps\CoffeeEdit\CoffeeEdit.exe") "CoffeeEdit queda instalado"
+          Assert (Test-Path "$apps\CoffeeLive\CoffeeLive.exe") "CoffeeLive queda instalado"
           $cpg = (Get-ItemProperty "HKCU:\Software\Classes\.cpg" -ErrorAction SilentlyContinue).'(default)'
           Assert ($cpg -eq "CoffeeWorks.CoffeePage.cpg") "se asocia el tipo de archivo .cpg"
           $ccm = (Get-ItemProperty "HKCU:\Software\Classes\.ccm" -ErrorAction SilentlyContinue).'(default)'
-          Assert ($ccm -eq "CoffeeWorks.CoffeeCams.ccm") "se asocia el tipo de archivo .ccm"
+          Assert ($ccm -eq "CoffeeWorks.CoffeeEdit.ccm") "se asocia el tipo de archivo .ccm"
+          $clv = (Get-ItemProperty "HKCU:\Software\Classes\.clv" -ErrorAction SilentlyContinue).'(default)'
+          Assert ($clv -eq "CoffeeWorks.CoffeeLive.clv") "se asocia el tipo de archivo .clv"
+          $cdb = (Get-ItemProperty "HKCU:\Software\Classes\.cdb" -ErrorAction SilentlyContinue).'(default)'
+          Assert ($cdb -eq "CoffeeWorks.CoffeeDataBase.cdb") "se asocia el tipo de archivo .cdb"
           $pdfDefault = (Get-ItemProperty "HKCU:\Software\Classes\.pdf" -ErrorAction SilentlyContinue).'(default)'
           Assert ($pdfDefault -ne "CoffeeWorks.CoffeePDF.pdf") "CoffeePDF no reemplaza el lector de PDF predeterminado"
           Assert ((Get-ItemProperty "HKCU:\Software\Classes\.pdf\OpenWithProgids" -ErrorAction SilentlyContinue).'CoffeeWorks.CoffeePDF.pdf' -ne $null) "CoffeePDF aparece en Abrir con"
@@ -107,7 +113,7 @@ jobs:
           # Las ventanas deben arrancar y seguir abiertas
           New-Item -ItemType Directory -Force screenshots | Out-Null
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-          foreach ($exe in @("$dir\CoffeeWorks.exe", "$apps\CoffeeDoc\CoffeeDoc.exe", "$apps\CoffeeCalc\CoffeeCalc.exe", "$apps\CoffeeView\CoffeeView.exe", "$apps\CoffeePDF\CoffeePDF.exe", "$apps\CoffeePage\CoffeePage.exe", "$apps\CoffeeCams\CoffeeCams.exe")) {
+          foreach ($exe in @("$dir\CoffeeWorks.exe", "$apps\CoffeeDoc\CoffeeDoc.exe", "$apps\CoffeeCalc\CoffeeCalc.exe", "$apps\CoffeeView\CoffeeView.exe", "$apps\CoffeePDF\CoffeePDF.exe", "$apps\CoffeePage\CoffeePage.exe", "$apps\CoffeeDataBase\CoffeeDataBase.exe", "$apps\CoffeeEdit\CoffeeEdit.exe", "$apps\CoffeeLive\CoffeeLive.exe")) {
             $name = [IO.Path]::GetFileNameWithoutExtension($exe)
             $process = Start-Process $exe -PassThru
             Start-Sleep -Seconds 12
@@ -145,6 +151,18 @@ jobs:
           Assert (-not (Test-Path "HKCU:\Software\Classes\CoffeWorks.CoffeDoc.cfd")) "se quita la asociación antigua"
           $association = (Get-ItemProperty "HKCU:\Software\Classes\.cfd" -ErrorAction SilentlyContinue).'(default)'
           Assert ($association -eq "CoffeeWorks.CoffeeDoc.cfd") ".cfd vuelve a abrirse con CoffeeDoc"
+
+          # CoffeeCams (2.5) se dividió en CoffeeEdit y CoffeeLive: se simula que estaba instalado
+          Assert ((Run "$dir\CoffeeWorks.exe" @("--uninstall", "coffeeedit")) -eq 0) "desinstalar CoffeeEdit para la prueba"
+          New-Item -ItemType Directory -Force "$apps\CoffeeCams" | Out-Null
+          Copy-Item "$apps\CoffeeLive\CoffeeLive.exe" "$apps\CoffeeCams\CoffeeCams.exe"
+          New-Item -Force "HKCU:\Software\Classes\.ccm" -Value "CoffeeWorks.CoffeeCams.ccm" | Out-Null
+          New-Item -Force "HKCU:\Software\Classes\CoffeeWorks.CoffeeCams.ccm" -Value "Proyecto antiguo" | Out-Null
+          Assert ((Run "$dir\CoffeeWorks.exe" @("--list")) -eq 0) "el Launcher arranca con CoffeeCams instalado"
+          Assert (-not (Test-Path "$apps\CoffeeCams")) "se retira CoffeeCams"
+          Assert (Test-Path "$apps\CoffeeEdit\CoffeeEdit.exe") "CoffeeEdit lo sustituye"
+          $ccm = (Get-ItemProperty "HKCU:\Software\Classes\.ccm" -ErrorAction SilentlyContinue).'(default)'
+          Assert ($ccm -eq "CoffeeWorks.CoffeeEdit.ccm") ".ccm pasa a CoffeeEdit"
 
           $uninstaller = (Get-ChildItem "$dir\unins*.exe" | Select-Object -First 1).FullName
           Assert ((Run $uninstaller @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART")) -eq 0) "el desinstalador termina sin errores"

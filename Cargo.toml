@@ -11,11 +11,13 @@ members = [
   "CoffeeView/src-tauri",
   "CoffeePDF/src-tauri",
   "CoffeePage/src-tauri",
-  "CoffeeCams/src-tauri",
+  "CoffeeEdit/src-tauri",
+  "CoffeeLive/src-tauri",
+  "CoffeeDataBase/src-tauri",
 ]
 
 [workspace.package]
-version = "2.5.0"
+version = "2.6.0"
 authors = ["CoffeeWorks OpenSource Team"]
 edition = "2021"
 

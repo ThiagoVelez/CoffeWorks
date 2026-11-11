@@ -12,9 +12,9 @@ const INSTALLED_KEY = "coffeeworks_installed_apps";
 const FOCUS_KEY = "coffeeworks_focus_mode";
 
 /** Puertos de los servidores de desarrollo de cada aplicación. */
-const DEV_PORTS: Record<string, number> = { coffeedoc: 1421, coffeecalc: 1422, coffeeview: 1423, coffeepdf: 1424, coffeepage: 1425, coffeecams: 1426 };
+const DEV_PORTS: Record<string, number> = { coffeedoc: 1421, coffeecalc: 1422, coffeeview: 1423, coffeepdf: 1424, coffeepage: 1425, coffeeedit: 1426, coffeelive: 1427, coffeedatabase: 1428 };
 
-const ALIASES: Record<string, string> = { coffeesheet: "coffeecalc", coffeeslides: "coffeeview" };
+const ALIASES: Record<string, string> = { coffeesheet: "coffeecalc", coffeeslides: "coffeeview", coffeecams: "coffeeedit" };
 
 /** Identificador actual (los documentos antiguos usan "coffedoc", "coffesheet"...). */
 export const canonicalAppId = (id: string) => {
@@ -31,7 +31,9 @@ export function appForDocument(doc: Pick<RecentDocument, "app_id" | "name">): st
   if (["csl", "pptx"].includes(extension)) return "coffeeview";
   if (extension === "pdf") return "coffeepdf";
   if (extension === "cpg") return "coffeepage";
-  if (["ccm", "mp4", "webm", "mov", "mkv"].includes(extension)) return "coffeecams";
+  if (["ccm", "mp4", "webm", "mov", "mkv"].includes(extension)) return "coffeeedit";
+  if (extension === "clv") return "coffeelive";
+  if (["cdb", "db", "sqlite", "sqlite3"].includes(extension)) return "coffeedatabase";
   return "coffeedoc";
 }
 
@@ -118,19 +120,51 @@ const WEB_CATALOG: SuiteApp[] = [
     category: "Office",
   },
   {
-    id: "coffeecams",
-    name: "CoffeeCams",
-    subtitle: "Editor de video, grabación y streaming",
+    id: "coffeedatabase",
+    name: "CoffeeDataBase",
+    subtitle: "Bases de datos de escritorio",
     description:
-      "Edita videos con varias pistas, cortes, velocidad, filtros, textos y transiciones; graba la pantalla y la cámara, y transmite en directo.",
+      "Tablas, formularios, consultas SQL y visuales, relaciones con diagrama y asistente. Importa Excel, CSV y archivos .accdb/.mdb.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "database",
+    icon_name: "database",
+    icon_url: "/icons/CoffeeDataBase.ico",
+    category: "Office",
+  },
+  {
+    id: "coffeeedit",
+    name: "CoffeeEdit",
+    subtitle: "Editor de video",
+    description:
+      "Edita videos con varias pistas, cortes, velocidad, filtros, textos animados y transiciones, y exporta a MP4. Abre las grabaciones de CoffeeLive.",
     version: "v1.0",
     installed: true,
     available: true,
     size_mb: 0,
     status: "",
     color_badge: "media",
-    icon_name: "video",
-    icon_url: "/icons/CoffeeCams.ico",
+    icon_name: "scissors",
+    icon_url: "/icons/CoffeeEdit.ico",
+    category: "Multimedia",
+  },
+  {
+    id: "coffeelive",
+    name: "CoffeeLive",
+    subtitle: "Grabación de pantalla y transmisión en directo",
+    description:
+      "Escenas con pantalla, cámara, imágenes y textos; filtros, croma, transiciones, mezclador y atajos globales. Graba en MP4 o transmite a Twitch, YouTube y más.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "live",
+    icon_name: "radio",
+    icon_url: "/icons/CoffeeLive.ico",
     category: "Multimedia",
   },
 ];

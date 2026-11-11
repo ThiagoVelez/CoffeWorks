@@ -1,0 +1,26 @@
+[package]
+name = "coffeelive"
+description = "Grabación de pantalla y transmisión en directo de la suite CoffeeWorks"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "CoffeeLive"
+path = "src/main.rs"
+
+[features]
+# Activa el modo de producción (frontend embebido en el ejecutable).
+custom-protocol = ["tauri/custom-protocol"]
+
+[build-dependencies]
+tauri-build = { workspace = true }
+
+[dependencies]
+# El protocolo de recursos permite usar videos del disco como fuentes.
+tauri = { workspace = true, features = ["protocol-asset"] }
+tauri-plugin-dialog = { workspace = true }
+coffee-core = { workspace = true }
+serde = { workspace = true }
+dirs = { workspace = true }
+tauri-plugin-global-shortcut = "2"

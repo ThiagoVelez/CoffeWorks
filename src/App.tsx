@@ -20,7 +20,9 @@ import {
   Presentation,
   FilePen,
   NotebookPen,
-  Video,
+  Scissors,
+  Radio,
+  Database,
   ArrowRightLeft,
 } from "lucide-react";
 
@@ -72,12 +74,28 @@ const FORMAT_SUPPORT = [
     exports: "HTML (página, sección o cuaderno), Markdown y PDF (imprimir)",
   },
   {
-    app: "CoffeeCams",
-    icon: Video,
+    app: "CoffeeDataBase",
+    icon: Database,
+    color: "text-[#9b111e]",
+    native: ".cdb (SQLite)",
+    opens: "SQLite (.db, .sqlite); importa Excel (.xlsx), CSV y bases .accdb/.mdb",
+    exports: "Excel (una hoja por tabla), CSV, script SQL e informes en PDF",
+  },
+  {
+    app: "CoffeeEdit",
+    icon: Scissors,
     color: "text-[#26a680]",
     native: ".ccm",
     opens: "Video (MP4, WebM, MOV, MKV), audio (MP3, WAV, M4A…) e imágenes",
-    exports: "Video MP4 o WebM; grabaciones de pantalla y transmisión RTMP",
+    exports: "Video MP4 o WebM",
+  },
+  {
+    app: "CoffeeLive",
+    icon: Radio,
+    color: "text-[#ef6c00]",
+    native: ".clv (colección de escenas)",
+    opens: "Pantalla, cámara, imágenes, videos y audio como fuentes",
+    exports: "Grabaciones MP4/WebM, capturas PNG y transmisión RTMP/SRT",
   },
 ];
 
@@ -263,7 +281,7 @@ export const App: React.FC = () => {
         ["Sistema", suiteInfo.platform],
       ]
     : [
-        ["Versión de CoffeeWorks", "2.5.0 (modo web de desarrollo)"],
+        ["Versión de CoffeeWorks", "2.6.0 (modo web de desarrollo)"],
         ["Documentos", "Se guardan en el almacenamiento de este navegador"],
       ];
 

@@ -1,4 +1,4 @@
-"""Genera los iconos de CoffeePage (morado) y CoffeeCams (verde menta) con el
+"""Genera el icono de CoffeePage (morado) con el
 mismo estilo que el resto de la suite: cuadrado redondeado de color con un
 símbolo plano en blanco."""
 
@@ -55,23 +55,3 @@ for y in (72, 104, 136, 168):
 for y, length in ((84, 64), (108, 72), (132, 52), (156, 66)):
     d.rounded_rectangle(box(106, y, 106 + length, y + 8), radius=4 * S, fill=LILAC)
 save(img, "CoffeePage")
-
-# --- CoffeeCams: videocámara ------------------------------------------------
-MINT = (38, 166, 128, 255)
-DARK_MINT = (16, 110, 82, 255)
-LIGHT_MINT = (178, 235, 214, 255)
-REC = (239, 83, 80, 255)
-
-img, d = canvas(MINT)
-# Cuerpo
-d.rounded_rectangle(box(44, 84, 168, 176), radius=20 * S, fill=WHITE)
-# Visor lateral (triángulo)
-d.polygon([(166 * S, 118 * S), (214 * S, 90 * S), (214 * S, 170 * S), (166 * S, 142 * S)], fill=WHITE)
-d.rounded_rectangle(box(196, 88, 216, 172), radius=8 * S, fill=WHITE)
-# Objetivo
-d.ellipse(box(76, 100, 136, 160), fill=DARK_MINT)
-d.ellipse(box(90, 114, 122, 146), fill=LIGHT_MINT)
-d.ellipse(box(98, 120, 110, 132), fill=WHITE)
-# Piloto de grabación
-d.ellipse(box(146, 94, 160, 108), fill=REC)
-save(img, "CoffeeCams")

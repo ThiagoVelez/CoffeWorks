@@ -48,7 +48,8 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
     if (activeFilter === "presentations") return app === "coffeeview" || app === "coffeeslides" || lower.endsWith(".csl") || lower.endsWith(".pptx");
     if (activeFilter === "pdf") return app === "coffeepdf" || lower.endsWith(".pdf");
     if (activeFilter === "notes") return app === "coffeepage" || lower.endsWith(".cpg");
-    if (activeFilter === "videos") return app === "coffeecams" || lower.endsWith(".ccm");
+    if (activeFilter === "videos") return ["coffeecams", "coffeeedit", "coffeelive"].includes(app) || lower.endsWith(".ccm") || lower.endsWith(".clv");
+    if (activeFilter === "databases") return app === "coffeedatabase" || /\.(cdb|db|sqlite3?)$/.test(lower);
     return true;
   });
 
@@ -107,12 +108,28 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
         border: "border-[#e1bee7]",
       };
     }
-    if (lowerName.endsWith(".ccm") || appId === "coffeecams") {
+    if (lowerName.endsWith(".ccm") || appId === "coffeeedit" || appId === "coffeecams") {
       return {
-        iconUrl: "/icons/CoffeeCams.ico",
-        alt: "CoffeeCams / Proyecto de video",
+        iconUrl: "/icons/CoffeeEdit.ico",
+        alt: "CoffeeEdit / Proyecto de video",
         bg: "bg-[#e3f6ef]",
         border: "border-[#b2e3d2]",
+      };
+    }
+    if (lowerName.endsWith(".clv") || appId === "coffeelive") {
+      return {
+        iconUrl: "/icons/CoffeeLive.ico",
+        alt: "CoffeeLive / Colección de escenas",
+        bg: "bg-[#fff1e3]",
+        border: "border-[#ffd2a8]",
+      };
+    }
+    if (/\.(cdb|db|sqlite3?)$/.test(lowerName) || appId === "coffeedatabase") {
+      return {
+        iconUrl: "/icons/CoffeeDataBase.ico",
+        alt: "CoffeeDataBase / Base de datos",
+        bg: "bg-[#fbe9eb]",
+        border: "border-[#efc3c8]",
       };
     }
     if (lowerName.endsWith(".pdf") || appId === "coffeepdf") {
@@ -155,6 +172,7 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
               { id: "pdf", label: "PDF" },
               { id: "notes", label: "Notas" },
               { id: "videos", label: "Videos" },
+              { id: "databases", label: "Bases de datos" },
               { id: "pinned", label: "Fijados" },
             ] as Array<{ id: DocumentFilter; label: string }>
           ).map((filter) => {

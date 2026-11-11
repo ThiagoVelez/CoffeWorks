@@ -338,7 +338,7 @@ pub fn display_path(path: &Path) -> String {
 
 /// Genera el manejador de comandos de un editor de la suite. Todas las
 /// aplicaciones comparten los comandos comunes; las que necesitan más (como
-/// CoffeeCams) los añaden como argumentos: `editor_handler!(mi_comando)`.
+/// CoffeeEdit o CoffeeLive) los añaden como argumentos: `editor_handler!(mi_comando)`.
 #[macro_export]
 macro_rules! editor_handler {
     ($($extra:path),* $(,)?) => {
