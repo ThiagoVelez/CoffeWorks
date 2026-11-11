@@ -188,14 +188,16 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
 
   // Recalcular el número de páginas cuando cambia la altura del contenido
   useEffect(() => {
-    const page = pageRef.current;
-    if (!page) return;
-    const measure = () => onPageCount(Math.max(1, Math.ceil((page.scrollHeight - 2) / pageHeight)));
+    const editor = editorRef.current;
+    if (!editor) return;
+    // Se mide el contenido frente al alto útil de una página (sin márgenes)
+    const usable = Math.max(1, pageHeight - margin * 2);
+    const measure = () => onPageCount(Math.max(1, Math.ceil((editor.scrollHeight - 8) / usable)));
     measure();
     const observer = new ResizeObserver(measure);
-    observer.observe(page);
+    observer.observe(editor);
     return () => observer.disconnect();
-  }, [pageHeight, onPageCount]);
+  }, [pageHeight, margin, onPageCount]);
 
   // Seguir la selección para actualizar la barra de herramientas y la barra contextual
   useEffect(() => {

@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:all": "node scripts/dev.mjs",
     "build": "tsc && vite build",
+    "build:desktop": "node scripts/build.mjs",
+    "build:installer": "powershell -ExecutionPolicy Bypass -File scripts/build-windows.ps1",
     "preview": "vite preview",
     "tauri": "tauri"
   },

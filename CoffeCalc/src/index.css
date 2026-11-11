@@ -84,3 +84,10 @@ button, input, select, textarea, a {
     margin: 12mm;
   }
 }
+
+@media print {
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

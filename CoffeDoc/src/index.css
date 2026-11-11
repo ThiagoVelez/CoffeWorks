@@ -299,3 +299,10 @@ button, input, select, textarea, a, [contenteditable="true"] {
     display: none;
   }
 }
+
+@media print {
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
