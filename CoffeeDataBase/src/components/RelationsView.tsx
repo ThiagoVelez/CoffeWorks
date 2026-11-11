@@ -31,6 +31,7 @@ interface Draft {
   kind: "1n" | "11" | "nm";
   onDelete: RefAction;
   junction: string;
+  extras: boolean;
 }
 
 export const RelationsView: React.FC<RelationsProps> = ({ db, schema, onChanged, pending, onPendingHandled }) => {
@@ -66,6 +67,7 @@ export const RelationsView: React.FC<RelationsProps> = ({ db, schema, onChanged,
       kind: "1n",
       onDelete: "RESTRICT",
       junction: "",
+      extras: true,
     });
     onPendingHandled?.();
   }, [pending, schema, onPendingHandled]);
@@ -143,7 +145,13 @@ export const RelationsView: React.FC<RelationsProps> = ({ db, schema, onChanged,
         const colA = `${dialog.child.replace(/s$/, "")}_id`;
         const colB = `${dialog.parent.replace(/s$/, "")}_id`;
         const mk = (n: string, type: ColumnDraft["type"], pk = false): ColumnDraft => ({ key: n, original: null, name: n, type, pk, notNull: !pk, unique: false, defaultValue: "" });
-        db.createTable(name, [mk("id", "autonumber", true), mk(colA, "integer"), mk(colB, "integer")], [
+        const extras: ColumnDraft[] = dialog.extras
+          ? [
+              { ...mk("fecha_asignacion", "date"), defaultValue: "CURRENT_TIMESTAMP" },
+              { ...mk("estado", "shortText"), defaultValue: "ACTIVO" },
+            ]
+          : [];
+        db.createTable(name, [mk("id", "autonumber", true), mk(colA, "integer"), mk(colB, "integer"), ...extras], [
           { column: colA, table: dialog.child, to: pkA, onDelete: "CASCADE", onUpdate: "CASCADE" },
           { column: colB, table: dialog.parent, to: pkB, onDelete: "CASCADE", onUpdate: "CASCADE" },
         ]);
@@ -193,6 +201,7 @@ export const RelationsView: React.FC<RelationsProps> = ({ db, schema, onChanged,
                 kind: "1n",
                 onDelete: "RESTRICT",
                 junction: "",
+                extras: true,
               })
             }
             disabled={schema.tables.length < 2}
@@ -248,6 +257,7 @@ export const RelationsView: React.FC<RelationsProps> = ({ db, schema, onChanged,
                   kind: "1n",
                   onDelete: "RESTRICT",
                   junction: "",
+                extras: true,
                 });
               }
               setLink(null);
@@ -394,6 +404,26 @@ export const RelationsView: React.FC<RelationsProps> = ({ db, schema, onChanged,
                     ))}
                   </div>
                   <input className={field} placeholder={`${dialog.child}_${dialog.parent}`} value={dialog.junction} onChange={(e) => setDialog({ ...dialog, junction: e.target.value })} />
+                  <div className="rounded-lg bg-[#fdf6f6] border border-[#f1e6e7] px-3 py-2 text-[12px] font-mono text-[#5a3a3e]">
+                    <div className="font-sans font-semibold text-[11px] text-[#7a6265] mb-1">Campos que se crearán</div>
+                    <div>• id (autonumérico)</div>
+                    <div className="text-[#9b111e]">
+                      • {dialog.child.replace(/s$/, "")}_id → {dialog.child}
+                    </div>
+                    <div className="text-[#9b111e]">
+                      • {dialog.parent.replace(/s$/, "")}_id → {dialog.parent}
+                    </div>
+                    {dialog.extras && (
+                      <>
+                        <div>• fecha_asignacion (fecha y hora)</div>
+                        <div>• estado (texto, ACTIVO)</div>
+                      </>
+                    )}
+                  </div>
+                  <label className="flex items-center gap-2 text-[12px]">
+                    <input type="checkbox" className="accent-[#9b111e]" checked={dialog.extras} onChange={(e) => setDialog({ ...dialog, extras: e.target.checked })} data-junction-extras />
+                    Incluir campos adicionales (fecha de asignación y estado)
+                  </label>
                 </>
               ) : (
                 <>

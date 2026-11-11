@@ -22,7 +22,8 @@ import {
   Info,
   BookOpen,
 } from "lucide-react";
-import { SuiteHeader, type MenuDefinition, type SaveStatus } from "./components/SuiteHeader";
+import { type MenuDefinition, type SaveStatus } from "./components/SuiteHeader";
+import { LiveTopBar } from "./components/LiveTopBar";
 import { StartScreen } from "./components/StartScreen";
 import { CommandSearch } from "./components/CommandSearch";
 import { DialogHost, askChoice, showMessage, toast } from "./components/Dialogs";
@@ -53,7 +54,7 @@ import {
   stripExtension,
   type RecentEntry,
 } from "./services/desktop";
-import { ACCENT, ACCENT_DARK, HOTKEY_LABELS, type HotkeyAction, type LiveDocument } from "./types";
+import { ACCENT_DARK, HOTKEY_LABELS, type HotkeyAction, type LiveDocument } from "./types";
 
 const HISTORY_LIMIT = 120;
 const AUTOSAVE_DELAY = 1200;
@@ -85,6 +86,7 @@ export const App: React.FC = () => {
   const [recents, setRecents] = useState<RecentEntry[]>([]);
   const [commandSearchOpen, setCommandSearchOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [liveStatus, setLiveStatus] = useState({ recording: false, streaming: false });
   const studioRef = useRef<StudioHandle>(null);
   const startedRef = useRef(false);
 
@@ -362,6 +364,24 @@ export const App: React.FC = () => {
   const canUndo = history.current.index > 0;
   const canRedo = history.current.index < history.current.stack.length - 1;
   const hk = (action: HotkeyAction) => doc?.settings.hotkeys[action] || undefined;
+  const showGuide = () =>
+    void showMessage(
+              "Guía rápida",
+              [
+                "1. Añade fuentes a la escena: pantalla o ventana, cámara, imágenes, videos, textos o colores.",
+                "2. Colócalas arrastrándolas en el lienzo; el tirador de la esquina cambia el tamaño.",
+                "3. En Filtros: corrección de color, recorte y croma (pantalla verde).",
+                "4. Crea más escenas (por ejemplo «Pausa») y cambia entre ellas con una transición.",
+                "5. Configura la plataforma y la clave en Ajustes › Transmisión.",
+                "6. Pulsa «Iniciar transmisión» o «Iniciar grabación».",
+                "",
+                "Atajos actuales:",
+                ...(Object.keys(HOTKEY_LABELS) as HotkeyAction[])
+                  .filter((a) => doc?.settings.hotkeys[a])
+                  .map((a) => `${doc?.settings.hotkeys[a]}: ${HOTKEY_LABELS[a]}`),
+              ].join("\n")
+            );
+
   const menus: MenuDefinition[] = [
     {
       id: "file",
@@ -423,27 +443,7 @@ export const App: React.FC = () => {
       id: "help",
       label: "Ayuda",
       items: [
-        {
-          label: "Guía rápida",
-          icon: BookOpen,
-          action: () =>
-            void showMessage(
-              "Guía rápida",
-              [
-                "1. Añade fuentes a la escena: pantalla o ventana, cámara, imágenes, videos, textos o colores.",
-                "2. Colócalas arrastrándolas en el lienzo; el tirador de la esquina cambia el tamaño.",
-                "3. En Filtros: corrección de color, recorte y croma (pantalla verde).",
-                "4. Crea más escenas (por ejemplo «Pausa») y cambia entre ellas con una transición.",
-                "5. Configura la plataforma y la clave en Ajustes › Transmisión.",
-                "6. Pulsa «Iniciar transmisión» o «Iniciar grabación».",
-                "",
-                "Atajos actuales:",
-                ...(Object.keys(HOTKEY_LABELS) as HotkeyAction[])
-                  .filter((a) => doc?.settings.hotkeys[a])
-                  .map((a) => `${doc?.settings.hotkeys[a]}: ${HOTKEY_LABELS[a]}`),
-              ].join("\n")
-            ),
-        },
+        { label: "Guía rápida", icon: BookOpen, action: showGuide },
         {
           label: "Acerca de CoffeeLive",
           icon: Info,
@@ -457,18 +457,14 @@ export const App: React.FC = () => {
     },
   ];
 
-  const LiveLogo = <img src="/app-icon.png" alt="" className="w-full h-full" draggable={false} />;
-
+  
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#120c09] select-none">
       {loaded && doc && (
         <>
-          <SuiteHeader
-            logo={LiveLogo}
-            logoTitle="Pantalla de inicio de CoffeeLive"
-            onLogoClick={() => setShowStartScreen(true)}
+          <LiveTopBar
             title={title}
-            titlePlaceholder={DEFAULT_TITLE}
+            placeholder={DEFAULT_TITLE}
             onTitleChange={(next) => {
               setTitle(next);
               stateRef.current.title = next;
@@ -476,27 +472,18 @@ export const App: React.FC = () => {
             }}
             menus={menus}
             saveStatus={saveStatus}
-            fileLocation={location && !location.startsWith("web:") ? location : null}
             isStarred={isStarred}
             onToggleStar={() => void handleToggleStar()}
+            onLogoClick={() => setShowStartScreen(true)}
+            onSettings={() => studioRef.current?.openSettings("general")}
+            onHelp={showGuide}
+            live={liveStatus}
             onRequestClose={guardBusy}
             onBeforeClose={async () => {
               await flush();
             }}
-            actions={
-              <button
-                type="button"
-                onClick={() => studioRef.current?.openSettings("stream")}
-                className="text-white font-semibold text-xs px-4 py-1.5 rounded-full flex items-center gap-1.5 hover:opacity-90"
-                style={{ background: ACCENT }}
-                title="Ajustes de transmisión"
-              >
-                <Radio size={14} />
-                <span>Transmisión</span>
-              </button>
-            }
           />
-          <StudioView ref={studioRef} doc={doc} onChange={applyDoc} onBusyChange={setBusy} />
+          <StudioView ref={studioRef} doc={doc} onChange={applyDoc} onBusyChange={setBusy} onLiveChange={setLiveStatus} />
         </>
       )}
 

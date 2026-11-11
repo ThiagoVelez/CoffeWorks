@@ -57,6 +57,20 @@ export const AssistantView: React.FC<AssistantProps> = ({ db, schema, version, o
   };
 
   const fix = (f: Finding) => {
+    if (f.fix?.relationships) {
+      try {
+        for (const r of f.fix.relationships) {
+          const parent = schema.tables.find((t) => t.name === r.parent);
+          const to = parent?.columns.find((c) => c.pk)?.name || "id";
+          db.addRelationship({ child: r.child, column: r.column, table: r.parent, to, onDelete: "CASCADE", onUpdate: "CASCADE" });
+        }
+        onChanged();
+        toast("Relaciones creadas");
+      } catch (err) {
+        void showMessage("No se pudieron crear las relaciones", explain(err));
+      }
+      return;
+    }
     if (f.fix?.relationship) {
       onRelationship(f.fix.relationship);
       return;

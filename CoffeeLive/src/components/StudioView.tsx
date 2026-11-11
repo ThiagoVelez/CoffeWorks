@@ -35,6 +35,7 @@ import {
   Scissors,
   X,
   Copy,
+  Columns2,
 } from "lucide-react";
 import type { HotkeyAction, LiveDocument, LiveSettings, Scene, SourceKind, StudioSource } from "../types";
 import { formatClock, formatSize, newId, newSource, recordingName, rescaleScenes, SOURCE_LABEL } from "../services/live";
@@ -75,6 +76,8 @@ interface StudioViewProps {
   doc: LiveDocument;
   onChange: (doc: LiveDocument, key?: string) => void;
   onBusyChange: (busy: boolean) => void;
+  /** Avisa si se está grabando o transmitiendo (indicadores de la barra superior). */
+  onLiveChange?: (status: { recording: boolean; streaming: boolean }) => void;
 }
 
 const SOURCE_ICON: Record<SourceKind, React.ComponentType<{ size?: number; className?: string }>> = {
@@ -110,7 +113,7 @@ const readImage = async (): Promise<{ src: string; name: string } | null> => {
   return { src: `data:${mime};base64,${bytesToBase64(picked.bytes)}`, name: picked.name };
 };
 
-export const StudioView = forwardRef<StudioHandle, StudioViewProps>(function StudioView({ doc, onChange, onBusyChange }, ref) {
+export const StudioView = forwardRef<StudioHandle, StudioViewProps>(function StudioView({ doc, onChange, onBusyChange, onLiveChange }, ref) {
   const engineRef = useRef<LiveEngine | null>(null);
   const programHost = useRef<HTMLDivElement>(null);
   const previewHost = useRef<HTMLDivElement>(null);
@@ -282,6 +285,10 @@ export const StudioView = forwardRef<StudioHandle, StudioViewProps>(function Stu
   }, []);
 
   useEffect(() => onBusyChange(live), [live, onBusyChange]);
+  useEffect(
+    () => onLiveChange?.({ recording: recording !== "idle", streaming: streaming === "live" || streaming === "reconnecting" }),
+    [recording, streaming, onLiveChange]
+  );
 
   // ---- Escenas -------------------------------------------------------------
   const updateScenes = useCallback((fn: (scenes: Scene[]) => Scene[], key?: string) => {
@@ -1215,15 +1222,7 @@ export const StudioView = forwardRef<StudioHandle, StudioViewProps>(function Stu
               />
               ms
             </label>
-            <label className="flex items-center gap-2 mt-1">
-              <input
-                type="checkbox"
-                checked={studioMode}
-                onChange={(e) => setSettings({ ...settings, general: { ...settings.general, studioMode: e.target.checked } })}
-                className="accent-[#ff8a2a]"
-              />
-              Modo estudio
-            </label>
+
           </div>
         </div>
 
@@ -1261,6 +1260,16 @@ export const StudioView = forwardRef<StudioHandle, StudioViewProps>(function Stu
                 </button>
               </div>
             )}
+            <button
+              type="button"
+              data-studio-mode
+              onClick={() => setSettings({ ...settings, general: { ...settings.general, studioMode: !studioMode } })}
+              className={`${bigBtn} ${studioMode ? "text-black" : "bg-[#2c201a] hover:bg-[#3a2a21] text-white"}`}
+              style={studioMode ? { background: "#ff8a2a" } : undefined}
+              title="Muestra la vista previa y el programa por separado para preparar la siguiente escena"
+            >
+              <Columns2 size={14} /> Modo estudio{studioMode ? ": activado" : ""}
+            </button>
             <div className="grid grid-cols-3 gap-1.5">
               <button type="button" className={`${bigBtn} bg-[#2c201a] hover:bg-[#3a2a21] text-white`} onClick={() => void screenshot()} title="Captura de la salida (PNG)">
                 <CameraIcon size={14} />

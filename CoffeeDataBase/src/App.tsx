@@ -21,7 +21,12 @@ import {
   Info,
   Plus,
   RefreshCw,
+  Workflow,
+  Moon,
+  ArchiveRestore,
+  BookOpen,
 } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
 import { SuiteHeader, type MenuDefinition, type SaveStatus } from "./components/SuiteHeader";
 import { StartScreen } from "./components/StartScreen";
 import { CommandSearch } from "./components/CommandSearch";
@@ -36,6 +41,8 @@ import { SqlView } from "./components/SqlView";
 import { QueryBuilder } from "./components/QueryBuilder";
 import { RelationsView } from "./components/RelationsView";
 import { AssistantView } from "./components/AssistantView";
+import { EtlView } from "./components/EtlView";
+import { ManualDialog } from "./components/ManualDialog";
 import { CoffeeDb, quoteId } from "./services/engine";
 import { explain } from "./services/doctor";
 import { importDesktopDb, importExcel, importMatrix, parseCsv, printHtml, reportHtml, sqlDump, toCsv, toXlsx } from "./services/io";
@@ -66,6 +73,7 @@ import {
   saveFileAs,
   setPinned,
   stripExtension,
+  writeFileBytes,
   type RecentEntry,
 } from "./services/desktop";
 import { ACCENT, ACCENT_DARK, type Schema, type ViewId } from "./types";
@@ -88,6 +96,7 @@ const VIEWS: { id: ViewId; label: string; icon: React.ComponentType<{ size?: num
   { id: "design", label: "Diseño", icon: PencilRuler, needsTable: true },
   { id: "sql", label: "Consulta SQL", icon: Code2 },
   { id: "builder", label: "Diseñador de consultas", icon: Blocks },
+  { id: "etl", label: "ETL", icon: Workflow },
   { id: "relations", label: "Relaciones", icon: Share2 },
   { id: "assistant", label: "Asistente", icon: Sparkles },
 ];
@@ -119,6 +128,23 @@ export const App: React.FC = () => {
   const [commandSearchOpen, setCommandSearchOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [dark, setDark] = useState(() => {
+    try {
+      return localStorage.getItem("coffeedatabase_dark") === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", dark);
+    try {
+      localStorage.setItem("coffeedatabase_dark", dark ? "1" : "0");
+    } catch {
+      // Sin almacenamiento
+    }
+  }, [dark]);
   const startedRef = useRef(false);
 
   const db = dbRef.current;
@@ -350,6 +376,29 @@ export const App: React.FC = () => {
     }
   };
 
+  /** Copia con fecha y hora en Documentos\CoffeeWorks\Copias de seguridad. */
+  const handleBackup = async () => {
+    const current = dbRef.current;
+    if (!current) return;
+    const d = new Date();
+    const p = (n: number) => n.toString().padStart(2, "0");
+    const name = `${title || DEFAULT_TITLE} ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}.${EXTENSION}`.replace(/[<>:"/\\|?*]/g, "-");
+    try {
+      if (isTauri) {
+        const vault = await invoke<string>("core_vault_dir");
+        const sep = vault.includes("\\") ? "\\" : "/";
+        const path = `${vault}${sep}Copias de seguridad${sep}${name}`;
+        await writeFileBytes(path, current.export());
+        toast("Copia de seguridad creada en Documentos\\CoffeeWorks\\Copias de seguridad");
+      } else {
+        await saveFileAs(name, [{ name: "Base de datos", extensions: [EXTENSION] }], current.export(), "Copia de seguridad");
+        toast("Copia de seguridad descargada");
+      }
+    } catch (err) {
+      reportError(err, "No se pudo crear la copia");
+    }
+  };
+
   const handleToggleStar = async () => {
     const next = !isStarred;
     setIsStarred(next);
@@ -509,6 +558,12 @@ export const App: React.FC = () => {
       e.preventDefault();
       if (e.shiftKey) void handleSaveAs();
       else void saveNow().then((ok) => ok && toast("Base de datos guardada"));
+    } else if (ctrl && key === "k") {
+      e.preventDefault();
+      setCommandSearchOpen(true);
+    } else if (e.key === "F1") {
+      e.preventDefault();
+      setManualOpen(true);
     } else if (e.key === "F5") {
       e.preventDefault();
       refreshSchema();
@@ -528,6 +583,7 @@ export const App: React.FC = () => {
         { label: "Nueva base de datos", icon: FilePlus, action: () => void handleNew() },
         { label: "Abrir…", icon: FolderOpen, action: () => void handleOpen() },
         { label: "Guardar como…", icon: SaveAll, shortcut: "Ctrl+Mayús+S", action: () => void handleSaveAs() },
+        { label: "Copia de seguridad", icon: ArchiveRestore, action: () => void handleBackup() },
         { divider: true },
         { label: "Exportar…", icon: ArrowUpRight, action: () => setExportOpen(true) },
         { divider: true },
@@ -564,12 +620,14 @@ export const App: React.FC = () => {
         ...VIEWS.map((v) => ({ label: v.label, icon: v.icon, checked: view === v.id, disabled: v.needsTable && !currentTable, action: () => setView(v.id) })),
         { divider: true as const },
         { label: "Actualizar", icon: RefreshCw, shortcut: "F5", action: refreshSchema },
+        { label: "Tema oscuro", icon: Moon, checked: dark, action: () => setDark((v) => !v) },
       ],
     },
     {
       id: "help",
       label: "Ayuda",
       items: [
+        { label: "Manual de usuario", icon: BookOpen, shortcut: "F1", action: () => setManualOpen(true) },
         {
           label: "Primeros pasos",
           icon: Keyboard,
@@ -583,7 +641,7 @@ export const App: React.FC = () => {
                 "4. En Relaciones unes las tablas (por ejemplo, pedidos → clientes).",
                 "5. Consulta SQL o el Diseñador de consultas sacan la información que necesitas.",
                 "",
-                "Ctrl+S guardar · F5 actualizar · Alt+/ buscar un comando. La base se guarda sola.",
+                "Ctrl+S guardar · F5 actualizar · Ctrl+K buscar un comando · F1 manual. La base se guarda sola.",
               ].join("\n")
             ),
         },
@@ -721,6 +779,9 @@ export const App: React.FC = () => {
                   onExport={(c, r, k, n) => void exportRows(c, r, k, n)}
                 />
               )}
+              {view === "etl" && (
+                <EtlView db={db} schema={schema} version={version} onChanged={changed} onExport={(c, r, n) => void exportRows(c, r, "xlsx", n)} />
+              )}
               {view === "builder" && <QueryBuilder db={db} schema={schema} onSave={(sql) => void saveQuery(sql, null)} onOpenSql={(sql) => openSql(sql)} />}
               {view === "relations" && (
                 <RelationsView db={db} schema={schema} onChanged={changed} pending={pendingRelation} onPendingHandled={() => setPendingRelation(null)} />
@@ -779,6 +840,7 @@ export const App: React.FC = () => {
         />
       )}
 
+      {manualOpen && <ManualDialog onClose={() => setManualOpen(false)} />}
       <DialogHost />
     </div>
   );

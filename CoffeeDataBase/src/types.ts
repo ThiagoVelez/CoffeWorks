@@ -72,7 +72,7 @@ export interface ColumnDraft {
   defaultValue: string;
 }
 
-export type ViewId = "home" | "datasheet" | "design" | "form" | "sql" | "builder" | "relations" | "assistant";
+export type ViewId = "home" | "datasheet" | "design" | "form" | "sql" | "builder" | "etl" | "relations" | "assistant";
 
 export interface QueryResult {
   columns: string[];

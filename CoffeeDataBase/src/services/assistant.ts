@@ -322,7 +322,13 @@ export interface Finding {
   level: "error" | "warning" | "info";
   title: string;
   detail: string;
-  fix?: { label: string; sql?: string; relationship?: { child: string; column: string; parent: string } };
+  fix?: {
+    label: string;
+    sql?: string;
+    relationship?: { child: string; column: string; parent: string };
+    /** Varias relaciones de una vez (tabla intermedia muchos a muchos). */
+    relationships?: { child: string; column: string; parent: string }[];
+  };
 }
 
 export function diagnoseSchema(db: CoffeeDb, schema: Schema): Finding[] {
@@ -351,6 +357,29 @@ export function diagnoseSchema(db: CoffeeDb, schema: Schema): Finding[] {
           fix: { label: "Crear índice", sql: `CREATE INDEX ${quoteId(`idx_${t.name}_${f.column}`)} ON ${quoteId(t.name)}(${quoteId(f.column)})` },
         });
       }
+    }
+    // Tabla intermedia sin relaciones: dos o más campos «algo_id» que apuntan
+    // a tablas distintas indican una relación muchos a muchos
+    const links = t.columns
+      .filter((c) => !c.pk && !t.foreignKeys.some((f) => f.column === c.name))
+      .map((c) => {
+        const m = /^(.+?)_?id$/i.exec(c.name);
+        if (!m) return null;
+        const base = m[1].toLowerCase();
+        const parent = [base, `${base}s`, `${base}es`].map((n) => tableNames.get(n)).find(Boolean);
+        return parent && parent !== t.name ? { child: t.name, column: c.name, parent } : null;
+      })
+      .filter((x): x is { child: string; column: string; parent: string } => x !== null);
+    const parents = new Set(links.map((l) => l.parent));
+    if (links.length >= 2 && parents.size >= 2) {
+      findings.push({
+        id: `nm-${t.name}`,
+        level: "warning",
+        title: `«${t.name}» une ${[...parents].map((p) => `«${p}»`).join(" y ")} (muchos a muchos)`,
+        detail: "Es una tabla intermedia: cada registro relaciona un elemento de cada tabla. Crear sus relaciones protege los datos y permite unirlas en las consultas.",
+        fix: { label: "Crear las relaciones", relationships: links },
+      });
+      continue;
     }
     // Campos «algo_id» sin relación: el asistente sugiere crearla
     for (const c of t.columns) {
