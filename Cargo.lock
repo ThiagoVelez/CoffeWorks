@@ -367,7 +367,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "coffecams"
+version = "2.4.0"
+dependencies = [
+ "coffe-core",
+ "dirs 5.0.1",
+ "serde",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+]
+
+[[package]]
 name = "coffedoc"
+version = "2.4.0"
+dependencies = [
+ "coffe-core",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+]
+
+[[package]]
+name = "coffepage"
 version = "2.4.0"
 dependencies = [
  "coffe-core",
@@ -1366,6 +1388,12 @@ dependencies = [
  "http-body",
  "pin-project-lite",
 ]
+
+[[package]]
+name = "http-range"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2149c4b4b83390c71fab669730347d578ec6bdf759f2160c581ad8b8819733b4"
 
 [[package]]
 name = "httparse"
@@ -3338,6 +3366,7 @@ dependencies = [
  "gtk",
  "heck 0.5.0",
  "http",
+ "http-range",
  "jni",
  "libc",
  "log",

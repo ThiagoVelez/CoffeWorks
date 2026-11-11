@@ -94,6 +94,12 @@ jobs:
           Assert (Test-Path "$apps\CoffeCalc\CoffeCalc.exe") "CoffeCalc queda instalado"
           Assert (Test-Path "$apps\CoffeView\CoffeView.exe") "CoffeView queda instalado"
           Assert (Test-Path "$apps\CoffePDF\CoffePDF.exe") "CoffePDF queda instalado"
+          Assert (Test-Path "$apps\CoffePage\CoffePage.exe") "CoffePage queda instalado"
+          Assert (Test-Path "$apps\CoffeCams\CoffeCams.exe") "CoffeCams queda instalado"
+          $cpg = (Get-ItemProperty "HKCU:\Software\Classes\.cpg" -ErrorAction SilentlyContinue).'(default)'
+          Assert ($cpg -eq "CoffeWorks.CoffePage.cpg") "se asocia el tipo de archivo .cpg"
+          $ccm = (Get-ItemProperty "HKCU:\Software\Classes\.ccm" -ErrorAction SilentlyContinue).'(default)'
+          Assert ($ccm -eq "CoffeWorks.CoffeCams.ccm") "se asocia el tipo de archivo .ccm"
           $pdfDefault = (Get-ItemProperty "HKCU:\Software\Classes\.pdf" -ErrorAction SilentlyContinue).'(default)'
           Assert ($pdfDefault -ne "CoffeWorks.CoffePDF.pdf") "CoffePDF no reemplaza el lector de PDF predeterminado"
           Assert ((Get-ItemProperty "HKCU:\Software\Classes\.pdf\OpenWithProgids" -ErrorAction SilentlyContinue).'CoffeWorks.CoffePDF.pdf' -ne $null) "CoffePDF aparece en Abrir con"
@@ -101,7 +107,7 @@ jobs:
           # Las ventanas deben arrancar y seguir abiertas
           New-Item -ItemType Directory -Force screenshots | Out-Null
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-          foreach ($exe in @("$dir\CoffeWorks.exe", "$apps\CoffeDoc\CoffeDoc.exe", "$apps\CoffeCalc\CoffeCalc.exe", "$apps\CoffeView\CoffeView.exe", "$apps\CoffePDF\CoffePDF.exe")) {
+          foreach ($exe in @("$dir\CoffeWorks.exe", "$apps\CoffeDoc\CoffeDoc.exe", "$apps\CoffeCalc\CoffeCalc.exe", "$apps\CoffeView\CoffeView.exe", "$apps\CoffePDF\CoffePDF.exe", "$apps\CoffePage\CoffePage.exe", "$apps\CoffeCams\CoffeCams.exe")) {
             $name = [IO.Path]::GetFileNameWithoutExtension($exe)
             $process = Start-Process $exe -PassThru
             Start-Sleep -Seconds 12

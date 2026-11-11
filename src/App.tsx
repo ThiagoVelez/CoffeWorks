@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { TitleBar } from "./components/TitleBar";
 import { Sidebar, type NavTab } from "./components/Sidebar";
 import { WelcomeBanner } from "./components/WelcomeBanner";
@@ -19,6 +19,8 @@ import {
   Table,
   Presentation,
   FilePen,
+  NotebookPen,
+  Video,
   ArrowRightLeft,
 } from "lucide-react";
 
@@ -60,6 +62,22 @@ const FORMAT_SUPPORT = [
     native: ".pdf",
     opens: "PDF (.pdf), imágenes para insertar (PNG, JPG)",
     exports: "PDF editado, páginas extraídas y PNG por página",
+  },
+  {
+    app: "CoffePage",
+    icon: NotebookPen,
+    color: "text-[#7b1fa2]",
+    native: ".cpg",
+    opens: "Cuadernos de CoffePage; imágenes y texto (.txt, .md) para insertar",
+    exports: "HTML (página, sección o cuaderno), Markdown y PDF (imprimir)",
+  },
+  {
+    app: "CoffeCams",
+    icon: Video,
+    color: "text-[#26a680]",
+    native: ".ccm",
+    opens: "Video (MP4, WebM, MOV, MKV), audio (MP3, WAV, M4A…) e imágenes",
+    exports: "Video MP4 o WebM; grabaciones de pantalla y transmisión RTMP",
   },
 ];
 
@@ -229,6 +247,11 @@ export const App: React.FC = () => {
   };
 
   const installedCount = apps.filter((app) => app.installed).length;
+  const categories = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const app of apps) counts.set(app.category || "Office", (counts.get(app.category || "Office") || 0) + 1);
+    return [...counts].map(([name, count]) => ({ name, count }));
+  }, [apps]);
   const infoRows: Array<[string, string]> = suiteInfo
     ? [
         ["Versión de CoffeWorks", suiteInfo.version],
@@ -255,6 +278,7 @@ export const App: React.FC = () => {
           selectedCategory={selectedCategory}
           onSelectCategory={setSelectedCategory}
           appCount={apps.length}
+          categories={categories}
           installedCount={installedCount}
           documentCount={documents.length}
           onOpenVault={isTauri ? () => void handleOpenVault() : undefined}

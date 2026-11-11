@@ -1,7 +1,7 @@
 ; Instalador de CoffeWorks para Windows (Inno Setup 6).
 ;
 ; Instala el Launcher (CoffeWorks.exe) y deja los paquetes de CoffeDoc,
-; CoffeCalc, CoffeView y CoffePDF en la carpeta "packages". Las aplicaciones se instalan
+; CoffeCalc, CoffeView, CoffePDF, CoffePage y CoffeCams en la carpeta "packages". Las aplicaciones se instalan
 ; y desinstalan después desde la Tienda de Apps del propio Launcher.
 ;
 ; Antes de compilar este script hay que generar los ejecutables con
@@ -50,8 +50,8 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [CustomMessages]
-spanish.InstallApps=Instalar ahora CoffeDoc, CoffeCalc, CoffeView y CoffePDF
-english.InstallApps=Install CoffeDoc, CoffeCalc, CoffeView and CoffePDF now
+spanish.InstallApps=Instalar ahora todas las aplicaciones (CoffeDoc, CoffeCalc, CoffeView, CoffePDF, CoffePage y CoffeCams)
+english.InstallApps=Install all apps now (CoffeDoc, CoffeCalc, CoffeView, CoffePDF, CoffePage and CoffeCams)
 spanish.SuiteApps=Aplicaciones de la suite:
 english.SuiteApps=Suite applications:
 spanish.InstallingApps=Instalando las aplicaciones de la suite...

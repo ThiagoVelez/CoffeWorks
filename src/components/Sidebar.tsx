@@ -10,6 +10,7 @@ import {
   Settings,
   HardDrive,
   ShieldCheck,
+  Clapperboard,
 } from "lucide-react";
 
 export type NavTab = "launcher" | "templates" | "integrations" | "settings";
@@ -20,6 +21,8 @@ interface SidebarProps {
   selectedCategory: string | null;
   onSelectCategory: (category: string | null) => void;
   appCount: number;
+  /** Categorías de la tienda con su número de aplicaciones. */
+  categories: Array<{ name: string; count: number }>;
   installedCount: number;
   documentCount: number;
   onOpenVault?: () => void;
@@ -31,6 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   selectedCategory,
   onSelectCategory,
   appCount,
+  categories,
   installedCount,
   documentCount,
   onOpenVault,
@@ -120,26 +124,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* Categorías del acordeón */}
             {isAppsOpen && (
               <div className="ml-5 pl-2.5 border-l-2 border-[#dfd3c7] flex flex-col gap-1 py-1 mt-0.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onSelectTab("launcher");
-                    onSelectCategory("Office");
-                  }}
-                  className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-all text-left ${
-                    currentTab === "launcher" && selectedCategory === "Office"
-                      ? "bg-[#eeddd0] text-[#3e2723] font-bold shadow-xs border-l-4 border-[#6f4e37]"
-                      : "text-[#5c3a21] hover:bg-[#f3eae1] hover:text-[#2c1b12]"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Briefcase size={14} className={currentTab === "launcher" && selectedCategory === "Office" ? "text-[#6f4e37]" : "text-[#8d6e63]"} />
-                    <span>Office</span>
-                  </div>
-                  <span className="font-mono text-[10px] px-1.5 py-0.5 rounded-full bg-[#eeddd0] text-[#6f4e37] font-semibold border border-[#dfd3c7]">
-                    {appCount}
-                  </span>
-                </button>
+                {categories.map(({ name, count }) => {
+                  const active = currentTab === "launcher" && selectedCategory === name;
+                  const CategoryIcon = name === "Multimedia" ? Clapperboard : Briefcase;
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => {
+                        onSelectTab("launcher");
+                        onSelectCategory(name);
+                      }}
+                      className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-all text-left ${
+                        active
+                          ? "bg-[#eeddd0] text-[#3e2723] font-bold shadow-xs border-l-4 border-[#6f4e37]"
+                          : "text-[#5c3a21] hover:bg-[#f3eae1] hover:text-[#2c1b12]"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <CategoryIcon size={14} className={active ? "text-[#6f4e37]" : "text-[#8d6e63]"} />
+                        <span>{name}</span>
+                      </div>
+                      <span className="font-mono text-[10px] px-1.5 py-0.5 rounded-full bg-[#eeddd0] text-[#6f4e37] font-semibold border border-[#dfd3c7]">
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>

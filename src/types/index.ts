@@ -29,7 +29,7 @@ export interface RecentDocument {
   updated_at?: number;
 }
 
-export type DocumentFilter = "all" | "documents" | "spreadsheets" | "presentations" | "pdf" | "pinned";
+export type DocumentFilter = "all" | "documents" | "spreadsheets" | "presentations" | "pdf" | "notes" | "videos" | "pinned";
 
 export interface SuiteInfo {
   version: string;

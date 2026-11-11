@@ -5,6 +5,8 @@ import {
   Table,
   Presentation,
   FilePen,
+  NotebookPen,
+  Video,
   CornerDownLeft,
   X,
   BookOpen,
@@ -142,7 +144,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
               </span>
               {filteredDocs.map((doc) => {
                 const docApp = appForDocument(doc);
-                const DocIcon = docApp === "coffecalc" ? Table : docApp === "coffeview" ? Presentation : docApp === "coffepdf" ? FilePen : FileText;
+                const DocIcon = docApp === "coffecalc" ? Table : docApp === "coffeview" ? Presentation : docApp === "coffepdf" ? FilePen : docApp === "coffepage" ? NotebookPen : docApp === "coffecams" ? Video : FileText;
 
                 return (
                   <button

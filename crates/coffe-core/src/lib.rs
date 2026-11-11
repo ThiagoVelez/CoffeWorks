@@ -212,11 +212,12 @@ pub fn display_path(path: &Path) -> String {
         .unwrap_or(text)
 }
 
-/// Genera el manejador de comandos de un editor de la suite. Las tres
-/// aplicaciones comparten exactamente el mismo conjunto de comandos nativos.
+/// Genera el manejador de comandos de un editor de la suite. Todas las
+/// aplicaciones comparten los comandos comunes; las que necesitan más (como
+/// CoffeCams) los añaden como argumentos: `editor_handler!(mi_comando)`.
 #[macro_export]
 macro_rules! editor_handler {
-    () => {
+    ($($extra:path),* $(,)?) => {
         tauri::generate_handler![
             $crate::commands::core_launch_args,
             $crate::commands::core_read_text,
@@ -239,6 +240,7 @@ macro_rules! editor_handler {
             $crate::commands::core_window_set_fullscreen,
             $crate::commands::core_window_close,
             $crate::commands::core_window_set_title
+            $(, $extra)*
         ]
     };
 }

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, FileText, Table, Presentation, FilePen, Plus } from "lucide-react";
+import { X, FileText, Table, Presentation, FilePen, NotebookPen, Video, Plus } from "lucide-react";
 
 interface CreateDocModalProps {
   isOpen: boolean;
@@ -24,6 +24,8 @@ export const CreateDocModal: React.FC<CreateDocModalProps> = ({
     { id: "coffecalc", name: "CoffeCalc", ext: ".cfs", icon: Table, color: "text-[#107c41]", bg: "bg-[#dff6dd]" },
     { id: "coffeview", name: "CoffeView", ext: ".csl", icon: Presentation, color: "text-[#c43e1c]", bg: "bg-[#faede4]" },
     { id: "coffepdf", name: "CoffePDF", ext: ".pdf", icon: FilePen, color: "text-[#c62828]", bg: "bg-[#fdecea]" },
+    { id: "coffepage", name: "CoffePage", ext: ".cpg", icon: NotebookPen, color: "text-[#7b1fa2]", bg: "bg-[#f3e5f5]" },
+    { id: "coffecams", name: "CoffeCams", ext: ".ccm", icon: Video, color: "text-[#26a680]", bg: "bg-[#e3f6ef]" },
   ];
 
 
@@ -60,7 +62,7 @@ export const CreateDocModal: React.FC<CreateDocModalProps> = ({
           {/* Selector de tipo de aplicación */}
           <div className="flex flex-col gap-2">
             <label className="text-xs font-mono text-[#795548] font-semibold">Tipo de documento:</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
               {docOptions.map((opt) => {
                 const Icon = opt.icon;
                 const isSelected = selectedType === opt.id;

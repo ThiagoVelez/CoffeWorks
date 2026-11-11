@@ -12,7 +12,7 @@ const INSTALLED_KEY = "coffeeworks_installed_apps";
 const FOCUS_KEY = "coffeeworks_focus_mode";
 
 /** Puertos de los servidores de desarrollo de cada aplicación. */
-const DEV_PORTS: Record<string, number> = { coffedoc: 1421, coffecalc: 1422, coffeview: 1423, coffepdf: 1424 };
+const DEV_PORTS: Record<string, number> = { coffedoc: 1421, coffecalc: 1422, coffeview: 1423, coffepdf: 1424, coffepage: 1425, coffecams: 1426 };
 
 const ALIASES: Record<string, string> = { coffesheet: "coffecalc", coffeslides: "coffeview" };
 
@@ -26,6 +26,8 @@ export function appForDocument(doc: Pick<RecentDocument, "app_id" | "name">): st
   if (["cfs", "xlsx", "xls", "csv"].includes(extension)) return "coffecalc";
   if (["csl", "pptx"].includes(extension)) return "coffeview";
   if (extension === "pdf") return "coffepdf";
+  if (extension === "cpg") return "coffepage";
+  if (["ccm", "mp4", "webm", "mov", "mkv"].includes(extension)) return "coffecams";
   return "coffedoc";
 }
 
@@ -94,6 +96,38 @@ const WEB_CATALOG: SuiteApp[] = [
     icon_name: "file-pen",
     icon_url: "/icons/CoffePDF.ico",
     category: "Office",
+  },
+  {
+    id: "coffepage",
+    name: "CoffePage",
+    subtitle: "Cuaderno digital de notas",
+    description:
+      "Notas en secciones y páginas: escribe en cualquier parte, dibuja a mano, pega imágenes, marca tareas y busca en todo el cuaderno.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "notes",
+    icon_name: "notebook",
+    icon_url: "/icons/CoffePage.ico",
+    category: "Office",
+  },
+  {
+    id: "coffecams",
+    name: "CoffeCams",
+    subtitle: "Editor de video, grabación y streaming",
+    description:
+      "Edita videos con varias pistas, cortes, velocidad, filtros, textos y transiciones; graba la pantalla y la cámara, y transmite en directo.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "media",
+    icon_name: "video",
+    icon_url: "/icons/CoffeCams.ico",
+    category: "Multimedia",
   },
 ];
 

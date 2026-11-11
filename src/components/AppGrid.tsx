@@ -13,6 +13,8 @@ import {
   Clock,
   BookOpen,
   FilePen,
+  NotebookPen,
+  Video,
 } from "lucide-react";
 import type { SuiteApp } from "../types";
 
@@ -90,6 +92,10 @@ export const AppGrid: React.FC<AppGridProps> = ({
         return Mail;
       case "file-pen":
         return FilePen;
+      case "notebook":
+        return NotebookPen;
+      case "video":
+        return Video;
       default:
         return FileText;
     }
