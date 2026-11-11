@@ -1,20 +1,46 @@
-// Capa de comunicación con Tauri (IPC) y fallback para navegador web estándar
-import type { SuiteApp, RecentDocument } from "../types";
+// Puente del Launcher con el backend nativo (Tauri) y alternativa para el
+// navegador (npm run dev), donde las aplicaciones se abren en sus puertos de
+// desarrollo y el estado se guarda en localStorage y en /api/vault.
 
-// Verificación de si la aplicación se ejecuta dentro del runtime de Tauri
-const isTauri = typeof window !== "undefined" && ("__TAURI_INTERNALS__" in window || "__TAURI__" in window);
+import { invoke } from "@tauri-apps/api/core";
+import type { RecentDocument, SuiteApp, SuiteInfo } from "../types";
 
-// Aplicaciones activas centrales de la suite CoffeWorks
-const MOCK_APPS: SuiteApp[] = [
+export const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
+const RECENT_KEY = "coffeeworks_recent_docs";
+const INSTALLED_KEY = "coffeeworks_installed_apps";
+const FOCUS_KEY = "coffeeworks_focus_mode";
+
+/** Puertos de los servidores de desarrollo de cada aplicación. */
+const DEV_PORTS: Record<string, number> = { coffedoc: 1421, coffecalc: 1422, coffeview: 1423 };
+
+const ALIASES: Record<string, string> = { coffesheet: "coffecalc", coffeslides: "coffeview" };
+
+export const canonicalAppId = (id: string) => ALIASES[id] || id;
+
+/** Aplicación que abre un documento, según su `app_id` o su extensión. */
+export function appForDocument(doc: Pick<RecentDocument, "app_id" | "name">): string {
+  const id = canonicalAppId(doc.app_id || "");
+  if (DEV_PORTS[id]) return id;
+  const extension = doc.name.split(".").pop()?.toLowerCase() || "";
+  if (["cfs", "xlsx", "xls", "csv"].includes(extension)) return "coffecalc";
+  if (["csl", "pptx"].includes(extension)) return "coffeview";
+  return "coffedoc";
+}
+
+// Catálogo usado en el navegador; en escritorio lo proporciona el backend
+const WEB_CATALOG: SuiteApp[] = [
   {
     id: "coffedoc",
     name: "CoffeDoc",
-    subtitle: "Procesador de textos colaborativo & Markdown enriquecido",
-    description: "Documentos ágiles, cinta Ribbon completa de Microsoft Word y exportación a formatos universales (.cfd, .docx, .md, .pdf).",
+    subtitle: "Procesador de textos con formato enriquecido",
+    description:
+      "Documentos con estilos, tablas, imágenes y esquema automático. Abre y guarda Word (.docx), Markdown, HTML y PDF.",
     version: "v1.4",
     installed: true,
-    size_mb: 184,
-    status: "Instalada (184 MB)",
+    available: true,
+    size_mb: 0,
+    status: "",
     color_badge: "primary",
     icon_name: "file-text",
     icon_url: "/icons/CoffeText.ico",
@@ -23,12 +49,14 @@ const MOCK_APPS: SuiteApp[] = [
   {
     id: "coffecalc",
     name: "CoffeCalc",
-    subtitle: "Hoja de cálculo profesional y modelado matricial avanzado",
-    description: "Cuadrícula matricial A-Z, cinta Ribbon verde Excel, barra de fórmulas fx, funciones estadísticas y compatibilidad total XLSX/CSV.",
+    subtitle: "Hoja de cálculo con fórmulas y gráficos",
+    description:
+      "Libros con varias hojas, más de 80 funciones, formato de celdas, filtros y gráficos. Compatible con Excel (.xlsx) y CSV.",
     version: "v1.0",
     installed: true,
-    size_mb: 192,
-    status: "Instalada (192 MB)",
+    available: true,
+    size_mb: 0,
+    status: "",
     color_badge: "secondary",
     icon_name: "table",
     icon_url: "/icons/CoffeSheet.ico",
@@ -37,12 +65,14 @@ const MOCK_APPS: SuiteApp[] = [
   {
     id: "coffeview",
     name: "CoffeView",
-    subtitle: "Diseño de presentaciones visuales y diapositivas de alto impacto",
-    description: "Diseñador de diapositivas interactivas, transiciones cinematográficas, lienzos gráficos, modo orador y exportación universal.",
+    subtitle: "Presentaciones y diapositivas",
+    description:
+      "Diseñador de diapositivas con temas, formas, imágenes, transiciones, notas del orador y exportación a PowerPoint (.pptx) y PDF.",
     version: "v1.0",
     installed: true,
-    size_mb: 178,
-    status: "Instalada (178 MB)",
+    available: true,
+    size_mb: 0,
+    status: "",
     color_badge: "tertiary",
     icon_name: "presentation",
     icon_url: "/icons/CoffeSlides.ico",
@@ -50,245 +80,182 @@ const MOCK_APPS: SuiteApp[] = [
   },
 ];
 
-// Carga de documentos desde almacenamiento local para persistencia real
-// Carga de documentos desde endpoint compartido o almacenamiento local
-const loadStoredDocs = (): RecentDocument[] => {
-  if (typeof window === "undefined") return [];
+function readJson<T>(key: string, fallback: T): T {
   try {
-    const raw = localStorage.getItem("coffeeworks_recent_docs");
-    return raw ? JSON.parse(raw) : [];
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
   } catch {
-    return [];
+    return fallback;
   }
-};
+}
 
-const saveStoredDocs = (docs: RecentDocument[]): void => {
-  if (typeof window === "undefined") return;
+function writeJson(key: string, value: unknown): void {
   try {
-    localStorage.setItem("coffeeworks_recent_docs", JSON.stringify(docs));
-  } catch (err) {
-    console.error("Error al persistir documentos:", err);
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Almacenamiento lleno o no disponible: el estado no se conserva.
   }
-};
+}
 
-let mockDocs: RecentDocument[] = loadStoredDocs();
-let mockFocusMode = true;
+function webApps(): SuiteApp[] {
+  const installed = readJson<Record<string, boolean>>(INSTALLED_KEY, {});
+  return WEB_CATALOG.map((app) => {
+    const isInstalled = installed[app.id] !== false;
+    return {
+      ...app,
+      installed: isInstalled,
+      status: isInstalled ? "Disponible en modo web" : "Disponible para instalar",
+    };
+  });
+}
 
-// Sincronización con el endpoint compartido de la suite (/api/vault)
-const syncWithVaultEndpoint = async (): Promise<RecentDocument[]> => {
-  if (typeof window === "undefined") return mockDocs;
+async function webRecentDocuments(): Promise<RecentDocument[]> {
   try {
-    const res = await fetch("/api/vault");
-    if (res.ok) {
-      const data = (await res.json()) as RecentDocument[];
-      if (Array.isArray(data) && data.length > 0) {
-        mockDocs = data;
-        saveStoredDocs(data);
-        return data;
+    const response = await fetch("/api/vault");
+    if (response.ok) {
+      const docs = (await response.json()) as RecentDocument[];
+      if (Array.isArray(docs)) {
+        writeJson(RECENT_KEY, docs);
+        return docs;
       }
     }
   } catch {
-    // Si la llamada HTTP falla, usa almacenamiento local
+    // Sin servidor de desarrollo: se usa la copia local.
   }
-  return mockDocs;
-};
+  return readJson<RecentDocument[]>(RECENT_KEY, []);
+}
 
-// Servicio unificado de IPC
+async function webSaveDocuments(docs: RecentDocument[]): Promise<void> {
+  writeJson(RECENT_KEY, docs);
+  try {
+    await fetch("/api/vault", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(docs),
+    });
+  } catch {
+    // Se conserva al menos la copia local.
+  }
+}
+
+function openDevApp(appId: string, query = ""): string {
+  const id = canonicalAppId(appId);
+  const port = DEV_PORTS[id];
+  if (!port) throw new Error(`Aplicación desconocida: ${appId}`);
+  window.open(`http://localhost:${port}/${query}`, "_blank");
+  return `Abierta en http://localhost:${port}`;
+}
+
 export const tauriBridge = {
   async getSuiteApps(): Promise<SuiteApp[]> {
-    if (isTauri) {
-      try {
-        const { invoke } = await import("@tauri-apps/api/core");
-        return await invoke<SuiteApp[]>("get_suite_apps");
-      } catch (err) {
-        console.warn("Fallo al invocar get_suite_apps en Tauri:", err);
-      }
-    }
-    return Promise.resolve([...MOCK_APPS]);
+    return isTauri ? invoke<SuiteApp[]>("get_suite_apps") : webApps();
   },
 
-  async launchApp(appId: string): Promise<string> {
+  /** Instala una aplicación. Lanza un error con el motivo si no es posible. */
+  async installApp(appId: string): Promise<SuiteApp> {
+    if (isTauri) return invoke<SuiteApp>("install_app", { appId });
+    writeJson(INSTALLED_KEY, { ...readJson<Record<string, boolean>>(INSTALLED_KEY, {}), [appId]: true });
+    return webApps().find((app) => app.id === appId) as SuiteApp;
+  },
+
+  async uninstallApp(appId: string): Promise<SuiteApp> {
+    if (isTauri) return invoke<SuiteApp>("uninstall_app", { appId });
+    writeJson(INSTALLED_KEY, { ...readJson<Record<string, boolean>>(INSTALLED_KEY, {}), [appId]: false });
+    return webApps().find((app) => app.id === appId) as SuiteApp;
+  },
+
+  /** Abre una aplicación, opcionalmente creando un documento con el título dado. */
+  async launchApp(appId: string, newTitle?: string): Promise<string> {
+    const id = canonicalAppId(appId);
     if (isTauri) {
-      try {
-        const { invoke } = await import("@tauri-apps/api/core");
-        return await invoke<string>("launch_app", { appId });
-      } catch (err) {
-        console.warn("Fallo al invocar launch_app en Tauri:", err);
-      }
+      return invoke<string>("launch_app", { appId: id, file: null, newTitle: newTitle ?? null });
     }
-    if (typeof window !== "undefined") {
-      if (appId === "coffedoc") {
-        window.open("http://localhost:1421", "_blank");
-        return "Abriendo CoffeDoc en http://localhost:1421";
-      }
-      if (appId === "coffecalc" || appId === "coffesheet") {
-        window.open("http://localhost:1422", "_blank");
-        return "Abriendo CoffeCalc en http://localhost:1422";
-      }
-      if (appId === "coffeview" || appId === "coffeslides") {
-        window.open("http://localhost:1423", "_blank");
-        return "Abriendo CoffeView en http://localhost:1423";
-      }
-    }
-    return Promise.resolve(`Lanzando aplicación: ${appId}`);
+    return openDevApp(id, newTitle !== undefined ? `?new=${encodeURIComponent(newTitle)}` : "");
   },
 
   async getRecentDocuments(): Promise<RecentDocument[]> {
-    if (isTauri) {
-      try {
-        const { invoke } = await import("@tauri-apps/api/core");
-        return await invoke<RecentDocument[]>("get_recent_documents");
-      } catch (err) {
-        console.warn("Fallo al invocar get_recent_documents en Tauri:", err);
-      }
-    }
-
-    const liveDocs = await syncWithVaultEndpoint();
-    return liveDocs;
-  },
-
-  async createDocument(docType: string, title: string): Promise<RecentDocument> {
-    if (isTauri) {
-      try {
-        const { invoke } = await import("@tauri-apps/api/core");
-        return await invoke<RecentDocument>("create_document", { docType, title });
-      } catch (err) {
-        console.warn("Fallo al invocar create_document en Tauri:", err);
-      }
-    }
-
-    const extensions: Record<string, string> = {
-      coffedoc: "cfd",
-      coffecalc: "cfs",
-      coffesheet: "cfs",
-      coffeslides: "csl",
-      coffenotes: "cfn",
-    };
-
-    const ext = extensions[docType] || "cfd";
-    const name = title.trim() ? `${title.trim()}.${ext}` : `Nuevo Documento.${ext}`;
-
-    const categories: Record<string, string> = {
-      coffedoc: "Producto",
-      coffecalc: "Finanzas",
-      coffesheet: "Finanzas",
-      coffeslides: "Presentación",
-      coffenotes: "Creativo",
-    };
-
-    const created: RecentDocument = {
-      id: `doc_${Date.now()}`,
-      name,
-      app_id: docType,
-      category: categories[docType] || "General",
-      last_modified: "Hace unos instantes",
-      is_pinned: false,
-      path: `./vault/${name}`,
-    };
-
-    mockDocs = [created, ...mockDocs];
-    saveStoredDocs(mockDocs);
-
-    // Sincronizar vía endpoint
-    try {
-      await fetch("/api/vault", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(created),
-      });
-    } catch {
-      // Ignorar si está fuera de línea
-    }
-
-    return Promise.resolve(created);
+    return isTauri ? invoke<RecentDocument[]>("get_recent_documents") : webRecentDocuments();
   },
 
   async saveDocuments(docs: RecentDocument[]): Promise<void> {
-    mockDocs = docs;
-    saveStoredDocs(docs);
-    try {
-      await fetch("/api/vault", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(docs),
-      });
-    } catch {
-      // Ignorar si falla
-    }
+    if (isTauri) await invoke("save_recent_documents", { docs });
+    else await webSaveDocuments(docs);
   },
 
+  /** Quita un documento de la bóveda (y borra su archivo si vive en ella). */
   async deleteDocument(id: string): Promise<RecentDocument[]> {
-    mockDocs = mockDocs.filter((doc) => doc.id !== id);
-    saveStoredDocs(mockDocs);
-    try {
-      await fetch("/api/vault", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(mockDocs),
-      });
-    } catch {
-      // Ignorar si falla la llamada
-    }
-    return Promise.resolve(mockDocs);
+    if (isTauri) return invoke<RecentDocument[]>("delete_document", { id });
+    const docs = (await webRecentDocuments()).filter((doc) => doc.id !== id);
+    await webSaveDocuments(docs);
+    return docs;
   },
 
-  async clearDocuments(): Promise<void> {
-    mockDocs = [];
-    saveStoredDocs([]);
-    try {
-      await fetch("/api/vault", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify([]),
-      });
-    } catch {
-      // Ignorar
-    }
+  async openDocument(doc: RecentDocument): Promise<string> {
+    if (isTauri) return invoke<string>("open_document", { id: doc.id });
+    return openDevApp(appForDocument(doc), `?doc=${encodeURIComponent(doc.id)}`);
   },
 
-  async toggleFocusMode(): Promise<boolean> {
+  /** Crea un documento a partir del contenido de una plantilla y lo abre. */
+  async createFromTemplate(appId: string, docId: string, fileName: string, contents: string): Promise<string> {
     if (isTauri) {
-      try {
-        const { invoke } = await import("@tauri-apps/api/core");
-        return await invoke<boolean>("toggle_focus_mode");
-      } catch (err) {
-        console.warn("Fallo al alternar modo enfoque en Tauri:", err);
-      }
+      return invoke<string>("create_document_file", { appId, docId, fileName, contents });
     }
-    mockFocusMode = !mockFocusMode;
-    return Promise.resolve(mockFocusMode);
+    return openDevApp(appId, `#cfw=${encodeURIComponent(contents)}`);
+  },
+
+  async openVaultFolder(): Promise<string> {
+    if (isTauri) return invoke<string>("open_vault_folder");
+    throw new Error("La carpeta de documentos solo existe en la aplicación de escritorio.");
+  },
+
+  async getSuiteInfo(): Promise<SuiteInfo | null> {
+    return isTauri ? invoke<SuiteInfo>("get_suite_info") : null;
+  },
+
+  /** Modo enfoque: minimizar el Launcher al abrir una aplicación. */
+  getFocusMode(): boolean {
+    return readJson<boolean>(FOCUS_KEY, false);
+  },
+
+  setFocusMode(enabled: boolean): void {
+    writeJson(FOCUS_KEY, enabled);
+  },
+
+  async openExternal(target: string): Promise<void> {
+    if (isTauri) await invoke("open_external", { target });
+    else window.open(target, "_blank", "noopener");
   },
 
   async minimizeWindow(): Promise<void> {
-    if (isTauri) {
-      try {
-        const { getCurrentWindow } = await import("@tauri-apps/api/window");
-        await getCurrentWindow().minimize();
-      } catch (err) {
-        console.warn("Error al minimizar ventana:", err);
-      }
-    }
+    if (isTauri) await invoke("minimize_window");
   },
 
   async maximizeWindow(): Promise<void> {
     if (isTauri) {
-      try {
-        const { getCurrentWindow } = await import("@tauri-apps/api/window");
-        await getCurrentWindow().toggleMaximize();
-      } catch (err) {
-        console.warn("Error al maximizar ventana:", err);
-      }
+      await invoke("maximize_window");
+    } else if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    } else {
+      await document.documentElement.requestFullscreen().catch(() => undefined);
     }
   },
 
   async closeWindow(): Promise<void> {
-    if (isTauri) {
-      try {
-        const { getCurrentWindow } = await import("@tauri-apps/api/window");
-        await getCurrentWindow().close();
-      } catch (err) {
-        console.warn("Error al cerrar ventana:", err);
-      }
-    }
+    if (isTauri) await invoke("close_window");
+    else window.close();
   },
 };
+
+/** Texto relativo ("hace 5 min") para la fecha de un documento. */
+export function relativeTime(timestamp: number | undefined): string {
+  if (!timestamp) return "";
+  const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000));
+  if (seconds < 60) return "hace un momento";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `hace ${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `hace ${hours} h`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return `hace ${days} ${days === 1 ? "día" : "días"}`;
+  return new Date(timestamp).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
+}

@@ -51,6 +51,7 @@ import {
   loadWebWorkbook,
   newId,
   openPath,
+  parseCfs,
   persistWorkbook,
   saveWorkbookAs,
   usedBounds,
@@ -434,6 +435,12 @@ export const App: React.FC = () => {
             loadWorkbook({ workbook: stored, filePath: null });
             return;
           }
+        }
+        if (args.payload) {
+          loadWorkbook({ workbook: parseCfs(args.payload, DEFAULT_TITLE), filePath: null });
+          changeCounter.current += 1;
+          await saveNow();
+          return;
         }
         if (args.newTitle !== null) {
           loadWorkbook({ workbook: createBlankWorkbook(args.newTitle || DEFAULT_TITLE), filePath: null });

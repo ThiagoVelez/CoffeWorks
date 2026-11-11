@@ -12,8 +12,8 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onOpenCommandPalette }) => {
       data-tauri-drag-region
       className="fixed top-0 left-0 right-0 h-10 z-50 bg-white/95 backdrop-blur-md border-b border-[#e8dfd8] flex items-center justify-between px-3 select-none text-[#2c1b12] shadow-sm"
     >
-      {/* Marca e identidad con acento café */}
-      <div className="flex items-center gap-2.5">
+      {/* Marca e identidad con acento café (también permite arrastrar la ventana) */}
+      <div data-tauri-drag-region className="flex items-center gap-2.5 [&>*]:pointer-events-none">
         <div className="w-7 h-7 rounded-lg bg-[#f0e6de] border border-[#dfd3c7] flex items-center justify-center text-[#6f4e37] shadow-xs">
           <Coffee size={17} strokeWidth={2.4} />
         </div>
@@ -21,7 +21,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onOpenCommandPalette }) => {
           CoffeWorks
         </span>
         <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-[#f4ede6] text-[#6f4e37] font-semibold border border-[#dfd3c7]">
-          v2.4 Pro
+          v2.4
         </span>
       </div>
 

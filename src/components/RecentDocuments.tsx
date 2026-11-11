@@ -8,12 +8,14 @@ import {
   Trash2,
 } from "lucide-react";
 import type { RecentDocument, DocumentFilter } from "../types";
+import { relativeTime } from "../services/tauriBridge";
 
 interface RecentDocumentsProps {
   documents: RecentDocument[];
   onOpenDoc: (doc: RecentDocument) => void;
   onTogglePinDoc: (id: string) => void;
   onDeleteDoc: (id: string) => void;
+  onOpenVault?: () => void;
 }
 
 export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
@@ -21,13 +23,18 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
   onOpenDoc,
   onTogglePinDoc,
   onDeleteDoc,
+  onOpenVault,
 }) => {
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<DocumentFilter>("all");
   const [menuOpenDocId, setMenuOpenDocId] = useState<string | null>(null);
 
   // Cerrar menú contextual al hacer clic en cualquier otro lugar
   useEffect(() => {
-    const handleOutsideClick = () => setMenuOpenDocId(null);
+    const handleOutsideClick = () => {
+      setMenuOpenDocId(null);
+      setConfirmDeleteId(null);
+    };
     window.addEventListener("click", handleOutsideClick);
     return () => window.removeEventListener("click", handleOutsideClick);
   }, []);
@@ -146,7 +153,7 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
           <div className="py-12 px-4 flex flex-col items-center justify-center text-center gap-2.5 border border-dashed border-[#dfd3c7] rounded-xl bg-[#fbf9f6]">
             <span className="text-sm font-bold text-[#2c1b12]">Bóveda de documentos vacía</span>
             <p className="text-xs text-[#795548] font-sans max-w-md leading-relaxed">
-              No tienes archivos recientes en esta categoría. Puedes crear uno nuevo desde el botón "+ Nuevo Documento Rápido" o abrir la aplicación CoffeDoc para empezar a redactar.
+              No hay archivos recientes en esta categoría. Crea uno con el botón «Nuevo documento» o abre una aplicación para empezar.
             </p>
           </div>
         ) : (
@@ -187,9 +194,13 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
                     <div className="flex items-center gap-2 text-[11px] font-mono text-[#795548] truncate">
                       <span>{doc.category}</span>
                       <span>•</span>
-                      <span>{doc.last_modified}</span>
-                      <span className="hidden sm:inline">•</span>
-                      <span className="hidden sm:inline text-[#a1887f]">{doc.path}</span>
+                      <span>{relativeTime(doc.updated_at) || doc.last_modified}</span>
+                      {doc.path && !doc.path.startsWith("web:") && (
+                        <>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="hidden sm:inline text-[#a1887f] truncate">{doc.path}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -244,13 +255,19 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
                         <button
                           type="button"
                           onClick={() => {
+                            // Se pide una segunda pulsación para confirmar el borrado
+                            if (confirmDeleteId !== doc.id) {
+                              setConfirmDeleteId(doc.id);
+                              return;
+                            }
+                            setConfirmDeleteId(null);
                             setMenuOpenDocId(null);
                             onDeleteDoc(doc.id);
                           }}
                           className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors text-left"
                         >
                           <Trash2 size={14} />
-                          <span>Borrar documento</span>
+                          <span>{confirmDeleteId === doc.id ? "Pulsa otra vez para confirmar" : "Borrar documento"}</span>
                         </button>
                       </div>
                     )}
@@ -267,16 +284,16 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
         <span>
           Mostrando {filteredDocs.length} de {documents.length} archivos en tu bóveda local
         </span>
-        <button
-          type="button"
-          onClick={() => {
-            if (filteredDocs.length > 0) onOpenDoc(filteredDocs[0]);
-          }}
-          className="text-[#6f4e37] hover:text-[#3e2723] font-bold flex items-center gap-1 transition-colors"
-        >
-          <span>Ver carpeta de trabajo completa</span>
-          <ArrowRight size={13} />
-        </button>
+        {onOpenVault && (
+          <button
+            type="button"
+            onClick={onOpenVault}
+            className="text-[#6f4e37] hover:text-[#3e2723] font-bold flex items-center gap-1 transition-colors"
+          >
+            <span>Abrir la carpeta de documentos</span>
+            <ArrowRight size={13} />
+          </button>
+        )}
       </div>
     </section>
   );

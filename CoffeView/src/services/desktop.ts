@@ -45,6 +45,8 @@ export interface LaunchArgs {
   newTitle: string | null;
   /** Identificador de un documento guardado en el navegador (modo web). */
   docId: string | null;
+  /** Contenido de un documento enviado por el Launcher (plantillas, modo web). */
+  payload: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -102,17 +104,28 @@ export async function getLaunchArgs(): Promise<LaunchArgs> {
       const args = await invoke<{ file: string | null; new_title: string | null }>(
         "core_launch_args"
       );
-      return { file: args.file, newTitle: args.new_title, docId: null };
+      return { file: args.file, newTitle: args.new_title, docId: null, payload: null };
     } catch (err) {
       console.warn("No se pudieron leer los argumentos de arranque:", err);
     }
-    return { file: null, newTitle: null, docId: null };
+    return { file: null, newTitle: null, docId: null, payload: null };
   }
   const params = new URLSearchParams(window.location.search);
+  let payload: string | null = null;
+  if (window.location.hash.startsWith("#cfw=")) {
+    try {
+      payload = decodeURIComponent(window.location.hash.slice(5));
+    } catch {
+      payload = null;
+    }
+    // Se limpia la dirección para que recargar no vuelva a crear el documento
+    window.history.replaceState(null, "", window.location.pathname);
+  }
   return {
     file: null,
     newTitle: params.get("new"),
     docId: params.get("doc"),
+    payload,
   };
 }
 

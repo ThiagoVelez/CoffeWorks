@@ -1,17 +1,23 @@
 import React from "react";
-import { Command, Coffee } from "lucide-react";
+import { Command, Coffee, Plus } from "lucide-react";
 
 interface WelcomeBannerProps {
   focusMode: boolean;
-  docCount?: number;
   onToggleFocusMode: () => void;
-  onCreateNewDoc?: (type: string) => void;
+  installedCount: number;
+  appCount: number;
+  onCreateNewDoc: () => void;
 }
 
 export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
   focusMode,
   onToggleFocusMode,
+  installedCount,
+  appCount,
+  onCreateNewDoc,
 }) => {
+  const hour = new Date().getHours();
+  const greeting = hour < 6 ? "Buenas noches" : hour < 13 ? "Buenos días" : hour < 20 ? "Buenas tardes" : "Buenas noches";
 
   const todayStr = new Intl.DateTimeFormat("es-ES", {
     weekday: "long",
@@ -43,12 +49,12 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
                   focusMode ? "bg-[#6f4e37] animate-pulse" : "bg-[#a1887f]"
                 }`}
               />
-              <span>{focusMode ? "Modo Enfoque Activado" : "Modo Enfoque Pausado"}</span>
+              <span>{focusMode ? "Modo enfoque activado" : "Modo enfoque desactivado"}</span>
             </button>
             <span className="font-mono text-[11px] text-[#795548] font-medium">{formattedDate}</span>
             <span className="text-[#a1887f] font-mono text-[11px]">•</span>
             <span className="font-mono text-[11px] text-[#5c3a21] font-semibold bg-[#eeddd0] px-2 py-0.5 rounded-full border border-[#dfd3c7]">
-              Tienda de Apps Activa
+              {installedCount} de {appCount} apps instaladas
             </span>
           </div>
 
@@ -58,11 +64,11 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
               <Coffee size={18} strokeWidth={2.4} />
             </div>
             <h1 className="font-display text-2xl lg:text-3xl text-[#2c1b12] font-bold tracking-tight">
-              Buenos días, bienvenido a CoffeWorks
+              {greeting}, bienvenido a CoffeWorks
             </h1>
           </div>
           <p className="text-sm text-[#5c3a21] leading-relaxed">
-            Tu centro de distribución y tienda de aplicaciones de la suite. Instala, ejecuta y gestiona tus herramientas de productividad de forma local y sin dependencias externas.
+            Instala, abre y gestiona las aplicaciones de la suite, y retoma tus documentos recientes. Todo funciona en tu equipo, sin conexión.
           </p>
 
           {/* Atajo de teclado */}
@@ -73,6 +79,15 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
             </span>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={onCreateNewDoc}
+          className="self-start xl:self-center shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#6f4e37] hover:bg-[#5c3a21] text-white text-xs font-bold shadow-sm transition-all active:scale-95"
+        >
+          <Plus size={15} />
+          <span>Nuevo documento</span>
+        </button>
       </div>
     </section>
   );

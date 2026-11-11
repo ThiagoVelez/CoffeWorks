@@ -51,6 +51,7 @@ import {
   loadWebDocument,
   openLast,
   openPath,
+  parseCfd,
   persistDocument,
   saveDocumentAs,
   type OpenResult,
@@ -432,6 +433,12 @@ export const App: React.FC = () => {
             loadDocument({ document: stored, filePath: null });
             return;
           }
+        }
+        if (args.payload) {
+          loadDocument({ document: parseCfd(args.payload, DEFAULT_TITLE), filePath: null });
+          changeCounter.current += 1;
+          await saveNow();
+          return;
         }
         if (args.newTitle !== null) {
           loadDocument({ document: createBlankDocument(args.newTitle || DEFAULT_TITLE), filePath: null });

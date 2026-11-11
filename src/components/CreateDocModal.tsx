@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, FileText, Table, Presentation, StickyNote, Plus } from "lucide-react";
+import { X, FileText, Table, Presentation, Plus } from "lucide-react";
 
 interface CreateDocModalProps {
   isOpen: boolean;
@@ -20,11 +20,11 @@ export const CreateDocModal: React.FC<CreateDocModalProps> = ({
   if (!isOpen) return null;
 
   const docOptions = [
-    { id: "coffedoc", name: "CoffeDoc", ext: ".cfd", icon: FileText, color: "text-[#6f4e37]", bg: "bg-[#eeddd0]" },
+    { id: "coffedoc", name: "CoffeDoc", ext: ".cfd", icon: FileText, color: "text-[#185abd]", bg: "bg-[#e8f1fc]" },
     { id: "coffecalc", name: "CoffeCalc", ext: ".cfs", icon: Table, color: "text-[#107c41]", bg: "bg-[#dff6dd]" },
-    { id: "coffeslides", name: "CoffeSlides", ext: ".csl", icon: Presentation, color: "text-[#b07d62]", bg: "bg-[#faede4]" },
-    { id: "coffenotes", name: "CoffeNotes", ext: ".cfn", icon: StickyNote, color: "text-[#6f4e37]", bg: "bg-[#eeddd0]" },
+    { id: "coffeview", name: "CoffeView", ext: ".csl", icon: Presentation, color: "text-[#c43e1c]", bg: "bg-[#faede4]" },
   ];
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,7 +59,7 @@ export const CreateDocModal: React.FC<CreateDocModalProps> = ({
           {/* Selector de tipo de aplicación */}
           <div className="flex flex-col gap-2">
             <label className="text-xs font-mono text-[#795548] font-semibold">Tipo de documento:</label>
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-3 gap-2.5">
               {docOptions.map((opt) => {
                 const Icon = opt.icon;
                 const isSelected = selectedType === opt.id;

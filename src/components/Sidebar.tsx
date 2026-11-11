@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
   Coffee,
-  ChevronsUpDown,
   LayoutGrid,
   Package,
   ChevronDown,
@@ -20,6 +19,10 @@ interface SidebarProps {
   onSelectTab: (tab: NavTab) => void;
   selectedCategory: string | null;
   onSelectCategory: (category: string | null) => void;
+  appCount: number;
+  installedCount: number;
+  documentCount: number;
+  onOpenVault?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -27,6 +30,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectTab,
   selectedCategory,
   onSelectCategory,
+  appCount,
+  installedCount,
+  documentCount,
+  onOpenVault,
 }) => {
   const [isAppsOpen, setIsAppsOpen] = useState<boolean>(true);
 
@@ -41,21 +48,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="flex flex-col gap-3">
         {/* Selector de espacio de trabajo / Bóveda estilo Tostaduría */}
         <div className="px-1">
-          <div className="flex items-center justify-between p-2 rounded-xl bg-white hover:bg-[#f4ede6] transition-colors cursor-pointer border border-[#dfd3c7] shadow-xs">
+          <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-[#dfd3c7] shadow-xs">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-lg bg-[#eeddd0] border border-[#dfd3c7] flex items-center justify-center text-[#6f4e37] shrink-0">
                 <Coffee size={18} strokeWidth={2.4} />
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-xs font-bold text-[#2c1b12] truncate">
-                  Tostaduría Principal
+                  CoffeWorks
                 </span>
                 <span className="font-mono text-[10px] text-[#795548] truncate">
-                  Equipo de Producción
+                  Suite ofimática local
                 </span>
               </div>
             </div>
-            <ChevronsUpDown size={15} className="text-[#8d6e63] shrink-0 ml-1" />
           </div>
         </div>
 
@@ -131,7 +137,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <span>Office</span>
                   </div>
                   <span className="font-mono text-[10px] px-1.5 py-0.5 rounded-full bg-[#eeddd0] text-[#6f4e37] font-semibold border border-[#dfd3c7]">
-                    3
+                    {appCount}
                   </span>
                 </button>
               </div>
@@ -164,18 +170,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </div>
 
-      {/* Pie de barra lateral con estado del sistema y bóveda */}
+      {/* Pie de barra lateral: estado real de la suite */}
       <div className="p-2.5 border-t border-[#e8dfd8] flex flex-col gap-2 bg-white/70 rounded-xl mx-1">
-        <div className="flex items-center justify-between text-[#795548] text-[11px] font-mono">
+        <button
+          type="button"
+          onClick={onOpenVault}
+          disabled={!onOpenVault}
+          title={onOpenVault ? "Abrir la carpeta de documentos" : undefined}
+          className="flex items-center justify-between text-[#795548] text-[11px] font-mono enabled:hover:text-[#3e2723] text-left"
+        >
           <span className="flex items-center gap-1.5 font-medium">
             <HardDrive size={13} className="text-[#6f4e37]" />
-            Bóveda Local
+            Bóveda local
           </span>
-          <span className="text-[#6f4e37] font-bold">98% Cifrada</span>
-        </div>
+          <span className="text-[#6f4e37] font-bold">
+            {documentCount} {documentCount === 1 ? "documento" : "documentos"}
+          </span>
+        </button>
         <div className="flex items-center gap-1.5 text-[#795548] text-[11px] font-mono">
           <ShieldCheck size={13} className="text-[#8d5b4c]" />
-          <span>Sincronización P2P Lista</span>
+          <span>
+            {installedCount} de {appCount} apps instaladas
+          </span>
         </div>
       </div>
     </aside>

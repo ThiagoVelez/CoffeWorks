@@ -53,6 +53,7 @@ import {
   loadWebPresentation,
   newId,
   openPath,
+  parseCsl,
   persistPresentation,
   savePresentationAs,
   themeById,
@@ -407,6 +408,12 @@ export const App: React.FC = () => {
             loadPresentation({ presentation: stored, filePath: null });
             return;
           }
+        }
+        if (args.payload) {
+          loadPresentation({ presentation: parseCsl(args.payload, DEFAULT_TITLE), filePath: null });
+          changeCounter.current += 1;
+          await saveNow();
+          return;
         }
         if (args.newTitle !== null) {
           loadPresentation({ presentation: createBlankPresentation(args.newTitle || DEFAULT_TITLE), filePath: null });

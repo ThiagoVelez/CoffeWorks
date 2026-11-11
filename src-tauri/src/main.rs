@@ -103,6 +103,39 @@ fn open_document(id: String) -> Result<String, String> {
     apps::launch(app.id, Some(&doc.path), None)
 }
 
+/// Crea un documento en la bóveda a partir de un contenido ya preparado (una
+/// plantilla) y lo abre con su aplicación.
+#[tauri::command]
+fn create_document_file(
+    app_id: String,
+    doc_id: String,
+    file_name: String,
+    contents: String,
+) -> Result<String, String> {
+    let app = apps::find_app(&app_id).ok_or_else(|| format!("Aplicación desconocida: {app_id}"))?;
+    if !apps::is_installed(app) {
+        return Err(format!(
+            "{} no está instalada. Instálala desde la Tienda de Apps.",
+            app.name
+        ));
+    }
+    let path = coffe_core::commands::core_vault_path(file_name, doc_id.clone())?;
+    coffe_core::write_atomic(Path::new(&path), contents.as_bytes())
+        .map_err(|e| format!("No se pudo crear el documento: {e}"))?;
+    let name = Path::new(&path)
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_default();
+    coffe_core::upsert_recent(RecentDocument {
+        id: doc_id,
+        name,
+        app_id: app.id.to_string(),
+        path: path.clone(),
+        ..Default::default()
+    })?;
+    apps::launch(app.id, Some(&path), None)
+}
+
 #[tauri::command]
 fn open_vault_folder() -> Result<String, String> {
     let dir = coffe_core::vault_dir();
@@ -264,6 +297,7 @@ fn main() {
             save_recent_documents,
             delete_document,
             open_document,
+            create_document_file,
             open_vault_folder,
             get_suite_info,
             toggle_focus_mode,

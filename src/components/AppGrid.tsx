@@ -9,7 +9,6 @@ import {
   ExternalLink,
   Trash2,
   Download,
-  BookmarkPlus,
   ArrowRight,
   Clock,
   BookOpen,
@@ -21,8 +20,10 @@ interface AppGridProps {
   selectedCategory?: string | null;
   onClearCategory?: () => void;
   onLaunchApp: (appId: string) => void;
-  onInstallApp: (appId: string) => void;
-  onUninstallApp: (appId: string) => void;
+  onInstallApp: (appId: string) => Promise<void>;
+  onUninstallApp: (appId: string) => Promise<void>;
+  onError: (message: string) => void;
+  onOpenVault?: () => void;
 }
 
 export const AppGrid: React.FC<AppGridProps> = ({
@@ -32,66 +33,46 @@ export const AppGrid: React.FC<AppGridProps> = ({
   onLaunchApp,
   onInstallApp,
   onUninstallApp,
+  onError,
+  onOpenVault,
 }) => {
   const [actionState, setActionState] = React.useState<
     Record<string, { mode: "install" | "uninstall"; progress: number }>
   >({});
 
-  const handleStartInstall = (appId: string) => {
-    setActionState((prev) => ({ ...prev, [appId]: { mode: "install", progress: 8 } }));
-    const startTime = Date.now();
-    const duration = 2000;
-
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(100, Math.round((elapsed / duration) * 100));
-
+  /**
+   * Ejecuta la instalación o desinstalación real mostrando una barra de
+   * progreso: avanza mientras dura la operación y se completa al terminar.
+   */
+  const runAction = async (appId: string, mode: "install" | "uninstall", action: (id: string) => Promise<void>) => {
+    setActionState((prev) => ({ ...prev, [appId]: { mode, progress: 6 } }));
+    const timer = window.setInterval(() => {
       setActionState((prev) => {
-        if (!prev[appId]) return prev;
-        return { ...prev, [appId]: { mode: "install", progress } };
+        const current = prev[appId];
+        if (!current) return prev;
+        return { ...prev, [appId]: { mode, progress: Math.min(90, current.progress + 7) } };
       });
-
-      if (progress >= 100) {
-        clearInterval(interval);
-        setTimeout(() => {
-          setActionState((prev) => {
-            const next = { ...prev };
-            delete next[appId];
-            return next;
-          });
-          onInstallApp(appId);
-        }, 300);
-      }
-    }, 60);
+    }, 70);
+    const minimum = new Promise((resolve) => window.setTimeout(resolve, 650));
+    try {
+      await Promise.all([action(appId), minimum]);
+      setActionState((prev) => ({ ...prev, [appId]: { mode, progress: 100 } }));
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+    } catch (err) {
+      onError(err instanceof Error ? err.message : String(err));
+    } finally {
+      window.clearInterval(timer);
+      setActionState((prev) => {
+        const next = { ...prev };
+        delete next[appId];
+        return next;
+      });
+    }
   };
 
-  const handleStartUninstall = (appId: string) => {
-    setActionState((prev) => ({ ...prev, [appId]: { mode: "uninstall", progress: 8 } }));
-    const startTime = Date.now();
-    const duration = 1400;
+  const handleStartInstall = (appId: string) => void runAction(appId, "install", onInstallApp);
+  const handleStartUninstall = (appId: string) => void runAction(appId, "uninstall", onUninstallApp);
 
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(100, Math.round((elapsed / duration) * 100));
-
-      setActionState((prev) => {
-        if (!prev[appId]) return prev;
-        return { ...prev, [appId]: { mode: "uninstall", progress } };
-      });
-
-      if (progress >= 100) {
-        clearInterval(interval);
-        setTimeout(() => {
-          setActionState((prev) => {
-            const next = { ...prev };
-            delete next[appId];
-            return next;
-          });
-          onUninstallApp(appId);
-        }, 300);
-      }
-    }, 50);
-  };
   const getAppIcon = (iconName: string) => {
     switch (iconName) {
       case "file-text":
@@ -142,13 +123,16 @@ export const AppGrid: React.FC<AppGridProps> = ({
           )}
         </div>
 
-        <button
-          type="button"
-          className="text-xs text-[#6f4e37] hover:text-[#3e2723] flex items-center gap-1 font-semibold transition-colors"
-        >
-          <span>Gestionar paquetes locales</span>
-          <ArrowRight size={14} />
-        </button>
+        {onOpenVault && (
+          <button
+            type="button"
+            onClick={onOpenVault}
+            className="text-xs text-[#6f4e37] hover:text-[#3e2723] flex items-center gap-1 font-semibold transition-colors"
+          >
+            <span>Abrir la carpeta de documentos</span>
+            <ArrowRight size={14} />
+          </button>
+        )}
       </div>
 
       {/* Cuadrícula de aplicaciones de 2 columnas estrictas (2 arriba, 2 abajo) */}
@@ -212,14 +196,14 @@ export const AppGrid: React.FC<AppGridProps> = ({
                           <>
                             <Download size={13} className="text-[#6f4e37] animate-bounce" />
                             <span className="text-[#6f4e37]">
-                              Descargando e instalando... {Math.round((app.size_mb * currentAction.progress) / 100)} / {app.size_mb} MB
+                              Instalando {app.name}…
                             </span>
                           </>
                         ) : (
                           <>
                             <Trash2 size={13} className="text-red-600 animate-pulse" />
                             <span className="text-red-700">
-                              Desinstalando y liberando espacio...
+                              Desinstalando {app.name}…
                             </span>
                           </>
                         )}
@@ -243,18 +227,20 @@ export const AppGrid: React.FC<AppGridProps> = ({
                     <div className="flex items-center gap-1.5 text-[#795548] font-mono text-[11px]">
                       {app.installed ? (
                         <>
-                          <span className="w-2 h-2 rounded-full bg-[#6f4e37]" />
-                          <span className="font-medium">Instalada ({app.size_mb} MB)</span>
+                          <span className="w-2 h-2 rounded-full bg-[#2e7d32]" />
+                          <span className="font-medium">
+                            Instalada{app.size_mb > 0 ? ` (${app.size_mb} MB)` : ""}
+                          </span>
                         </>
-                      ) : app.version === "Próximamente" ? (
+                      ) : app.available ? (
                         <>
-                          <Clock size={13} className="text-[#a1887f]" />
-                          <span>Lanzamiento Q4</span>
+                          <Download size={13} className="text-[#a1887f]" />
+                          <span>No instalada{app.size_mb > 0 ? ` · ${app.size_mb} MB` : ""}</span>
                         </>
                       ) : (
                         <>
-                          <Download size={13} className="text-[#a1887f]" />
-                          <span>Descarga: {app.size_mb} MB</span>
+                          <Clock size={13} className="text-[#a1887f]" />
+                          <span>Paquete no disponible</span>
                         </>
                       )}
                     </div>
@@ -280,14 +266,13 @@ export const AppGrid: React.FC<AppGridProps> = ({
                             <ExternalLink size={13} />
                           </button>
                         </>
-                      ) : app.version === "Próximamente" ? (
-                        <button
-                          type="button"
-                          className="bg-white text-[#795548] hover:text-[#2c1b12] text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 border border-[#dfd3c7]"
+                      ) : !app.available ? (
+                        <span
+                          className="text-[11px] text-[#795548] font-mono"
+                          title="Reinstala CoffeWorks para restaurar el paquete de esta aplicación"
                         >
-                          <BookmarkPlus size={14} />
-                          <span>Pre-instalar</span>
-                        </button>
+                          Reinstala CoffeWorks
+                        </span>
                       ) : (
                         <button
                           type="button"
