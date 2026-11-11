@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, FileText, Table, Presentation, FilePen, Plus } from "lucide-react";
+import { X, FileText, Table, Presentation, FilePen, NotebookPen, Video, Plus } from "lucide-react";
 
 interface CreateDocModalProps {
   isOpen: boolean;
@@ -14,16 +14,18 @@ export const CreateDocModal: React.FC<CreateDocModalProps> = ({
   onClose,
   onCreate,
 }) => {
-  const [selectedType, setSelectedType] = useState(docType || "coffedoc");
+  const [selectedType, setSelectedType] = useState(docType || "coffeedoc");
   const [title, setTitle] = useState("");
 
   if (!isOpen) return null;
 
   const docOptions = [
-    { id: "coffedoc", name: "CoffeDoc", ext: ".cfd", icon: FileText, color: "text-[#185abd]", bg: "bg-[#e8f1fc]" },
-    { id: "coffecalc", name: "CoffeCalc", ext: ".cfs", icon: Table, color: "text-[#107c41]", bg: "bg-[#dff6dd]" },
-    { id: "coffeview", name: "CoffeView", ext: ".csl", icon: Presentation, color: "text-[#c43e1c]", bg: "bg-[#faede4]" },
-    { id: "coffepdf", name: "CoffePDF", ext: ".pdf", icon: FilePen, color: "text-[#c62828]", bg: "bg-[#fdecea]" },
+    { id: "coffeedoc", name: "CoffeeDoc", ext: ".cfd", icon: FileText, color: "text-[#185abd]", bg: "bg-[#e8f1fc]" },
+    { id: "coffeecalc", name: "CoffeeCalc", ext: ".cfs", icon: Table, color: "text-[#107c41]", bg: "bg-[#dff6dd]" },
+    { id: "coffeeview", name: "CoffeeView", ext: ".csl", icon: Presentation, color: "text-[#c43e1c]", bg: "bg-[#faede4]" },
+    { id: "coffeepdf", name: "CoffeePDF", ext: ".pdf", icon: FilePen, color: "text-[#c62828]", bg: "bg-[#fdecea]" },
+    { id: "coffeepage", name: "CoffeePage", ext: ".cpg", icon: NotebookPen, color: "text-[#7b1fa2]", bg: "bg-[#f3e5f5]" },
+    { id: "coffeecams", name: "CoffeeCams", ext: ".ccm", icon: Video, color: "text-[#26a680]", bg: "bg-[#e3f6ef]" },
   ];
 
 
@@ -60,7 +62,7 @@ export const CreateDocModal: React.FC<CreateDocModalProps> = ({
           {/* Selector de tipo de aplicación */}
           <div className="flex flex-col gap-2">
             <label className="text-xs font-mono text-[#795548] font-semibold">Tipo de documento:</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
               {docOptions.map((opt) => {
                 const Icon = opt.icon;
                 const isSelected = selectedType === opt.id;
@@ -95,7 +97,7 @@ export const CreateDocModal: React.FC<CreateDocModalProps> = ({
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ej. Propuesta Comercial CoffeWorks"
+              placeholder="Ej. Propuesta Comercial CoffeeWorks"
               autoFocus
               className="w-full bg-[#fbf9f6] border border-[#dfd3c7] rounded-xl px-3.5 py-2 text-sm text-[#2c1b12] placeholder:text-[#a1887f] focus:outline-none focus:border-[#6f4e37] shadow-xs"
             />

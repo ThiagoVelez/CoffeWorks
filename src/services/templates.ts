@@ -229,33 +229,33 @@ export function buildTemplateFile(
   docHtml?: string
 ): TemplateFile | null {
   const now = new Date().toISOString();
-  const metadata = { title, author: "Usuario CoffeWorks", createdAt: now, updatedAt: now };
+  const metadata = { title, author: "Usuario CoffeeWorks", createdAt: now, updatedAt: now };
 
-  if (appId === "coffedoc" && docHtml) {
+  if (appId === "coffeedoc" && docHtml) {
     const docId = newId("doc");
     return {
       docId,
       fileName: `${title}.cfd`,
-      contents: JSON.stringify({ format: "coffedoc", version: 2, metadata: { ...metadata, id: docId }, content: docHtml }),
+      contents: JSON.stringify({ format: "coffeedoc", version: 2, metadata: { ...metadata, id: docId }, content: docHtml }),
     };
   }
-  if (appId === "coffecalc" && SPREADSHEETS[templateId]) {
+  if (appId === "coffeecalc" && SPREADSHEETS[templateId]) {
     const docId = newId("cfs");
     const sheets = SPREADSHEETS[templateId]();
     return {
       docId,
       fileName: `${title}.cfs`,
-      contents: JSON.stringify({ format: "coffecalc", version: 2, metadata: { ...metadata, id: docId }, sheets }),
+      contents: JSON.stringify({ format: "coffeecalc", version: 2, metadata: { ...metadata, id: docId }, sheets }),
     };
   }
-  if (appId === "coffeview" && DECKS[templateId]) {
+  if (appId === "coffeeview" && DECKS[templateId]) {
     const docId = newId("pres");
     const deck = DECKS[templateId];
     return {
       docId,
       fileName: `${title}.csl`,
       contents: JSON.stringify({
-        format: "coffeview",
+        format: "coffeeview",
         version: 2,
         metadata: { ...metadata, id: docId, themeId: deck.themeId, aspectRatio: "16:9" },
         slides: deck.slides.map(slideFromSpec),

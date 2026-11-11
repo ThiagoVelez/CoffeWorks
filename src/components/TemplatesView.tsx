@@ -13,7 +13,7 @@ import { buildTemplateFile } from "../services/templates";
 
 export interface TemplateItem {
   id: string;
-  appId: "coffedoc" | "coffecalc" | "coffeview";
+  appId: "coffeedoc" | "coffeecalc" | "coffeeview";
   appName: string;
   title: string;
   category: string;
@@ -27,11 +27,11 @@ export interface TemplateItem {
 }
 
 const TEMPLATES: TemplateItem[] = [
-  // --- COFFEDOC (3 PLANTILLAS) ---
+  // --- COFFEEDOC (3 PLANTILLAS) ---
   {
     id: "doc-informe-ejecutivo",
-    appId: "coffedoc",
-    appName: "CoffeDoc",
+    appId: "coffeedoc",
+    appName: "CoffeeDoc",
     title: "Informe Ejecutivo y Técnico Trimestral",
     category: "Gestión & Negocios",
     description:
@@ -55,7 +55,7 @@ const TEMPLATES: TemplateItem[] = [
 <h2>2. Objetivos Principales</h2>
 <ol>
   <li>Despliegue de la arquitectura modular local sin dependencia de servidores externos.</li>
-  <li>Optimización del rendimiento de renderizado en CoffeDoc, CoffeCalc y CoffeView.</li>
+  <li>Optimización del rendimiento de renderizado en CoffeeDoc, CoffeeCalc y CoffeeView.</li>
   <li>Consolidación del sistema de plantillas empresariales listas para producción.</li>
 </ol>
 <h2>3. Indicadores de Rendimiento (KPIs)</h2>
@@ -89,8 +89,8 @@ const TEMPLATES: TemplateItem[] = [
   },
   {
     id: "doc-cv-profesional",
-    appId: "coffedoc",
-    appName: "CoffeDoc",
+    appId: "coffeedoc",
+    appName: "CoffeeDoc",
     title: "Currículum Vitae Profesional Moderno",
     category: "Desarrollo Profesional",
     description:
@@ -108,14 +108,14 @@ const TEMPLATES: TemplateItem[] = [
       title: "Currículum Vitae Profesional",
       content: `<h1>Santiago Morales</h1>
 <p style="font-size:14px; color:#5c3a21; font-weight:600;">Ingeniero de Software Senior & Líder de Arquitectura</p>
-<p>santiago.morales@coffeworks.internal &nbsp;|&nbsp; +57 (300) 123-4567 &nbsp;|&nbsp; Bóveda Local CoffeWorks</p>
+<p>santiago.morales@coffeeworks.internal &nbsp;|&nbsp; +57 (300) 123-4567 &nbsp;|&nbsp; Bóveda Local CoffeeWorks</p>
 <hr/>
 <h2>Perfil Profesional</h2>
 <p>Ingeniero de software con más de 8 años de trayectoria diseñando soluciones de escritorio y web de alto rendimiento. Especialista en TypeScript, arquitecturas desacopladas y aplicaciones autónomas con persistencia local garantizada.</p>
 <h2>Experiencia Laboral</h2>
-<h3>Líder de Desarrollo de Software &mdash; CoffeWorks Suite (2023 &ndash; Presente)</h3>
+<h3>Líder de Desarrollo de Software &mdash; CoffeeWorks Suite (2023 &ndash; Presente)</h3>
 <ul>
-  <li>Arquitectura integral de las tres herramientas centrales de la suite: CoffeDoc, CoffeCalc y CoffeView.</li>
+  <li>Arquitectura integral de las tres herramientas centrales de la suite: CoffeeDoc, CoffeeCalc y CoffeeView.</li>
   <li>Implementación de sistemas de cinta Ribbon con menús emergentes PortalMenu desacoplados.</li>
   <li>Optimización del tiempo de compilación y empaquetado reduciendo el tamaño final en 35%.</li>
 </ul>
@@ -131,8 +131,8 @@ const TEMPLATES: TemplateItem[] = [
   },
   {
     id: "doc-propuesta-comercial",
-    appId: "coffedoc",
-    appName: "CoffeDoc",
+    appId: "coffeedoc",
+    appName: "CoffeeDoc",
     title: "Propuesta Comercial y de Servicios",
     category: "Ventas & Consultoría",
     description:
@@ -155,7 +155,7 @@ const TEMPLATES: TemplateItem[] = [
 <p>Proveer la infraestructura integral de gestión documental y cálculo analítico local sin dependencia de servidores cloud, garantizando total privacidad y soberanía de datos.</p>
 <h2>2. Fases de Implementación</h2>
 <ol>
-  <li><strong>Fase I: Diagnóstico e Instalación:</strong> Despliegue de CoffeWorks Suite en terminales de trabajo.</li>
+  <li><strong>Fase I: Diagnóstico e Instalación:</strong> Despliegue de CoffeeWorks Suite en terminales de trabajo.</li>
   <li><strong>Fase II: Capacitación y Personalización:</strong> Parametrización de plantillas ejecutivas y hojas de cálculo.</li>
   <li><strong>Fase III: Puesta en Producción y Soporte:</strong> Acompañamiento continuo durante el primer mes de operación.</li>
 </ol>
@@ -189,11 +189,11 @@ const TEMPLATES: TemplateItem[] = [
     },
   },
 
-  // --- COFFECALC (3 PLANTILLAS) ---
+  // --- COFFEECALC (3 PLANTILLAS) ---
   {
     id: "calc-presupuesto-flujo",
-    appId: "coffecalc",
-    appName: "CoffeCalc",
+    appId: "coffeecalc",
+    appName: "CoffeeCalc",
     title: "Presupuesto Financiero y Flujo de Caja",
     category: "Finanzas & Contabilidad",
     description:
@@ -210,8 +210,8 @@ const TEMPLATES: TemplateItem[] = [
   },
   {
     id: "calc-inventario-kardex",
-    appId: "coffecalc",
-    appName: "CoffeCalc",
+    appId: "coffeecalc",
+    appName: "CoffeeCalc",
     title: "Control de Inventario y Kardex de Productos",
     category: "Operaciones & Logística",
     description:
@@ -228,8 +228,8 @@ const TEMPLATES: TemplateItem[] = [
   },
   {
     id: "calc-factura-comercial",
-    appId: "coffecalc",
-    appName: "CoffeCalc",
+    appId: "coffeecalc",
+    appName: "CoffeeCalc",
     title: "Factura Comercial con Cálculo de Impuestos",
     category: "Facturación & Ventas",
     description:
@@ -245,11 +245,11 @@ const TEMPLATES: TemplateItem[] = [
     accentBorder: "hover:border-[#107c41]",
   },
 
-  // --- COFFEVIEW (3 PLANTILLAS) ---
+  // --- COFFEEVIEW (3 PLANTILLAS) ---
   {
     id: "view-pitch-deck",
-    appId: "coffeview",
-    appName: "CoffeView",
+    appId: "coffeeview",
+    appName: "CoffeeView",
     title: "Pitch Deck para Inversionistas",
     category: "Startups & Venture Capital",
     description:
@@ -266,8 +266,8 @@ const TEMPLATES: TemplateItem[] = [
   },
   {
     id: "view-qbr-estrategia",
-    appId: "coffeview",
-    appName: "CoffeView",
+    appId: "coffeeview",
+    appName: "CoffeeView",
     title: "Presentación de Resultados Trimestrales (QBR)",
     category: "Estrategia Empresarial",
     description:
@@ -284,8 +284,8 @@ const TEMPLATES: TemplateItem[] = [
   },
   {
     id: "view-portafolio-corporativo",
-    appId: "coffeview",
-    appName: "CoffeView",
+    appId: "coffeeview",
+    appName: "CoffeeView",
     title: "Portafolio Corporativo de Soluciones & Servicios",
     category: "Marketing & Comercial",
     description:
@@ -335,8 +335,8 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onNotify }) => {
   };
 
   const getAppIcon = (appId: string) => {
-    if (appId === "coffedoc") return <FileText size={18} className="text-[#185abd]" />;
-    if (appId === "coffecalc") return <TableIcon size={18} className="text-[#107c41]" />;
+    if (appId === "coffeedoc") return <FileText size={18} className="text-[#185abd]" />;
+    if (appId === "coffeecalc") return <TableIcon size={18} className="text-[#107c41]" />;
     return <Presentation size={18} className="text-[#c43e1c]" />;
   };
 
@@ -353,7 +353,7 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onNotify }) => {
               Catálogo de Plantillas Ejecutivas
             </h1>
             <p className="text-xs text-[#795548] font-sans mt-0.5">
-              9 plantillas profesionales listas para usar en CoffeDoc, CoffeCalc y CoffeView.
+              9 plantillas profesionales listas para usar en CoffeeDoc, CoffeeCalc y CoffeeView.
             </p>
           </div>
         </div>
@@ -375,9 +375,9 @@ export const TemplatesView: React.FC<TemplatesViewProps> = ({ onNotify }) => {
       <div className="flex items-center gap-2 flex-wrap">
         {[
           { id: "all", label: "Todas las plantillas (9)" },
-          { id: "coffedoc", label: "CoffeDoc (3 Documentos)", color: "text-[#185abd]" },
-          { id: "coffecalc", label: "CoffeCalc (3 Hojas de cálculo)", color: "text-[#107c41]" },
-          { id: "coffeview", label: "CoffeView (3 Presentaciones)", color: "text-[#c43e1c]" },
+          { id: "coffeedoc", label: "CoffeeDoc (3 Documentos)", color: "text-[#185abd]" },
+          { id: "coffeecalc", label: "CoffeeCalc (3 Hojas de cálculo)", color: "text-[#107c41]" },
+          { id: "coffeeview", label: "CoffeeView (3 Presentaciones)", color: "text-[#c43e1c]" },
         ].map((tab) => {
           const isActive = selectedAppFilter === tab.id;
           return (

@@ -26,7 +26,7 @@ mod imp {
                 .join("Windows")
                 .join("Start Menu")
                 .join("Programs")
-                .join(coffe_core::SUITE_DIR)
+                .join(coffee_core::SUITE_DIR)
         })
     }
 
@@ -83,7 +83,7 @@ mod imp {
     }
 
     fn prog_id(app_name: &str, extension: &str) -> String {
-        format!("CoffeWorks.{app_name}.{extension}")
+        format!("CoffeeWorks.{app_name}.{extension}")
     }
 
     fn notify_shell() {
@@ -140,10 +140,29 @@ mod imp {
     }
 
     pub fn unregister_file_type(app_name: &str, extension: &str) {
+        unregister_prog_id(&prog_id(app_name, extension), extension);
+    }
+
+    /// Quita lo que dejó instalado la versión anterior (CoffeWorks) de una
+    /// aplicación: su acceso directo y su asociación de archivo.
+    pub fn remove_legacy(legacy_app: &str, extension: &str) {
+        if let Some(dir) =
+            start_menu_dir().and_then(|d| d.parent().map(|p| p.join(coffee_core::LEGACY_SUITE_DIR)))
+        {
+            let _ = std::fs::remove_file(dir.join(format!("{legacy_app}.lnk")));
+            let _ = std::fs::remove_dir(&dir);
+        }
+        unregister_prog_id(
+            &format!("{}.{legacy_app}.{extension}", coffee_core::LEGACY_SUITE_DIR),
+            extension,
+        );
+    }
+
+    fn unregister_prog_id(id: &str, extension: &str) {
         let Ok(classes) = RegKey::predef(HKEY_CURRENT_USER).open_subkey("Software\\Classes") else {
             return;
         };
-        let id = prog_id(app_name, extension);
+        let id = id.to_string();
         let ext_name = format!(".{extension}");
 
         // Solo se retira la extensión si sigue apuntando a esta aplicación.
@@ -180,6 +199,7 @@ mod imp {
     ) {
     }
     pub fn unregister_file_type(_app: &str, _extension: &str) {}
+    pub fn remove_legacy(_legacy_app: &str, _extension: &str) {}
 }
 
 pub fn create_shortcut(name: &str, target: &Path, description: &str) {
@@ -204,4 +224,8 @@ pub fn register_file_type(
 
 pub fn unregister_file_type(app_name: &str, extension: &str) {
     imp::unregister_file_type(app_name, extension);
+}
+
+pub fn remove_legacy(legacy_app: &str, extension: &str) {
+    imp::remove_legacy(legacy_app, extension);
 }

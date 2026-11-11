@@ -13,6 +13,8 @@ import {
   Clock,
   BookOpen,
   FilePen,
+  NotebookPen,
+  Video,
 } from "lucide-react";
 import type { SuiteApp } from "../types";
 
@@ -90,6 +92,10 @@ export const AppGrid: React.FC<AppGridProps> = ({
         return Mail;
       case "file-pen":
         return FilePen;
+      case "notebook":
+        return NotebookPen;
+      case "video":
+        return Video;
       default:
         return FileText;
     }
@@ -104,7 +110,7 @@ export const AppGrid: React.FC<AppGridProps> = ({
             <BookOpen size={14} strokeWidth={2.2} />
           </div>
           <h2 className="font-display text-lg lg:text-xl text-[#2c1b12] font-bold tracking-tight">
-            Tienda de Apps CoffeWorks
+            Tienda de Apps CoffeeWorks
           </h2>
           <span className="font-mono text-[11px] px-2.5 py-0.5 rounded-full bg-[#f4ede6] text-[#6f4e37] font-semibold border border-[#dfd3c7]">
             {apps.length === 1 ? "1 Aplicación" : `${apps.length} Aplicaciones`}
@@ -272,9 +278,9 @@ export const AppGrid: React.FC<AppGridProps> = ({
                       ) : !app.available ? (
                         <span
                           className="text-[11px] text-[#795548] font-mono"
-                          title="Reinstala CoffeWorks para restaurar el paquete de esta aplicación"
+                          title="Reinstala CoffeeWorks para restaurar el paquete de esta aplicación"
                         >
-                          Reinstala CoffeWorks
+                          Reinstala CoffeeWorks
                         </span>
                       ) : (
                         <button

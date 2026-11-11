@@ -1,0 +1,15 @@
+[package]
+name = "coffee-core"
+description = "Núcleo compartido de la suite CoffeeWorks: rutas, bóveda de documentos y comandos IPC comunes"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[dependencies]
+tauri = { workspace = true }
+tauri-plugin-dialog = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+base64 = { workspace = true }
+dirs = { workspace = true }
+open = { workspace = true }

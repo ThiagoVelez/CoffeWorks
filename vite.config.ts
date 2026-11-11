@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import fs from "node:fs";
 import path from "node:path";
 
-// Plugin para sincronización de la bóveda de documentos entre CoffeDoc y Launcher
+// Plugin para sincronización de la bóveda de documentos entre CoffeeDoc y Launcher
 function vaultApiPlugin(): Plugin {
   const vaultPath = path.resolve(__dirname, "data/vault.json");
 
@@ -11,7 +11,7 @@ function vaultApiPlugin(): Plugin {
     name: "vault-api-sync",
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
-        // Habilitar CORS para permitir llamadas desde CoffeDoc (localhost:1421)
+        // Habilitar CORS para permitir llamadas desde CoffeeDoc (localhost:1421)
         res.setHeader("Access-Control-Allow-Origin", "*");
         res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, DELETE");
         res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -112,10 +112,12 @@ export default defineConfig({
     strictPort: true,
     watch: {
       ignored: [
-        "**/CoffeDoc/dist/**",
-        "**/CoffeCalc/dist/**",
-        "**/CoffeView/dist/**",
-        "**/CoffePDF/dist/**",
+        "**/CoffeeDoc/dist/**",
+        "**/CoffeeCalc/dist/**",
+        "**/CoffeeView/dist/**",
+        "**/CoffeePDF/dist/**",
+        "**/CoffeePage/dist/**",
+        "**/CoffeeCams/dist/**",
         "**/data/vault.json",
       ],
     },

@@ -344,8 +344,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "coffe-core"
-version = "2.4.0"
+name = "coffee-core"
+version = "2.5.0"
 dependencies = [
  "base64 0.22.1",
  "dirs 5.0.1",
@@ -357,50 +357,72 @@ dependencies = [
 ]
 
 [[package]]
-name = "coffecalc"
-version = "2.4.0"
+name = "coffeecalc"
+version = "2.5.0"
 dependencies = [
- "coffe-core",
+ "coffee-core",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
 ]
 
 [[package]]
-name = "coffedoc"
-version = "2.4.0"
+name = "coffeecams"
+version = "2.5.0"
 dependencies = [
- "coffe-core",
+ "coffee-core",
+ "dirs 5.0.1",
+ "serde",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
 ]
 
 [[package]]
-name = "coffepdf"
-version = "2.4.0"
+name = "coffeedoc"
+version = "2.5.0"
 dependencies = [
- "coffe-core",
+ "coffee-core",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
 ]
 
 [[package]]
-name = "coffeview"
-version = "2.4.0"
+name = "coffeepage"
+version = "2.5.0"
 dependencies = [
- "coffe-core",
+ "coffee-core",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
 ]
 
 [[package]]
-name = "coffeworks-launcher"
-version = "2.4.0"
+name = "coffeepdf"
+version = "2.5.0"
 dependencies = [
- "coffe-core",
+ "coffee-core",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+]
+
+[[package]]
+name = "coffeeview"
+version = "2.5.0"
+dependencies = [
+ "coffee-core",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+]
+
+[[package]]
+name = "coffeeworks-launcher"
+version = "2.5.0"
+dependencies = [
+ "coffee-core",
  "open",
  "serde",
  "serde_json",
@@ -1366,6 +1388,12 @@ dependencies = [
  "http-body",
  "pin-project-lite",
 ]
+
+[[package]]
+name = "http-range"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2149c4b4b83390c71fab669730347d578ec6bdf759f2160c581ad8b8819733b4"
 
 [[package]]
 name = "httparse"
@@ -3338,6 +3366,7 @@ dependencies = [
  "gtk",
  "heck 0.5.0",
  "http",
+ "http-range",
  "jni",
  "libc",
  "log",

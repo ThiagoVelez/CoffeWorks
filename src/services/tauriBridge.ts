@@ -12,28 +12,34 @@ const INSTALLED_KEY = "coffeeworks_installed_apps";
 const FOCUS_KEY = "coffeeworks_focus_mode";
 
 /** Puertos de los servidores de desarrollo de cada aplicación. */
-const DEV_PORTS: Record<string, number> = { coffedoc: 1421, coffecalc: 1422, coffeview: 1423, coffepdf: 1424 };
+const DEV_PORTS: Record<string, number> = { coffeedoc: 1421, coffeecalc: 1422, coffeeview: 1423, coffeepdf: 1424, coffeepage: 1425, coffeecams: 1426 };
 
-const ALIASES: Record<string, string> = { coffesheet: "coffecalc", coffeslides: "coffeview" };
+const ALIASES: Record<string, string> = { coffeesheet: "coffeecalc", coffeeslides: "coffeeview" };
 
-export const canonicalAppId = (id: string) => ALIASES[id] || id;
+/** Identificador actual (los documentos antiguos usan "coffedoc", "coffesheet"...). */
+export const canonicalAppId = (id: string) => {
+  const current = id.toLowerCase().replace(/^coffe(?!e)/, "coffee");
+  return ALIASES[current] || current;
+};
 
 /** Aplicación que abre un documento, según su `app_id` o su extensión. */
 export function appForDocument(doc: Pick<RecentDocument, "app_id" | "name">): string {
   const id = canonicalAppId(doc.app_id || "");
   if (DEV_PORTS[id]) return id;
   const extension = doc.name.split(".").pop()?.toLowerCase() || "";
-  if (["cfs", "xlsx", "xls", "csv"].includes(extension)) return "coffecalc";
-  if (["csl", "pptx"].includes(extension)) return "coffeview";
-  if (extension === "pdf") return "coffepdf";
-  return "coffedoc";
+  if (["cfs", "xlsx", "xls", "csv"].includes(extension)) return "coffeecalc";
+  if (["csl", "pptx"].includes(extension)) return "coffeeview";
+  if (extension === "pdf") return "coffeepdf";
+  if (extension === "cpg") return "coffeepage";
+  if (["ccm", "mp4", "webm", "mov", "mkv"].includes(extension)) return "coffeecams";
+  return "coffeedoc";
 }
 
 // Catálogo usado en el navegador; en escritorio lo proporciona el backend
 const WEB_CATALOG: SuiteApp[] = [
   {
-    id: "coffedoc",
-    name: "CoffeDoc",
+    id: "coffeedoc",
+    name: "CoffeeDoc",
     subtitle: "Procesador de textos con formato enriquecido",
     description:
       "Documentos con estilos, tablas, imágenes y esquema automático. Abre y guarda Word (.docx), Markdown, HTML y PDF.",
@@ -44,12 +50,12 @@ const WEB_CATALOG: SuiteApp[] = [
     status: "",
     color_badge: "primary",
     icon_name: "file-text",
-    icon_url: "/icons/CoffeText.ico",
+    icon_url: "/icons/CoffeeText.ico",
     category: "Office",
   },
   {
-    id: "coffecalc",
-    name: "CoffeCalc",
+    id: "coffeecalc",
+    name: "CoffeeCalc",
     subtitle: "Hoja de cálculo con fórmulas y gráficos",
     description:
       "Libros con varias hojas, más de 80 funciones, formato de celdas, filtros y gráficos. Compatible con Excel (.xlsx) y CSV.",
@@ -60,12 +66,12 @@ const WEB_CATALOG: SuiteApp[] = [
     status: "",
     color_badge: "secondary",
     icon_name: "table",
-    icon_url: "/icons/CoffeSheet.ico",
+    icon_url: "/icons/CoffeeSheet.ico",
     category: "Office",
   },
   {
-    id: "coffeview",
-    name: "CoffeView",
+    id: "coffeeview",
+    name: "CoffeeView",
     subtitle: "Presentaciones y diapositivas",
     description:
       "Diseñador de diapositivas con temas, formas, imágenes, transiciones, notas del orador y exportación a PowerPoint (.pptx) y PDF.",
@@ -76,12 +82,12 @@ const WEB_CATALOG: SuiteApp[] = [
     status: "",
     color_badge: "tertiary",
     icon_name: "presentation",
-    icon_url: "/icons/CoffeSlides.ico",
+    icon_url: "/icons/CoffeeSlides.ico",
     category: "Office",
   },
   {
-    id: "coffepdf",
-    name: "CoffePDF",
+    id: "coffeepdf",
+    name: "CoffeePDF",
     subtitle: "Editor de documentos PDF",
     description:
       "Abre, anota y edita PDF: texto, resaltado, formas, firmas e imágenes, formularios, y organiza, gira, une o extrae páginas.",
@@ -92,8 +98,40 @@ const WEB_CATALOG: SuiteApp[] = [
     status: "",
     color_badge: "error",
     icon_name: "file-pen",
-    icon_url: "/icons/CoffePDF.ico",
+    icon_url: "/icons/CoffeePDF.ico",
     category: "Office",
+  },
+  {
+    id: "coffeepage",
+    name: "CoffeePage",
+    subtitle: "Cuaderno digital de notas",
+    description:
+      "Notas en secciones y páginas: escribe en cualquier parte, dibuja a mano, pega imágenes, marca tareas y busca en todo el cuaderno.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "notes",
+    icon_name: "notebook",
+    icon_url: "/icons/CoffeePage.ico",
+    category: "Office",
+  },
+  {
+    id: "coffeecams",
+    name: "CoffeeCams",
+    subtitle: "Editor de video, grabación y streaming",
+    description:
+      "Edita videos con varias pistas, cortes, velocidad, filtros, textos y transiciones; graba la pantalla y la cámara, y transmite en directo.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "media",
+    icon_name: "video",
+    icon_url: "/icons/CoffeeCams.ico",
+    category: "Multimedia",
   },
 ];
 

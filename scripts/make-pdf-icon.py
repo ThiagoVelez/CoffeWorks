@@ -1,4 +1,4 @@
-"""Genera el icono de CoffePDF (CoffeWorks_Icon/CoffePDF.ico) con el mismo
+"""Genera el icono de CoffeePDF (CoffeeWorks_Icon/CoffeePDF.ico) con el mismo
 estilo que el resto de la suite: cuadrado redondeado de color con una hoja
 blanca y un símbolo plano."""
 
@@ -50,7 +50,7 @@ d.text(((128 * S) - tw / 2 - bbox[0], (166 * S) - th / 2 - bbox[1]), text, font=
 d.rounded_rectangle(box(x0 + 18, 199, x0 + 64, 205), radius=3 * S, fill=PEN)
 
 icon = img.resize((256, 256), Image.LANCZOS)
-out = ROOT / "CoffeWorks_Icon" / "CoffePDF.ico"
+out = ROOT / "CoffeeWorks_Icon" / "CoffeePDF.ico"
 icon.save(out, sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
-icon.save(ROOT / "CoffeWorks_Icon" / "CoffePDF.png")
+icon.save(ROOT / "CoffeeWorks_Icon" / "CoffeePDF.png")
 print("Icono creado en", out)

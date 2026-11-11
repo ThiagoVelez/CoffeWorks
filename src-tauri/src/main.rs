@@ -1,4 +1,4 @@
-// CoffeWorks Launcher: gestor de aplicaciones y documentos de la suite.
+// CoffeeWorks Launcher: gestor de aplicaciones y documentos de la suite.
 // Evita abrir una consola en las versiones de producción para Windows.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
@@ -8,7 +8,7 @@ mod platform;
 use std::fs;
 use std::path::Path;
 
-use coffe_core::{RecentDocument, SUITE_DIR};
+use coffee_core::{RecentDocument, SUITE_DIR};
 use serde::Serialize;
 use tauri::WebviewWindow;
 
@@ -63,14 +63,14 @@ async fn launch_app(
 #[tauri::command]
 async fn get_recent_documents() -> Result<Vec<RecentDocument>, String> {
     blocking(move || {
-        let docs = coffe_core::load_recent();
+        let docs = coffee_core::load_recent();
         let alive: Vec<RecentDocument> = docs
             .iter()
             .filter(|doc| doc.path.is_empty() || Path::new(&doc.path).is_file())
             .cloned()
             .collect();
         if alive.len() != docs.len() {
-            let _ = coffe_core::save_recent(&alive);
+            let _ = coffee_core::save_recent(&alive);
         }
         Ok(alive)
     })
@@ -79,22 +79,22 @@ async fn get_recent_documents() -> Result<Vec<RecentDocument>, String> {
 
 #[tauri::command]
 async fn save_recent_documents(docs: Vec<RecentDocument>) -> Result<(), String> {
-    blocking(move || coffe_core::save_recent(&docs)).await
+    blocking(move || coffee_core::save_recent(&docs)).await
 }
 
 /// Quita un documento del índice y, si vive dentro de la bóveda, borra su archivo.
 #[tauri::command]
 async fn delete_document(id: String) -> Result<Vec<RecentDocument>, String> {
     blocking(move || {
-        let mut docs = coffe_core::load_recent();
+        let mut docs = coffee_core::load_recent();
         if let Some(index) = docs.iter().position(|d| d.id == id) {
             let doc = docs.remove(index);
             let path = Path::new(&doc.path);
-            if path.is_file() && path.starts_with(coffe_core::vault_dir()) {
+            if path.is_file() && path.starts_with(coffee_core::vault_dir()) {
                 fs::remove_file(path).map_err(|e| format!("No se pudo borrar el archivo: {e}"))?;
             }
         }
-        coffe_core::save_recent(&docs)?;
+        coffee_core::save_recent(&docs)?;
         Ok(docs)
     })
     .await
@@ -104,7 +104,7 @@ async fn delete_document(id: String) -> Result<Vec<RecentDocument>, String> {
 #[tauri::command]
 async fn open_document(id: String) -> Result<String, String> {
     blocking(move || {
-        let docs = coffe_core::load_recent();
+        let docs = coffee_core::load_recent();
         let doc = docs
             .iter()
             .find(|d| d.id == id)
@@ -137,14 +137,14 @@ async fn create_document_file(
                 app.name
             ));
         }
-        let path = coffe_core::commands::reserve_vault_path(file_name, doc_id.clone())?;
-        coffe_core::write_atomic(Path::new(&path), contents.as_bytes())
+        let path = coffee_core::commands::reserve_vault_path(file_name, doc_id.clone())?;
+        coffee_core::write_atomic(Path::new(&path), contents.as_bytes())
             .map_err(|e| format!("No se pudo crear el documento: {e}"))?;
         let name = Path::new(&path)
             .file_name()
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_default();
-        coffe_core::upsert_recent(RecentDocument {
+        coffee_core::upsert_recent(RecentDocument {
             id: doc_id,
             name,
             app_id: app.id.to_string(),
@@ -159,10 +159,10 @@ async fn create_document_file(
 #[tauri::command]
 async fn open_vault_folder() -> Result<String, String> {
     blocking(move || {
-        let dir = coffe_core::vault_dir();
+        let dir = coffee_core::vault_dir();
         fs::create_dir_all(&dir).map_err(|e| format!("No se pudo crear la bóveda: {e}"))?;
         open::that_detached(&dir).map_err(|e| format!("No se pudo abrir la carpeta: {e}"))?;
-        Ok(coffe_core::display_path(&dir))
+        Ok(coffee_core::display_path(&dir))
     })
     .await
 }
@@ -186,10 +186,10 @@ struct SuiteInfo {
 async fn get_suite_info() -> SuiteInfo {
     SuiteInfo {
         version: env!("CARGO_PKG_VERSION").to_string(),
-        vault_dir: coffe_core::display_path(&coffe_core::vault_dir()),
-        apps_dir: coffe_core::display_path(&coffe_core::apps_dir()),
-        data_dir: coffe_core::display_path(&coffe_core::data_dir()),
-        packages_dir: coffe_core::display_path(&apps::packages_dir()),
+        vault_dir: coffee_core::display_path(&coffee_core::vault_dir()),
+        apps_dir: coffee_core::display_path(&coffee_core::apps_dir()),
+        data_dir: coffee_core::display_path(&coffee_core::data_dir()),
+        packages_dir: coffee_core::display_path(&apps::packages_dir()),
         webview_version: tauri::webview_version().unwrap_or_else(|_| "No detectado".to_string()),
         platform: format!("{} {}", std::env::consts::OS, std::env::consts::ARCH),
     }
@@ -283,8 +283,8 @@ fn run_cli(args: &[String]) -> Option<i32> {
                     }
                 }
                 // Limpia las carpetas vacías que deja la suite.
-                let _ = fs::remove_dir(coffe_core::apps_dir());
-                let _ = fs::remove_dir(coffe_core::local_dir());
+                let _ = fs::remove_dir(coffee_core::apps_dir());
+                let _ = fs::remove_dir(coffee_core::local_dir());
             }
             _ => {}
         }
@@ -295,6 +295,11 @@ fn run_cli(args: &[String]) -> Option<i32> {
 }
 
 fn main() {
+    // Primera ejecución tras actualizar desde «CoffeWorks»: carpetas, recientes
+    // y aplicaciones instaladas pasan a los nombres nuevos.
+    coffee_core::migrate_legacy_dirs();
+    apps::migrate_legacy_apps();
+
     let args: Vec<String> = std::env::args().skip(1).collect();
     if let Some(code) = run_cli(&args) {
         std::process::exit(code);

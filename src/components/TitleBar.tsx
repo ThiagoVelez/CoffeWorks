@@ -1,5 +1,5 @@
 import React from "react";
-import { Coffee, Search, Minus, Square, X } from "lucide-react";
+import { Search, Minus, Square, X } from "lucide-react";
 import { tauriBridge } from "../services/tauriBridge";
 
 interface TitleBarProps {
@@ -14,14 +14,12 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onOpenCommandPalette }) => {
     >
       {/* Marca e identidad con acento café (también permite arrastrar la ventana) */}
       <div data-tauri-drag-region className="flex items-center gap-2.5 [&>*]:pointer-events-none">
-        <div className="w-7 h-7 rounded-lg bg-[#f0e6de] border border-[#dfd3c7] flex items-center justify-center text-[#6f4e37] shadow-xs">
-          <Coffee size={17} strokeWidth={2.4} />
-        </div>
+        <img src="/icons/CoffeeWorks.png" alt="" className="w-7 h-7" draggable={false} />
         <span className="font-display text-base font-bold text-[#3e2723] tracking-tight">
-          CoffeWorks
+          CoffeeWorks
         </span>
         <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-[#f4ede6] text-[#6f4e37] font-semibold border border-[#dfd3c7]">
-          v2.4
+          v2.5
         </span>
       </div>
 
