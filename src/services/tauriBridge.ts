@@ -3,7 +3,7 @@
 // desarrollo y el estado se guarda en localStorage y en /api/vault.
 
 import { invoke } from "@tauri-apps/api/core";
-import type { AddonInfo, RecentDocument, SuiteApp, SuiteInfo } from "../types";
+import type { AddonInfo, RecentDocument, SuiteApp, SuiteInfo, UpdateInfo } from "../types";
 
 export const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
@@ -326,6 +326,24 @@ export const tauriBridge = {
       return invoke<string>("create_document_file", { appId, docId, fileName, contents });
     }
     return openDevApp(appId, `#cfw=${encodeURIComponent(contents)}`);
+  },
+
+  async updateStatus(): Promise<UpdateInfo | null> {
+    return isTauri ? invoke<UpdateInfo>("update_status") : null;
+  },
+
+  /** Busca una versión nueva y, si la hay, la descarga. */
+  async updateCheck(): Promise<UpdateInfo> {
+    return invoke<UpdateInfo>("update_check");
+  },
+
+  /** Cierra el Launcher, instala la actualización y lo vuelve a abrir. */
+  async updateApply(): Promise<void> {
+    await invoke("update_apply");
+  },
+
+  async updateSetAuto(enabled: boolean): Promise<UpdateInfo> {
+    return invoke<UpdateInfo>("update_set_auto", { enabled });
   },
 
   async getAddons(): Promise<AddonInfo[]> {

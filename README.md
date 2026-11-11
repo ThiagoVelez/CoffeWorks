@@ -17,7 +17,7 @@ Cada aplicación es un ejecutable independiente construido con **Tauri 2** (Rust
 
 ## Cómo funciona la instalación
 
-1. El instalador (`CoffeeWorks-Setup-2.6.0.exe`, hecho con **Inno Setup**) instala solo el Launcher y deja los paquetes de las ocho aplicaciones en su carpeta `packages`.
+1. El instalador (`CoffeeWorks-Setup-2.7.0.exe`, hecho con **Inno Setup**) instala solo el Launcher y deja los paquetes de las ocho aplicaciones en su carpeta `packages`.
 2. Dentro del Launcher, en la **Tienda de Apps**, cada aplicación tiene sus botones **Instalar**, **Abrir App** y **Desinstalar**:
    - *Instalar* copia la aplicación a `%LOCALAPPDATA%\CoffeeWorks\Apps\<App>`, crea su acceso directo en el menú Inicio (carpeta *CoffeeWorks*) y asocia su tipo de archivo, de modo que un doble clic sobre un `.cfd`, `.cfs`, `.csl`, `.cpg`, `.cdb`, `.ccm` o `.clv` lo abre. CoffeePDF no reemplaza tu lector de PDF predeterminado: aparece en *Abrir con* del Explorador.
    - *Desinstalar* borra la aplicación, su acceso directo y su asociación. **Los documentos no se tocan.**
@@ -25,6 +25,26 @@ Cada aplicación es un ejecutable independiente construido con **Tauri 2** (Rust
 4. Si tenías instalada una versión anterior (cuando la suite se llamaba «CoffeWorks»), al abrir el Launcher por primera vez se migra todo solo: los documentos pasan de `Documentos\CoffeWorks` a `Documentos\CoffeeWorks`, los recientes se conservan y las aplicaciones instaladas se reinstalan con sus nombres nuevos.
 5. CoffeeCams (versión 2.5) se dividió en **CoffeeEdit** y **CoffeeLive**: si la tenías instalada, el Launcher instala las dos en su lugar y los proyectos `.ccm` se abren en CoffeeEdit.
 6. Al desinstalar CoffeeWorks desde *Aplicaciones* de Windows se quitan también las aplicaciones instaladas; los documentos se conservan.
+
+## Actualizaciones automáticas
+
+CoffeeWorks está en fase **Alpha** (se muestra junto al número de versión en el Launcher).
+
+- **Cómo se actualiza:** el Launcher busca versiones nuevas en las *Releases* de este repositorio al abrirse y cada 6 horas. Si hay una, descarga su instalador en segundo plano y comprueba su suma SHA-256.
+- **Cuándo se instala:** en silencio al cerrar el Launcher, o al instante con **Reiniciar y actualizar**.
+- **Las apps:** al volver a abrir el Launcher, las apps instaladas se ponen al día con los paquetes nuevos (las que estén abiertas, la vez siguiente). Las desinstaladas no se vuelven a instalar y los documentos no se tocan.
+- **Ajustes › Actualizaciones:** permite desactivar la instalación automática (entonces solo se descarga y tú eliges cuándo) o buscar actualizaciones a mano.
+
+**Publicar una actualización:**
+
+```bash
+node scripts/version.mjs 2.7.1
+```
+
+Después se sube el cambio a `main` (por ejemplo, con una pull request). El flujo *Instalador de Windows* compila y prueba el instalador y, como la etiqueta `v2.7.1` aún no existe, crea la *Release* con el instalador, su `.sha256` y las notas generadas a partir de los cambios. Si la versión no cambia, no se publica nada.
+
+- Mientras la fase sea *alpha* o *beta*, las versiones se marcan como *pre-release*.
+- Para cambiar de fase: `node scripts/version.mjs 2.8.0 beta`, o `estable` para la primera versión estable.
 
 ## Complementos y plantillas
 
@@ -45,9 +65,9 @@ No hacen falta permisos de administrador: todo se instala por usuario. El instal
 Cada vez que se sube código, el flujo **Instalador de Windows** (`.github/workflows/build-windows.yml`) compila la suite en Windows, crea el instalador, lo prueba y lo publica:
 
 1. Abre la pestaña **Actions** del repositorio y entra en la última ejecución de *Instalador de Windows*.
-2. En **Artifacts**, descarga `CoffeeWorks-Setup` y descomprímelo: dentro está `CoffeeWorks-Setup-2.6.0.exe`.
+2. En **Artifacts**, descarga `CoffeeWorks-Setup` y descomprímelo: dentro está `CoffeeWorks-Setup-2.7.0.exe`.
 
-Al subir una etiqueta `v*` (por ejemplo `v2.6.0`) el instalador se adjunta además a una *Release*.
+Cuando llega a `main` una versión que aún no está publicada, el flujo crea su *Release* con el instalador (ver «Actualizaciones automáticas»). Al subir una etiqueta `v*` el instalador también se adjunta a esa *Release*.
 
 ### Opción B: compilarlo en tu equipo con Inno Setup
 
@@ -66,7 +86,7 @@ Después, desde la carpeta del repositorio:
 powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 ```
 
-El script compila las nueve interfaces, los nueve ejecutables y el instalador. El resultado queda en `installer\Output\CoffeeWorks-Setup-2.6.0.exe`.
+El script compila las nueve interfaces, los nueve ejecutables y el instalador. El resultado queda en `installer\Output\CoffeeWorks-Setup-2.7.0.exe`.
 
 Si prefieres hacerlo paso a paso:
 
@@ -125,7 +145,7 @@ CoffeeWorks/
 ├── crates/coffee-core/      Código Rust compartido: bóveda, recientes, archivos, diálogos y complementos
 ├── addons/coffee-accdb/     Complemento de compatibilidad con Access (Java + GraalVM)
 ├── installer/CoffeeWorks.iss  Script de Inno Setup
-├── scripts/                build.mjs, build-windows.ps1 y dev.mjs
+├── scripts/                build.mjs, build-windows.ps1, dev.mjs y version.mjs
 └── .github/workflows/      Compilación y prueba del instalador y de los complementos
 ```
 

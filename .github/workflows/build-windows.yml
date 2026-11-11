@@ -164,17 +164,39 @@ jobs:
           $ccm = (Get-ItemProperty "HKCU:\Software\Classes\.ccm" -ErrorAction SilentlyContinue).'(default)'
           Assert ($ccm -eq "CoffeeWorks.CoffeeEdit.ccm") ".ccm pasa a CoffeeEdit"
 
+          # Actualización automática: el Launcher ejecuta el instalador nuevo en
+          # silencio sobre la instalación existente (sin reinstalar apps quitadas)
+          $code = Run $setup @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/DIR=$dir", "/AUTOUPDATE=0")
+          Assert ($code -eq 0) "la actualización silenciosa termina sin errores"
+          Assert (Test-Path "$dir\CoffeeWorks.exe") "el Launcher sigue instalado tras actualizar"
+          Assert (-not (Test-Path "$apps\CoffeeCalc")) "la actualización no reinstala apps que el usuario quitó"
+          # Un paquete nuevo se copia sobre la app instalada
+          Add-Content -Path "$dir\packages\CoffeeDoc.exe" -Value "actualizado" -Encoding ascii
+          Assert ((Run "$dir\CoffeeWorks.exe" @("--refresh-apps")) -eq 0) "poner al día las apps instaladas"
+          Assert ((Get-Item "$apps\CoffeeDoc\CoffeeDoc.exe").Length -eq (Get-Item "$dir\packages\CoffeeDoc.exe").Length) "CoffeeDoc recibe el paquete nuevo"
+
           $uninstaller = (Get-ChildItem "$dir\unins*.exe" | Select-Object -First 1).FullName
           Assert ((Run $uninstaller @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART")) -eq 0) "el desinstalador termina sin errores"
           Start-Sleep -Seconds 5
           Assert (-not (Test-Path "$dir\CoffeeWorks.exe")) "el Launcher se elimina"
           Assert (-not (Test-Path "$apps\CoffeeDoc\CoffeeDoc.exe")) "las apps instaladas se eliminan"
 
+      - name: Suma SHA-256 del instalador
+        shell: pwsh
+        run: |
+          # El Launcher la comprueba antes de instalar una actualización
+          $setup = Get-ChildItem installer\Output\*.exe | Select-Object -First 1
+          $hash = (Get-FileHash $setup.FullName -Algorithm SHA256).Hash.ToLower()
+          [IO.File]::WriteAllText("$($setup.FullName).sha256", "$hash  $($setup.Name)")
+          Get-Content "$($setup.FullName).sha256"
+
       - name: Publicar el instalador
         uses: actions/upload-artifact@v4
         with:
           name: CoffeeWorks-Setup
-          path: installer/Output/*.exe
+          path: |
+            installer/Output/*.exe
+            installer/Output/*.sha256
           if-no-files-found: error
 
       - name: Publicar capturas de la prueba
@@ -189,4 +211,38 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: installer/Output/*.exe
+          files: |
+            installer/Output/*.exe
+            installer/Output/*.sha256
+
+      # Actualizaciones automáticas: si la versión de main todavía no está
+      # publicada, se crea su Release y los Launcher instalados la descargan.
+      # Para publicar una actualización basta con subir la versión
+      # (node scripts/version.mjs X.Y.Z) y llevar el cambio a main.
+      - name: Publicar la versión nueva
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = (Get-Content src-tauri\tauri.conf.json -Raw | ConvertFrom-Json).version
+          $stage = ([regex]::Match((Get-Content src-tauri\src\updater.rs -Raw), 'pub const STAGE: &str = "([^"]*)"')).Groups[1].Value
+          $tag = "v$version"
+          gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "La versión $tag ya está publicada: no se crea otra."
+            exit 0
+          }
+          $setup = (Get-ChildItem installer\Output\*.exe | Select-Object -First 1).FullName
+          $title = "CoffeeWorks $version"
+          $arguments = @("release", "create", $tag, $setup, "$setup.sha256", "--repo", $env:GITHUB_REPOSITORY, "--target", $env:GITHUB_SHA, "--generate-notes")
+          if ($stage) {
+            $title += " " + $stage.Substring(0, 1).ToUpper() + $stage.Substring(1)
+            $arguments += "--prerelease"
+          } else {
+            $arguments += "--latest"
+          }
+          $arguments += @("--title", $title)
+          & gh @arguments
+          if ($LASTEXITCODE -ne 0) { throw "No se pudo publicar la versión $tag" }
+          Write-Host "Publicada $title"

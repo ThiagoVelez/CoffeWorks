@@ -281,6 +281,38 @@ fn describe(app: &CatalogApp) -> SuiteApp {
     }
 }
 
+/// Archivo con la marca del paquete del que se copió cada app instalada.
+const STAMP_FILE: &str = ".package";
+
+/// Tamaño y fecha del paquete: cambian cuando una actualización trae uno nuevo.
+fn package_stamp(package: &Path) -> String {
+    let meta = fs::metadata(package).ok();
+    let len = meta.as_ref().map(|m| m.len()).unwrap_or(0);
+    let modified = meta
+        .and_then(|m| m.modified().ok())
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    format!("{len}-{modified}")
+}
+
+/// Tras una actualización de la suite, copia los paquetes nuevos sobre las
+/// apps instaladas. Las que estén abiertas se actualizan la próxima vez.
+pub fn refresh_installed() -> Vec<String> {
+    let mut updated = Vec::new();
+    for app in CATALOG {
+        if !is_installed(app) {
+            continue;
+        }
+        let Some(package) = package_path(app) else { continue };
+        let stamp = fs::read_to_string(install_dir(app).join(STAMP_FILE)).unwrap_or_default();
+        if stamp.trim() != package_stamp(&package) && install(app.id).is_ok() {
+            updated.push(app.name.to_string());
+        }
+    }
+    updated
+}
+
 pub fn list_apps() -> Vec<SuiteApp> {
     CATALOG.iter().map(describe).collect()
 }
@@ -311,6 +343,9 @@ pub fn install(id: &str) -> Result<SuiteApp, String> {
             format!("No se pudo copiar {}: {e}", app.name)
         }
     })?;
+
+    // Marca del paquete copiado: si el instalador trae uno nuevo, se actualiza
+    let _ = fs::write(dir.join(STAMP_FILE), package_stamp(&package));
 
     // Las compilaciones MinGW necesitan el cargador de WebView2 junto al ejecutable.
     if let Some(package_dir) = package.parent() {

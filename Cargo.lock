@@ -345,7 +345,7 @@ dependencies = [
 
 [[package]]
 name = "coffee-core"
-version = "2.6.0"
+version = "2.7.0"
 dependencies = [
  "base64 0.22.1",
  "dirs 5.0.1",
@@ -358,7 +358,7 @@ dependencies = [
 
 [[package]]
 name = "coffeecalc"
-version = "2.6.0"
+version = "2.7.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -368,7 +368,7 @@ dependencies = [
 
 [[package]]
 name = "coffeedatabase"
-version = "2.6.0"
+version = "2.7.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -378,7 +378,7 @@ dependencies = [
 
 [[package]]
 name = "coffeedoc"
-version = "2.6.0"
+version = "2.7.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -388,7 +388,7 @@ dependencies = [
 
 [[package]]
 name = "coffeeedit"
-version = "2.6.0"
+version = "2.7.0"
 dependencies = [
  "coffee-core",
  "dirs 5.0.1",
@@ -400,7 +400,7 @@ dependencies = [
 
 [[package]]
 name = "coffeelive"
-version = "2.6.0"
+version = "2.7.0"
 dependencies = [
  "coffee-core",
  "dirs 5.0.1",
@@ -413,7 +413,7 @@ dependencies = [
 
 [[package]]
 name = "coffeepage"
-version = "2.6.0"
+version = "2.7.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -423,7 +423,7 @@ dependencies = [
 
 [[package]]
 name = "coffeepdf"
-version = "2.6.0"
+version = "2.7.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -433,7 +433,7 @@ dependencies = [
 
 [[package]]
 name = "coffeeview"
-version = "2.6.0"
+version = "2.7.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -443,12 +443,14 @@ dependencies = [
 
 [[package]]
 name = "coffeeworks-launcher"
-version = "2.6.0"
+version = "2.7.0"
 dependencies = [
  "coffee-core",
  "open",
+ "semver",
  "serde",
  "serde_json",
+ "sha2",
  "tauri",
  "tauri-build",
  "windows-sys 0.59.0",

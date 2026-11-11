@@ -165,8 +165,42 @@ pub fn hidden(cmd: &mut Command) -> &mut Command {
     cmd
 }
 
-fn ps_quote(value: &str) -> String {
+/// Cita un texto para PowerShell.
+pub fn ps_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "''"))
+}
+
+/// Ejecuta un script de PowerShell oculto y devuelve su salida.
+pub fn run_powershell(script: &str) -> Result<String, String> {
+    let output = hidden(Command::new("powershell").args([
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        script,
+    ]))
+    .stdin(Stdio::null())
+    .output()
+    .map_err(|e| format!("No se pudo iniciar PowerShell: {e}"))?;
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    } else {
+        let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        Err(err.lines().last().unwrap_or("Error desconocido").to_string())
+    }
+}
+
+/// Descarga un archivo (HTTPS) a la ruta indicada.
+pub fn download_file(url: &str, target: &Path) -> Result<(), String> {
+    let script = format!(
+        "$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'; \
+         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; \
+         Invoke-WebRequest -UseBasicParsing -Headers @{{ 'User-Agent'='CoffeeWorks' }} -Uri {url} -OutFile {out}",
+        url = ps_quote(url),
+        out = ps_quote(&target.to_string_lossy()),
+    );
+    run_powershell(&script).map(|_| ()).map_err(|e| format!("No se pudo descargar {url}: {e}"))
 }
 
 /// Descarga e instala un complemento. Prueba cada descarga en orden.

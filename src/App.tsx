@@ -8,6 +8,8 @@ import { CommandPalette } from "./components/CommandPalette";
 import { CreateDocModal } from "./components/CreateDocModal";
 import { TemplatesView } from "./components/TemplatesView";
 import { AddonsView } from "./components/AddonsView";
+import { UpdateBanner, UpdateSettings, useUpdates } from "./components/Updates";
+import { APP_STAGE, APP_VERSION } from "./version";
 import { isTauri, tauriBridge } from "./services/tauriBridge";
 import type { RecentDocument, SuiteApp, SuiteInfo } from "./types";
 import { Settings, CheckCircle2, AlertTriangle, FolderOpen } from "lucide-react";
@@ -30,6 +32,7 @@ export const App: React.FC = () => {
     docType: "coffeedoc",
   });
   const [toast, setToast] = useState<Toast | null>(null);
+  const updates = useUpdates();
 
   const filteredApps = selectedCategory
     ? apps.filter((app) => (app.category || "Office").toLowerCase() === selectedCategory.toLowerCase())
@@ -190,7 +193,7 @@ export const App: React.FC = () => {
   }, [apps]);
   const infoRows: Array<[string, string]> = suiteInfo
     ? [
-        ["Versión de CoffeeWorks", suiteInfo.version],
+        ["Versión de CoffeeWorks", `${suiteInfo.version} ${suiteInfo.stage}`.trim()],
         ["Carpeta de documentos (bóveda)", suiteInfo.vault_dir],
         ["Aplicaciones instaladas en", suiteInfo.apps_dir],
         ["Paquetes de instalación", suiteInfo.packages_dir],
@@ -199,13 +202,17 @@ export const App: React.FC = () => {
         ["Sistema", suiteInfo.platform],
       ]
     : [
-        ["Versión de CoffeeWorks", "2.6.0 (modo web de desarrollo)"],
+        ["Versión de CoffeeWorks", `${APP_VERSION} ${APP_STAGE} (modo web de desarrollo)`],
         ["Documentos", "Se guardan en el almacenamiento de este navegador"],
       ];
 
   return (
     <div className="min-h-screen bg-surface text-on-surface flex flex-col antialiased">
-      <TitleBar onOpenCommandPalette={() => setCommandPaletteOpen(true)} />
+      <TitleBar
+        onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+        version={suiteInfo?.version ?? APP_VERSION}
+        stage={suiteInfo ? suiteInfo.stage : APP_STAGE}
+      />
 
       <div className="flex flex-1 pt-10">
         <Sidebar
@@ -221,6 +228,7 @@ export const App: React.FC = () => {
         />
 
         <main className="flex-1 ml-64 p-5 lg:p-8 flex flex-col gap-8 max-w-7xl">
+          <UpdateBanner info={updates.info} onError={(message) => showNotification(message, true)} />
           {currentTab === "launcher" && (
             <>
               <WelcomeBanner
@@ -276,6 +284,13 @@ export const App: React.FC = () => {
                   </div>
                 ))}
               </div>
+
+              <UpdateSettings
+                updates={updates}
+                version={suiteInfo?.version ?? APP_VERSION}
+                stage={suiteInfo ? suiteInfo.stage : APP_STAGE}
+                onNotify={showNotification}
+              />
 
               <div className="p-6 rounded-2xl bg-white border border-[#dfd3c7] flex flex-col gap-4 text-xs text-[#5c3a21]">
                 <label className="flex items-start gap-3 cursor-pointer">

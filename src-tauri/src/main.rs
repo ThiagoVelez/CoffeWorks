@@ -4,6 +4,7 @@
 
 mod apps;
 mod platform;
+mod updater;
 
 use std::fs;
 use std::path::Path;
@@ -185,6 +186,33 @@ async fn open_addons_folder() -> Result<(), String> {
     .await
 }
 
+// ---------------------------------------------------------------------------
+// Actualizaciones
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+async fn update_status() -> updater::UpdateInfo {
+    updater::status()
+}
+
+#[tauri::command]
+async fn update_check() -> Result<updater::UpdateInfo, String> {
+    blocking(updater::check_and_download).await
+}
+
+#[tauri::command]
+async fn update_apply(app: tauri::AppHandle) -> Result<(), String> {
+    blocking(updater::apply_now).await?;
+    // El instalador necesita que el Launcher esté cerrado; lo vuelve a abrir al terminar
+    app.exit(0);
+    Ok(())
+}
+
+#[tauri::command]
+async fn update_set_auto(enabled: bool) -> updater::UpdateInfo {
+    updater::set_auto_install(enabled)
+}
+
 #[tauri::command]
 async fn open_vault_folder() -> Result<String, String> {
     blocking(move || {
@@ -203,6 +231,7 @@ async fn open_vault_folder() -> Result<String, String> {
 #[derive(Serialize)]
 struct SuiteInfo {
     version: String,
+    stage: String,
     vault_dir: String,
     apps_dir: String,
     data_dir: String,
@@ -215,6 +244,7 @@ struct SuiteInfo {
 async fn get_suite_info() -> SuiteInfo {
     SuiteInfo {
         version: env!("CARGO_PKG_VERSION").to_string(),
+        stage: updater::stage_label(),
         vault_dir: coffee_core::display_path(&coffee_core::vault_dir()),
         apps_dir: coffee_core::display_path(&coffee_core::apps_dir()),
         data_dir: coffee_core::display_path(&coffee_core::data_dir()),
@@ -264,6 +294,7 @@ async fn close_window(window: WebviewWindow) {
 /// * `--uninstall <id>`        desinstala una aplicación
 /// * `--install-all`           instala todas las aplicaciones disponibles
 /// * `--uninstall-all`         desinstala todas las aplicaciones
+/// * `--refresh-apps`          copia los paquetes nuevos sobre las apps instaladas
 fn run_cli(args: &[String]) -> Option<i32> {
     let mut handled = false;
     let mut failed = false;
@@ -304,6 +335,12 @@ fn run_cli(args: &[String]) -> Option<i32> {
                     report("Instalación de", apps::install(app.id));
                 }
             }
+            "--refresh-apps" => {
+                handled = true;
+                for name in apps::refresh_installed() {
+                    println!("Actualizada {name}");
+                }
+            }
             "--uninstall-all" => {
                 handled = true;
                 for app in CATALOG {
@@ -334,6 +371,12 @@ fn main() {
         std::process::exit(code);
     }
 
+    // Tras una actualización: limpia el instalador descargado y pone al día las apps
+    updater::cleanup_after_update();
+    std::thread::spawn(|| {
+        apps::refresh_installed();
+    });
+
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             get_suite_apps,
@@ -354,8 +397,18 @@ fn main() {
             get_addons,
             install_addon,
             uninstall_addon,
-            open_addons_folder
+            open_addons_folder,
+            update_status,
+            update_check,
+            update_apply,
+            update_set_auto
         ])
-        .run(tauri::generate_context!())
-        .unwrap_or_else(|_| panic!("Error al iniciar el Launcher de {SUITE_DIR}"));
+        .build(tauri::generate_context!())
+        .unwrap_or_else(|_| panic!("Error al iniciar el Launcher de {SUITE_DIR}"))
+        .run(|_, event| {
+            // Al cerrar el Launcher se instala la actualización descargada (si la hay)
+            if let tauri::RunEvent::Exit = event {
+                updater::apply_on_exit();
+            }
+        });
 }
