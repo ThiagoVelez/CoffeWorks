@@ -156,6 +156,35 @@ async fn create_document_file(
     .await
 }
 
+// ---------------------------------------------------------------------------
+// Complementos
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+async fn get_addons() -> Result<Vec<coffee_core::addons::AddonInfo>, String> {
+    blocking(|| Ok(coffee_core::addons::list_addons())).await
+}
+
+#[tauri::command]
+async fn install_addon(id: String) -> Result<coffee_core::addons::AddonInfo, String> {
+    blocking(move || coffee_core::addons::install_addon(&id)).await
+}
+
+#[tauri::command]
+async fn uninstall_addon(id: String) -> Result<coffee_core::addons::AddonInfo, String> {
+    blocking(move || coffee_core::addons::uninstall_addon(&id)).await
+}
+
+#[tauri::command]
+async fn open_addons_folder() -> Result<(), String> {
+    blocking(|| {
+        let dir = coffee_core::addons::addons_dir();
+        fs::create_dir_all(&dir).map_err(|e| format!("No se pudo crear la carpeta: {e}"))?;
+        open::that_detached(&dir).map_err(|e| format!("No se pudo abrir la carpeta: {e}"))
+    })
+    .await
+}
+
 #[tauri::command]
 async fn open_vault_folder() -> Result<String, String> {
     blocking(move || {
@@ -321,7 +350,11 @@ fn main() {
             open_external,
             minimize_window,
             maximize_window,
-            close_window
+            close_window,
+            get_addons,
+            install_addon,
+            uninstall_addon,
+            open_addons_folder
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|_| panic!("Error al iniciar el Launcher de {SUITE_DIR}"));

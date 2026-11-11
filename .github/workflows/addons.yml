@@ -1,0 +1,84 @@
+name: Complementos
+
+# Compila los complementos opcionales de la suite (Launcher › Complementos).
+# - coffee-accdb: compatibilidad con Access. Jackcess compilado a un
+#   ejecutable nativo con GraalVM, para que no haga falta instalar Java.
+# En las pull requests solo se compila y se prueba. En main (o a mano) se
+# publica en la versión «addons», de donde lo descarga el Launcher.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["addons/**", ".github/workflows/addons.yml"]
+  pull_request:
+    paths: ["addons/**", ".github/workflows/addons.yml"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: addons-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  accdb:
+    name: Compatibilidad con Access
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: "21"
+          distribution: graalvm-community
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cache: maven
+
+      - name: Compilar el JAR
+        working-directory: addons/coffee-accdb
+        run: mvn -B -q package
+
+      - name: Compilar el ejecutable nativo
+        working-directory: addons/coffee-accdb
+        run: native-image --no-fallback -O2 -jar target/coffee-accdb.jar -o target/coffee-accdb
+
+      - name: Probar la exportación
+        working-directory: addons/coffee-accdb
+        shell: pwsh
+        run: |
+          ./target/coffee-accdb.exe version
+          ./target/coffee-accdb.exe export test/muestra.json "$env:RUNNER_TEMP\muestra.accdb"
+          if ($LASTEXITCODE -ne 0) { throw "La exportación falló" }
+          ./target/coffee-accdb.exe export test/muestra.json "$env:RUNNER_TEMP\muestra.mdb"
+          if ($LASTEXITCODE -ne 0) { throw "La exportación a .mdb falló" }
+          $size = (Get-Item "$env:RUNNER_TEMP\muestra.accdb").Length
+          if ($size -lt 100000) { throw "El archivo .accdb es demasiado pequeño ($size bytes)" }
+          Write-Host "Archivo .accdb de $size bytes"
+
+      - name: Empaquetar
+        working-directory: addons/coffee-accdb
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item target/coffee-accdb.exe dist/
+          Copy-Item LICENSE-THIRD-PARTY.txt dist/
+          Compress-Archive -Path dist/* -DestinationPath coffee-accdb-win64.zip -Force
+          Get-Item coffee-accdb-win64.zip | Select-Object Name, Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coffee-accdb-win64
+          path: addons/coffee-accdb/coffee-accdb-win64.zip
+
+      - name: Publicar en la versión «addons»
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: addons
+          name: Complementos de CoffeeWorks
+          body: Complementos opcionales que el Launcher descarga desde «Complementos». No hace falta descargarlos a mano.
+          prerelease: false
+          make_latest: false
+          files: addons/coffee-accdb/coffee-accdb-win64.zip

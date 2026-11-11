@@ -1,0 +1,12 @@
+coffee-accdb — complemento «Compatibilidad con Access» de CoffeeWorks
+
+Incluye software de terceros:
+
+- Jackcess (https://jackcess.sourceforge.io) — Apache License 2.0
+- Apache Commons Lang 3 — Apache License 2.0
+- Apache Commons Logging — Apache License 2.0
+
+Compilado como ejecutable nativo con GraalVM Community Edition
+(GPLv2 con Classpath Exception; el ejecutable resultante no queda sujeto a la GPL).
+
+Texto de la licencia Apache 2.0: https://www.apache.org/licenses/LICENSE-2.0

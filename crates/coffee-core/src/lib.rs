@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+pub mod addons;
 pub mod commands;
 
 /// Nombre de la carpeta de la suite dentro de los directorios del sistema.
@@ -338,7 +339,7 @@ pub fn display_path(path: &Path) -> String {
 
 /// Genera el manejador de comandos de un editor de la suite. Todas las
 /// aplicaciones comparten los comandos comunes; las que necesitan más (como
-/// CoffeeCams) los añaden como argumentos: `editor_handler!(mi_comando)`.
+/// CoffeeEdit o CoffeeLive) los añaden como argumentos: `editor_handler!(mi_comando)`.
 #[macro_export]
 macro_rules! editor_handler {
     ($($extra:path),* $(,)?) => {
@@ -363,7 +364,10 @@ macro_rules! editor_handler {
             $crate::commands::core_window_toggle_fullscreen,
             $crate::commands::core_window_set_fullscreen,
             $crate::commands::core_window_close,
-            $crate::commands::core_window_set_title
+            $crate::commands::core_window_set_title,
+            $crate::commands::core_addon_status,
+            $crate::commands::core_addon_install,
+            $crate::commands::core_addon_run
             $(, $extra)*
         ]
     };

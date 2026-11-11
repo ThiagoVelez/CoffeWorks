@@ -29,7 +29,7 @@ export interface RecentDocument {
   updated_at?: number;
 }
 
-export type DocumentFilter = "all" | "documents" | "spreadsheets" | "presentations" | "pdf" | "notes" | "videos" | "pinned";
+export type DocumentFilter = "all" | "documents" | "spreadsheets" | "presentations" | "pdf" | "notes" | "videos" | "databases" | "pinned";
 
 export interface SuiteInfo {
   version: string;
@@ -39,4 +39,21 @@ export interface SuiteInfo {
   packages_dir: string;
   webview_version: string;
   platform: string;
+}
+
+/** Complemento opcional de la suite (Launcher › Complementos). */
+export interface AddonInfo {
+  id: string;
+  name: string;
+  summary: string;
+  description: string;
+  apps: string[];
+  version: string;
+  download_size: string;
+  publisher: string;
+  license: string;
+  installed: boolean;
+  installed_bytes: number;
+  can_install: boolean;
+  manual_hint: string;
 }

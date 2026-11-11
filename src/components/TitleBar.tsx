@@ -19,7 +19,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onOpenCommandPalette }) => {
           CoffeeWorks
         </span>
         <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-[#f4ede6] text-[#6f4e37] font-semibold border border-[#dfd3c7]">
-          v2.5
+          v2.6
         </span>
       </div>
 

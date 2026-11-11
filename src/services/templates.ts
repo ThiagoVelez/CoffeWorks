@@ -1,5 +1,8 @@
 // Contenido de las plantillas del catálogo. Cada plantilla se convierte en un
-// archivo nativo (.cfd, .cfs o .csl) que la aplicación correspondiente abre.
+// archivo nativo (.cfd, .cfs, .csl, .pdf, .cpg, .cdb, .ccm o .clv) que la
+// aplicación correspondiente abre.
+
+import { buildExtraTemplate } from "./templateLibrary";
 
 type Cell = { raw: string; [style: string]: unknown };
 
@@ -144,6 +147,155 @@ const SPREADSHEETS: Record<string, () => unknown[]> = {
       { A: 240, B: 100, C: 140, D: 140, E: 150 }
     ),
   ],
+  "calc-presupuesto-personal": () => [
+    sheetFromRows(
+      "Presupuesto",
+      [
+        ["PRESUPUESTO PERSONAL MENSUAL", "", "", ""],
+        ["", "", "", ""],
+        ["Ingresos", "Previsto", "Real", "Diferencia"],
+        ["Salario", "3200000", "3200000", "=C4-B4"],
+        ["Trabajos extra", "400000", "550000", "=C5-B5"],
+        ["Otros", "0", "80000", "=C6-B6"],
+        ["Total ingresos", "=SUMA(B4:B6)", "=SUMA(C4:C6)", "=C7-B7"],
+        ["", "", "", ""],
+        ["Gastos", "Previsto", "Real", "Diferencia"],
+        ["Vivienda", "1100000", "1100000", "=B10-C10"],
+        ["Alimentación", "650000", "712000", "=B11-C11"],
+        ["Transporte", "220000", "198000", "=B12-C12"],
+        ["Servicios", "260000", "243000", "=B13-C13"],
+        ["Educación", "300000", "300000", "=B14-C14"],
+        ["Ocio", "200000", "265000", "=B15-C15"],
+        ["Ahorro", "400000", "400000", "=B16-C16"],
+        ["Total gastos", "=SUMA(B10:B16)", "=SUMA(C10:C16)", "=B17-C17"],
+        ["", "", "", ""],
+        ["Saldo del mes", "=B7-B17", "=C7-C17", ""],
+        ["% del ingreso ahorrado", "=B16/B7", "=C16/C7", ""],
+      ],
+      {
+        A1: titleStyle,
+        r3: header,
+        A3: { ...header, align: "left" },
+        r9: header,
+        A9: { ...header, align: "left" },
+        cB: money,
+        cC: money,
+        cD: money,
+        r7: totalRow,
+        r17: { bold: true, bg: "#fce8e6" },
+        r19: { bold: true, bg: "#d3e3fd" },
+        r20: { format: "percent", decimals: 1, align: "right", italic: true },
+      },
+      { A: 210, B: 130, C: 130, D: 130 }
+    ),
+  ],
+  "calc-cronograma-proyecto": () => [
+    sheetFromRows(
+      "Cronograma",
+      [
+        ["CRONOGRAMA DEL PROYECTO", "", "", "", "", "", ""],
+        ["Proyecto:", "Nombre del proyecto", "", "Responsable:", "", "", ""],
+        ["", "", "", "", "", "", ""],
+        ["Actividad", "Responsable", "Inicio", "Fin", "Días", "Avance", "Estado"],
+        ["Planeación y alcance", "Coordinación", "2026-02-02", "2026-02-13", "10", "100%", '=SI(F5>=1;"Terminada";SI(F5>0;"En curso";"Pendiente"))'],
+        ["Levantamiento de requisitos", "Análisis", "2026-02-16", "2026-03-06", "15", "80%", '=SI(F6>=1;"Terminada";SI(F6>0;"En curso";"Pendiente"))'],
+        ["Diseño", "Diseño", "2026-03-09", "2026-03-27", "15", "40%", '=SI(F7>=1;"Terminada";SI(F7>0;"En curso";"Pendiente"))'],
+        ["Desarrollo", "Equipo técnico", "2026-03-30", "2026-05-22", "40", "0%", '=SI(F8>=1;"Terminada";SI(F8>0;"En curso";"Pendiente"))'],
+        ["Pruebas", "Calidad", "2026-05-25", "2026-06-12", "15", "0%", '=SI(F9>=1;"Terminada";SI(F9>0;"En curso";"Pendiente"))'],
+        ["Entrega y cierre", "Coordinación", "2026-06-15", "2026-06-19", "5", "0%", '=SI(F10>=1;"Terminada";SI(F10>0;"En curso";"Pendiente"))'],
+        ["", "", "", "", "", "", ""],
+        ["", "", "", "Total días", "=SUMA(E5:E10)", "", ""],
+        ["", "", "", "Avance ponderado", "=SUMAPRODUCTO(E5:E10;F5:F10)/E12", "", ""],
+        ["", "", "", "Actividades terminadas", '=CONTAR.SI(G5:G10;"Terminada")', "", ""],
+      ],
+      {
+        A1: titleStyle,
+        A2: { bold: true },
+        D2: { bold: true, align: "right" },
+        r4: header,
+        A4: { ...header, align: "left" },
+        cC: { format: "date", align: "center" },
+        cD: { format: "date", align: "center" },
+        cE: { align: "right" },
+        cF: { format: "percent", align: "right" },
+        cG: { align: "center" },
+        D12: { bold: true, align: "right" },
+        D13: { bold: true, align: "right" },
+        D14: { bold: true, align: "right" },
+        E13: { format: "percent", decimals: 1, bold: true, align: "right", bg: "#dff6dd" },
+        r12: { bold: true },
+      },
+      { A: 230, B: 140, C: 110, D: 160, E: 110, F: 90, G: 110 }
+    ),
+  ],
+  "calc-calificaciones": () => [
+    sheetFromRows(
+      "Calificaciones",
+      [
+        ["REGISTRO DE CALIFICACIONES", "", "", "", "", "", ""],
+        ["Asignatura:", "Nombre de la materia", "", "Nota mínima:", "3", "", ""],
+        ["", "", "", "", "", "", ""],
+        ["Estudiante", "Parcial 1 (30%)", "Parcial 2 (30%)", "Trabajo (20%)", "Final (20%)", "Definitiva", "Resultado"],
+        ["Ana María López", "4.2", "3.8", "4.5", "4", "=REDONDEAR(B5*0.3+C5*0.3+D5*0.2+E5*0.2;1)", '=SI(F5>=$E$2;"Aprobó";"Reprobó")'],
+        ["Carlos Ramírez", "3", "2.6", "3.5", "2.8", "=REDONDEAR(B6*0.3+C6*0.3+D6*0.2+E6*0.2;1)", '=SI(F6>=$E$2;"Aprobó";"Reprobó")'],
+        ["Daniela Torres", "4.8", "4.6", "5", "4.7", "=REDONDEAR(B7*0.3+C7*0.3+D7*0.2+E7*0.2;1)", '=SI(F7>=$E$2;"Aprobó";"Reprobó")'],
+        ["Juan Pablo Gil", "2.5", "3.2", "3", "3.4", "=REDONDEAR(B8*0.3+C8*0.3+D8*0.2+E8*0.2;1)", '=SI(F8>=$E$2;"Aprobó";"Reprobó")'],
+        ["Laura Méndez", "3.9", "4.1", "4", "3.6", "=REDONDEAR(B9*0.3+C9*0.3+D9*0.2+E9*0.2;1)", '=SI(F9>=$E$2;"Aprobó";"Reprobó")'],
+        ["", "", "", "", "", "", ""],
+        ["Promedio del grupo", "=PROMEDIO(B5:B9)", "=PROMEDIO(C5:C9)", "=PROMEDIO(D5:D9)", "=PROMEDIO(E5:E9)", "=PROMEDIO(F5:F9)", ""],
+        ["Nota más alta", "=MAX(B5:B9)", "=MAX(C5:C9)", "=MAX(D5:D9)", "=MAX(E5:E9)", "=MAX(F5:F9)", ""],
+        ["Aprobados", "", "", "", "", "", '=CONTAR.SI(G5:G9;"Aprobó")'],
+      ],
+      {
+        A1: titleStyle,
+        A2: { bold: true },
+        D2: { bold: true, align: "right" },
+        r4: header,
+        A4: { ...header, align: "left" },
+        cB: { align: "center", decimals: 1 },
+        cC: { align: "center", decimals: 1 },
+        cD: { align: "center", decimals: 1 },
+        cE: { align: "center", decimals: 1 },
+        cF: { align: "center", bold: true, decimals: 1 },
+        cG: { align: "center" },
+        r11: totalRow,
+        r12: { bold: true },
+        r13: { bold: true },
+      },
+      { A: 200, B: 110, C: 110, D: 110, E: 100, F: 100, G: 100 }
+    ),
+  ],
+  "calc-nomina": () => [
+    sheetFromRows(
+      "Nómina",
+      [
+        ["NÓMINA MENSUAL", "", "", "", "", "", "", ""],
+        ["Periodo:", "Mes y año", "", "", "", "", "", ""],
+        ["", "", "", "", "", "", "", ""],
+        ["Empleado", "Cargo", "Salario base", "Horas extra", "Valor horas extra", "Salud (4%)", "Pensión (4%)", "Neto a pagar"],
+        ["Marta Rojas", "Coordinadora", "4200000", "4", "=C5/240*1.25*D5", "=(C5+E5)*0.04", "=(C5+E5)*0.04", "=C5+E5-F5-G5"],
+        ["Andrés Cárdenas", "Analista", "3100000", "10", "=C6/240*1.25*D6", "=(C6+E6)*0.04", "=(C6+E6)*0.04", "=C6+E6-F6-G6"],
+        ["Paula Herrera", "Auxiliar", "1750000", "0", "=C7/240*1.25*D7", "=(C7+E7)*0.04", "=(C7+E7)*0.04", "=C7+E7-F7-G7"],
+        ["Sergio Patiño", "Técnico", "2300000", "6", "=C8/240*1.25*D8", "=(C8+E8)*0.04", "=(C8+E8)*0.04", "=C8+E8-F8-G8"],
+        ["", "", "", "", "", "", "", ""],
+        ["TOTALES", "", "=SUMA(C5:C8)", "=SUMA(D5:D8)", "=SUMA(E5:E8)", "=SUMA(F5:F8)", "=SUMA(G5:G8)", "=SUMA(H5:H8)"],
+      ],
+      {
+        A1: titleStyle,
+        A2: { bold: true },
+        r4: header,
+        A4: { ...header, align: "left" },
+        cC: money,
+        cD: { align: "center" },
+        cE: money,
+        cF: money,
+        cG: money,
+        cH: { ...money, bold: true },
+        r10: totalRow,
+      },
+      { A: 170, B: 130, C: 130, D: 100, E: 140, F: 120, G: 120, H: 140 }
+    ),
+  ],
 };
 
 type SlideSpec = {
@@ -213,6 +365,39 @@ const DECKS: Record<string, { themeId: string; slides: SlideSpec[] }> = {
       { layout: "title-content", title: "Contacto", body: "Nombre y cargo\nCorreo electrónico\nTeléfono\nSitio web" },
     ],
   },
+  "view-clase-academica": {
+    themeId: "theme_latte",
+    slides: [
+      { layout: "title", title: "Tema de la clase", subtitle: "Asignatura · Docente · Fecha" },
+      { layout: "title-content", title: "Objetivos de aprendizaje", body: "Al final de la sesión podrás:\n• Explicar el concepto principal\n• Aplicarlo en un ejemplo práctico\n• Relacionarlo con lo visto antes" },
+      { layout: "title-content", title: "Conceptos clave", body: "• Concepto 1: definición breve\n• Concepto 2: definición breve\n• Concepto 3: definición breve" },
+      { layout: "two-columns", title: "Ejemplo resuelto", body: "Planteamiento\nDescribe el problema o caso.", second: "Solución\nPaso 1 → Paso 2 → Resultado." },
+      { layout: "title-content", title: "Actividad en clase", body: "• Forma grupos de 3 personas\n• Resuelve el ejercicio propuesto (15 min)\n• Comparte la respuesta con el grupo" },
+      { layout: "title-content", title: "Resumen y tarea", body: "• Ideas principales de hoy\n• Lectura para la próxima clase\n• Fecha de entrega del taller", notes: "Dejar 5 minutos para preguntas." },
+    ],
+  },
+  "view-sustentacion-investigacion": {
+    themeId: "theme_ocean",
+    slides: [
+      { layout: "title", title: "Título del proyecto de investigación", subtitle: "Semillero · Investigadores · Tutor" },
+      { layout: "title-content", title: "Planteamiento del problema", body: "• Contexto y antecedentes\n• Pregunta de investigación\n• Justificación" },
+      { layout: "two-columns", title: "Objetivos", body: "Objetivo general\nQué se busca lograr con el proyecto.", second: "Objetivos específicos\n• Objetivo 1\n• Objetivo 2\n• Objetivo 3" },
+      { layout: "title-content", title: "Metodología", body: "• Tipo de investigación y enfoque\n• Población y muestra\n• Instrumentos de recolección\n• Fases del trabajo" },
+      { layout: "title-content", title: "Resultados", body: "• Hallazgo principal\n• Datos que lo respaldan\n• Comparación con estudios previos" },
+      { layout: "title-content", title: "Conclusiones y trabajo futuro", body: "• Conclusiones\n• Limitaciones\n• Próximos pasos", notes: "Cerrar agradeciendo al jurado y abrir la ronda de preguntas." },
+    ],
+  },
+  "view-inicio-proyecto": {
+    themeId: "theme_espresso",
+    slides: [
+      { layout: "title", title: "Inicio del proyecto", subtitle: "Reunión de arranque con el equipo" },
+      { layout: "title-content", title: "¿Por qué este proyecto?", body: "• Necesidad que resuelve\n• Beneficio esperado\n• Cómo mediremos el éxito" },
+      { layout: "two-columns", title: "Alcance", body: "Incluye\n• Entregable 1\n• Entregable 2\n• Entregable 3", second: "No incluye\n• Fuera de alcance 1\n• Fuera de alcance 2" },
+      { layout: "title-content", title: "Equipo y roles", body: "• Patrocinador: decide y prioriza\n• Líder del proyecto: coordina\n• Equipo: ejecuta y reporta avances" },
+      { layout: "title-content", title: "Cronograma e hitos", body: "• Hito 1 — fecha\n• Hito 2 — fecha\n• Entrega final — fecha" },
+      { layout: "title-content", title: "Próximos pasos", body: "• Acuerdos de esta reunión\n• Responsables y fechas\n• Próxima reunión de seguimiento" },
+    ],
+  },
 };
 
 export interface TemplateFile {
@@ -262,6 +447,11 @@ export function buildTemplateFile(
         assets: [],
       }),
     };
+  }
+  const extra = buildExtraTemplate(templateId, appId, title);
+  if (extra) {
+    const docId = newId(extra.prefix);
+    return { docId, fileName: `${title}.${extra.extension}`, contents: extra.contents };
   }
   return null;
 }

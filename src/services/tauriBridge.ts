@@ -3,7 +3,7 @@
 // desarrollo y el estado se guarda en localStorage y en /api/vault.
 
 import { invoke } from "@tauri-apps/api/core";
-import type { RecentDocument, SuiteApp, SuiteInfo } from "../types";
+import type { AddonInfo, RecentDocument, SuiteApp, SuiteInfo } from "../types";
 
 export const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
@@ -12,9 +12,9 @@ const INSTALLED_KEY = "coffeeworks_installed_apps";
 const FOCUS_KEY = "coffeeworks_focus_mode";
 
 /** Puertos de los servidores de desarrollo de cada aplicación. */
-const DEV_PORTS: Record<string, number> = { coffeedoc: 1421, coffeecalc: 1422, coffeeview: 1423, coffeepdf: 1424, coffeepage: 1425, coffeecams: 1426 };
+const DEV_PORTS: Record<string, number> = { coffeedoc: 1421, coffeecalc: 1422, coffeeview: 1423, coffeepdf: 1424, coffeepage: 1425, coffeeedit: 1426, coffeelive: 1427, coffeedatabase: 1428 };
 
-const ALIASES: Record<string, string> = { coffeesheet: "coffeecalc", coffeeslides: "coffeeview" };
+const ALIASES: Record<string, string> = { coffeesheet: "coffeecalc", coffeeslides: "coffeeview", coffeecams: "coffeeedit" };
 
 /** Identificador actual (los documentos antiguos usan "coffedoc", "coffesheet"...). */
 export const canonicalAppId = (id: string) => {
@@ -31,9 +31,47 @@ export function appForDocument(doc: Pick<RecentDocument, "app_id" | "name">): st
   if (["csl", "pptx"].includes(extension)) return "coffeeview";
   if (extension === "pdf") return "coffeepdf";
   if (extension === "cpg") return "coffeepage";
-  if (["ccm", "mp4", "webm", "mov", "mkv"].includes(extension)) return "coffeecams";
+  if (["ccm", "mp4", "webm", "mov", "mkv"].includes(extension)) return "coffeeedit";
+  if (extension === "clv") return "coffeelive";
+  if (["cdb", "db", "sqlite", "sqlite3"].includes(extension)) return "coffeedatabase";
   return "coffeedoc";
 }
+
+// Complementos en el navegador (solo para mostrar el catálogo; se instalan en escritorio)
+const WEB_ADDONS: AddonInfo[] = [
+  {
+    id: "accdb",
+    name: "Compatibilidad con Access",
+    summary: "Guarda bases de CoffeeDataBase en formato .accdb y .mdb",
+    description:
+      "Exporta tablas, datos, claves principales y relaciones a archivos .accdb (Access 2010 o posterior) y .mdb. Es un programa pequeño que solo se ejecuta al exportar: no necesita Java ni deja nada abierto.",
+    apps: ["coffeedatabase"],
+    version: "1.0.0",
+    download_size: "8 MB",
+    publisher: "CoffeeWorks",
+    license: "Apache 2.0 (Jackcess)",
+    installed: false,
+    installed_bytes: 0,
+    can_install: false,
+    manual_hint: "Los complementos se instalan en la aplicación de escritorio de CoffeeWorks.",
+  },
+  {
+    id: "ffmpeg",
+    name: "Motor de video FFmpeg",
+    summary: "Transmisión en directo y codificación por hardware en CoffeeLive",
+    description:
+      "Codifica el video para Twitch, YouTube, Facebook o cualquier servidor RTMP/SRT, con aceleración NVIDIA NVENC, Intel Quick Sync o AMD AMF si el equipo la tiene. Solo hace falta para transmitir: grabar funciona sin él.",
+    apps: ["coffeelive"],
+    version: "7.x",
+    download_size: "90 MB",
+    publisher: "Proyecto FFmpeg",
+    license: "GPL",
+    installed: false,
+    installed_bytes: 0,
+    can_install: false,
+    manual_hint: "Los complementos se instalan en la aplicación de escritorio de CoffeeWorks.",
+  },
+];
 
 // Catálogo usado en el navegador; en escritorio lo proporciona el backend
 const WEB_CATALOG: SuiteApp[] = [
@@ -118,19 +156,51 @@ const WEB_CATALOG: SuiteApp[] = [
     category: "Office",
   },
   {
-    id: "coffeecams",
-    name: "CoffeeCams",
-    subtitle: "Editor de video, grabación y streaming",
+    id: "coffeedatabase",
+    name: "CoffeeDataBase",
+    subtitle: "Bases de datos de escritorio",
     description:
-      "Edita videos con varias pistas, cortes, velocidad, filtros, textos y transiciones; graba la pantalla y la cámara, y transmite en directo.",
+      "Tablas, formularios, consultas SQL y visuales, relaciones con diagrama y asistente. Importa Excel, CSV y archivos .accdb/.mdb.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "database",
+    icon_name: "database",
+    icon_url: "/icons/CoffeeDataBase.ico",
+    category: "Office",
+  },
+  {
+    id: "coffeeedit",
+    name: "CoffeeEdit",
+    subtitle: "Editor de video",
+    description:
+      "Edita videos con varias pistas, cortes, velocidad, filtros, textos animados y transiciones, y exporta a MP4. Abre las grabaciones de CoffeeLive.",
     version: "v1.0",
     installed: true,
     available: true,
     size_mb: 0,
     status: "",
     color_badge: "media",
-    icon_name: "video",
-    icon_url: "/icons/CoffeeCams.ico",
+    icon_name: "scissors",
+    icon_url: "/icons/CoffeeEdit.ico",
+    category: "Multimedia",
+  },
+  {
+    id: "coffeelive",
+    name: "CoffeeLive",
+    subtitle: "Grabación de pantalla y transmisión en directo",
+    description:
+      "Escenas con pantalla, cámara, imágenes y textos; filtros, croma, transiciones, mezclador y atajos globales. Graba en MP4 o transmite a Twitch, YouTube y más.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "live",
+    icon_name: "radio",
+    icon_url: "/icons/CoffeeLive.ico",
     category: "Multimedia",
   },
 ];
@@ -256,6 +326,25 @@ export const tauriBridge = {
       return invoke<string>("create_document_file", { appId, docId, fileName, contents });
     }
     return openDevApp(appId, `#cfw=${encodeURIComponent(contents)}`);
+  },
+
+  async getAddons(): Promise<AddonInfo[]> {
+    if (isTauri) return invoke<AddonInfo[]>("get_addons");
+    return WEB_ADDONS;
+  },
+
+  async installAddon(id: string): Promise<AddonInfo> {
+    if (isTauri) return invoke<AddonInfo>("install_addon", { id });
+    throw new Error("Los complementos se instalan en la aplicación de escritorio de CoffeeWorks.");
+  },
+
+  async uninstallAddon(id: string): Promise<AddonInfo> {
+    if (isTauri) return invoke<AddonInfo>("uninstall_addon", { id });
+    throw new Error("Los complementos se gestionan en la aplicación de escritorio de CoffeeWorks.");
+  },
+
+  async openAddonsFolder(): Promise<void> {
+    if (isTauri) await invoke("open_addons_folder");
   },
 
   async openVaultFolder(): Promise<string> {

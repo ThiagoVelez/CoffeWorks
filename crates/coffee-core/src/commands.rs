@@ -286,3 +286,27 @@ pub async fn core_window_close(window: WebviewWindow) {
 pub async fn core_window_set_title(window: WebviewWindow, title: String) {
     let _ = window.set_title(&title);
 }
+
+// ---------------------------------------------------------------------------
+// Complementos
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub async fn core_addon_status(id: String) -> Result<crate::addons::AddonInfo, String> {
+    blocking(move || {
+        crate::addons::find_addon(&id)
+            .map(crate::addons::addon_info)
+            .ok_or_else(|| format!("Complemento desconocido: {id}"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn core_addon_install(id: String) -> Result<crate::addons::AddonInfo, String> {
+    blocking(move || crate::addons::install_addon(&id)).await
+}
+
+#[tauri::command]
+pub async fn core_addon_run(id: String, args: Vec<String>, input: Option<String>) -> Result<String, String> {
+    blocking(move || crate::addons::run_addon(&id, &args, input.as_deref())).await
+}

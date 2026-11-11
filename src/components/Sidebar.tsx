@@ -5,14 +5,14 @@ import {
   ChevronDown,
   Briefcase,
   LayoutTemplate,
-  GitFork,
+  Puzzle,
   Settings,
   HardDrive,
   ShieldCheck,
   Clapperboard,
 } from "lucide-react";
 
-export type NavTab = "launcher" | "templates" | "integrations" | "settings";
+export type NavTab = "launcher" | "templates" | "addons" | "settings";
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -42,7 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const staticNavItems: Array<{ id: NavTab; label: string; icon: React.FC<{ size?: number; className?: string }> }> = [
     { id: "templates", label: "Plantillas", icon: LayoutTemplate },
-    { id: "integrations", label: "Integraciones", icon: GitFork },
+    { id: "addons", label: "Complementos", icon: Puzzle },
     { id: "settings", label: "Ajustes", icon: Settings },
   ];
 

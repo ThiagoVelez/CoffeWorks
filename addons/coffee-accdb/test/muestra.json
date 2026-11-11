@@ -1,0 +1,6 @@
+{"tables":[
+ {"name":"clientes","columns":[{"name":"id","type":"autonumber","pk":true},{"name":"nombre","type":"shortText"},{"name":"saldo","type":"currency"},{"name":"activo","type":"boolean"},{"name":"alta","type":"date"},{"name":"notas","type":"longText"}],
+  "rows":[[1,"Ana Pérez","1500.50",1,"2026-01-15","Cliente VIP ñ"],[2,"Luis Gómez",200,0,"2026-02-01 10:30:00",null]]},
+ {"name":"pedidos","columns":[{"name":"id","type":"autonumber","pk":true},{"name":"cliente_id","type":"integer"},{"name":"total","type":"decimal"}],
+  "rows":[[1,1,99.9],[2,2,10],[3,1,5.25]]}
+],"relationships":[{"parent":"clientes","parentColumn":"id","child":"pedidos","childColumn":"cliente_id","cascadeDelete":true}]}

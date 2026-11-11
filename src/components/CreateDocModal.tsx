@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, FileText, Table, Presentation, FilePen, NotebookPen, Video, Plus } from "lucide-react";
+import { X, FileText, Table, Presentation, FilePen, NotebookPen, Database, Scissors, Radio, Plus } from "lucide-react";
 
 interface CreateDocModalProps {
   isOpen: boolean;
@@ -25,7 +25,9 @@ export const CreateDocModal: React.FC<CreateDocModalProps> = ({
     { id: "coffeeview", name: "CoffeeView", ext: ".csl", icon: Presentation, color: "text-[#c43e1c]", bg: "bg-[#faede4]" },
     { id: "coffeepdf", name: "CoffeePDF", ext: ".pdf", icon: FilePen, color: "text-[#c62828]", bg: "bg-[#fdecea]" },
     { id: "coffeepage", name: "CoffeePage", ext: ".cpg", icon: NotebookPen, color: "text-[#7b1fa2]", bg: "bg-[#f3e5f5]" },
-    { id: "coffeecams", name: "CoffeeCams", ext: ".ccm", icon: Video, color: "text-[#26a680]", bg: "bg-[#e3f6ef]" },
+    { id: "coffeedatabase", name: "CoffeeDataBase", ext: ".cdb", icon: Database, color: "text-[#9b111e]", bg: "bg-[#fbe9eb]" },
+    { id: "coffeeedit", name: "CoffeeEdit", ext: ".ccm", icon: Scissors, color: "text-[#26a680]", bg: "bg-[#e3f6ef]" },
+    { id: "coffeelive", name: "CoffeeLive", ext: ".clv", icon: Radio, color: "text-[#ef6c00]", bg: "bg-[#fff1e3]" },
   ];
 
 

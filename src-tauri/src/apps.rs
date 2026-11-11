@@ -114,18 +114,49 @@ pub const CATALOG: &[CatalogApp] = &[
         claim_default: true,
     },
     CatalogApp {
-        id: "coffeecams",
+        id: "coffeedatabase",
         aliases: &[],
-        name: "CoffeeCams",
-        subtitle: "Editor de video, grabación y streaming",
-        description: "Edita videos con varias pistas, cortes, velocidad, filtros, textos y transiciones; graba la pantalla y la cámara, y transmite en directo.",
+        name: "CoffeeDataBase",
+        subtitle: "Bases de datos de escritorio",
+        description: "Tablas, formularios, consultas SQL y visuales, relaciones con diagrama y asistente. Importa Excel, CSV y archivos .accdb/.mdb.",
+        version: "v1.0",
+        color_badge: "database",
+        icon_name: "database",
+        icon_url: "/icons/CoffeeDataBase.ico",
+        category: "Office",
+        file_type: ("cdb", "Base de datos de CoffeeDataBase"),
+        extra_extensions: &["db", "sqlite", "sqlite3"],
+        claim_default: true,
+    },
+    CatalogApp {
+        id: "coffeeedit",
+        // Proyectos de CoffeeCams (2.5), que se dividió en CoffeeEdit y CoffeeLive
+        aliases: &["coffeecams"],
+        name: "CoffeeEdit",
+        subtitle: "Editor de video",
+        description: "Edita videos con varias pistas, cortes, velocidad, filtros, textos animados y transiciones, y exporta a MP4. Abre las grabaciones de CoffeeLive.",
         version: "v1.0",
         color_badge: "media",
-        icon_name: "video",
-        icon_url: "/icons/CoffeeCams.ico",
+        icon_name: "scissors",
+        icon_url: "/icons/CoffeeEdit.ico",
         category: "Multimedia",
-        file_type: ("ccm", "Proyecto de CoffeeCams"),
+        file_type: ("ccm", "Proyecto de CoffeeEdit"),
         extra_extensions: &["mp4", "webm", "mov", "mkv"],
+        claim_default: true,
+    },
+    CatalogApp {
+        id: "coffeelive",
+        aliases: &[],
+        name: "CoffeeLive",
+        subtitle: "Grabación de pantalla y transmisión en directo",
+        description: "Escenas con pantalla, cámara, imágenes y textos; filtros, croma, transiciones, mezclador y atajos globales. Graba en MP4 o transmite a Twitch, YouTube y más.",
+        version: "v1.0",
+        color_badge: "live",
+        icon_name: "radio",
+        icon_url: "/icons/CoffeeLive.ico",
+        category: "Multimedia",
+        file_type: ("clv", "Colección de escenas de CoffeeLive"),
+        extra_extensions: &[],
         claim_default: true,
     },
 ];
@@ -306,6 +337,9 @@ pub fn install(id: &str) -> Result<SuiteApp, String> {
 /// Las aplicaciones instaladas con la versión anterior (llamadas «Coffe…»)
 /// se sustituyen por las nuevas: se quita la copia antigua, su acceso directo
 /// y su asociación, y se instala la nueva si su paquete está disponible.
+/// Aplicaciones que ya no existen: (nombre, extensión, aplicaciones que las sustituyen).
+const RETIRED: &[(&str, &str, &[&str])] = &[("CoffeeCams", "ccm", &["coffeeedit", "coffeelive"])];
+
 pub fn migrate_legacy_apps() {
     let legacy_apps = coffee_core::local_dir()
         .parent()
@@ -342,6 +376,33 @@ pub fn migrate_legacy_apps() {
             }
         }
     }
+    // CoffeeCams (2.5) se dividió en CoffeeEdit y CoffeeLive: se instalan las dos
+    for (retired, extension, replacements) in RETIRED {
+        let dir = coffee_core::apps_dir().join(retired);
+        if !dir.is_dir() {
+            continue;
+        }
+        let _ = fs::remove_dir_all(&dir);
+        platform::remove_shortcut(retired);
+        platform::unregister_file_type(retired, extension);
+        for id in *replacements {
+            if let Some(app) = find_app(id) {
+                if is_installed(app) {
+                    let target = installed_exe(app);
+                    platform::register_file_type(
+                        app.name,
+                        app.file_type.0,
+                        app.file_type.1,
+                        &target,
+                        app.claim_default,
+                    );
+                } else if package_path(app).is_some() {
+                    let _ = install(app.id);
+                }
+            }
+        }
+    }
+
     // La carpeta antigua de aplicaciones se borra si quedó vacía
     if let Some(dir) = legacy_apps {
         let _ = fs::remove_dir(&dir);
