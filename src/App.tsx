@@ -26,6 +26,24 @@ export const App: React.FC = () => {
   const [documents, setDocuments] = useState<RecentDocument[]>([]);
   const [suiteInfo, setSuiteInfo] = useState<SuiteInfo | null>(null);
   const [focusMode, setFocusMode] = useState<boolean>(() => tauriBridge.getFocusMode());
+  // Menú lateral plegable (sólo iconos); se recuerda entre sesiones
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("coffeeworks_sidebar_collapsed") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      try {
+        localStorage.setItem("coffeeworks_sidebar_collapsed", prev ? "0" : "1");
+      } catch {
+        /* sin almacenamiento */
+      }
+      return !prev;
+    });
+  }, []);
   const [currentTab, setCurrentTab] = useState<NavTab>("launcher");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -227,9 +245,11 @@ export const App: React.FC = () => {
           installedCount={installedCount}
           documentCount={documents.length}
           onOpenVault={isTauri ? () => void handleOpenVault() : undefined}
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={toggleSidebar}
         />
 
-        <main className="flex-1 ml-64 p-5 lg:p-8 flex flex-col gap-8 max-w-7xl">
+        <main className={`flex-1 min-w-0 ${sidebarCollapsed ? "ml-[68px]" : "ml-64"} p-5 lg:p-8 flex flex-col gap-8 max-w-7xl transition-[margin] duration-200`}>
           <UpdateBanner info={updates.info} onError={(message) => showNotification(message, true)} />
           {currentTab === "launcher" && (
             <>

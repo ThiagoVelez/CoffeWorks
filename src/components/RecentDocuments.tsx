@@ -199,7 +199,7 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
   return (
     <section className="flex flex-col gap-4 bg-white p-6 rounded-2xl shadow-sm border border-[#dfd3c7]">
       {/* Encabezado y filtros */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#e8dfd8]">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pb-3 border-b border-[#e8dfd8]">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-[#eeddd0] flex items-center justify-center text-[#6f4e37] border border-[#dfd3c7]">
             <History size={16} strokeWidth={2.4} />
@@ -210,7 +210,7 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
         </div>
 
         {/* Chips de filtro */}
-        <div className="flex items-center gap-1 bg-[#faf7f2] p-1 rounded-xl overflow-x-auto border border-[#dfd3c7]">
+        <div className="flex flex-wrap items-center gap-1 bg-[#faf7f2] p-1 rounded-xl border border-[#dfd3c7]">
           {(
             [
               { id: "all", label: "Todos" },
