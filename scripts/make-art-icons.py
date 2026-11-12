@@ -4,6 +4,11 @@
 - CoffeeVector: trazado Bézier con nodos y manejador (amarillo → naranja).
 - CoffeePaint: pincel con una pincelada (rosa → mandarina).
 - CoffeeLens: diafragma de cámara (ámbar → terracota).
+- CoffeeMotion: fotogramas clave sobre una línea de tiempo (morado → naranja).
+- CoffeeSound: forma de onda (rojo → dorado).
+- CoffeeEncoder: flechas de conversión alrededor de un fotograma (cobre → vino).
+- CoffeeAnimate: pelota que rebota con estela (coral → amarillo).
+- CoffeePuppet: cara de marioneta con puntos de control (rosa → salmón).
 """
 
 import math
@@ -152,3 +157,53 @@ for k in range(6):
 d.ellipse(box(cx - inner + 2, cy - inner + 2, cx + inner - 2, cy + inner - 2), fill=(90, 28, 6, 255))
 d.ellipse(box(cx - 12, cy - 16, cx + 2, cy - 2), fill=(255, 255, 255, 170))
 save(img, "CoffeeLens")
+
+
+# --- CoffeeMotion: fotogramas clave sobre una línea de tiempo ------------------
+img, d = gradient_canvas((174, 62, 201), (255, 146, 43))
+d.rounded_rectangle(box(40, 70, 216, 120), radius=12 * S, fill=(70, 20, 90, 110))
+d.rounded_rectangle(box(40, 140, 216, 190), radius=12 * S, fill=(70, 20, 90, 110))
+d.line([p(40, 205), p(216, 205)], fill=WHITE, width=5 * S)
+for cx_, cy_ in ((74, 95), (150, 95), (110, 165), (190, 165)):
+    d.polygon([p(cx_, cy_ - 19), p(cx_ + 19, cy_), p(cx_, cy_ + 19), p(cx_ - 19, cy_)], fill=WHITE)
+d.line([p(132, 52), p(132, 218)], fill=(255, 230, 120, 255), width=6 * S)
+d.polygon([p(120, 44), p(144, 44), p(132, 60)], fill=(255, 230, 120, 255))
+save(img, "CoffeeMotion")
+
+# --- CoffeeSound: forma de onda --------------------------------------------------
+img, d = gradient_canvas((250, 82, 82), (252, 196, 25))
+heights = [20, 46, 84, 60, 110, 70, 132, 88, 54, 100, 64, 36, 18]
+for i, hh in enumerate(heights):
+    x = 44 + i * 14
+    d.rounded_rectangle(box(x, 128 - hh / 2, x + 8, 128 + hh / 2), radius=4 * S, fill=WHITE)
+save(img, "CoffeeSound")
+
+# --- CoffeeEncoder: flechas de conversión alrededor de un fotograma ------------
+img, d = gradient_canvas((217, 92, 15), (134, 46, 90))
+d.rounded_rectangle(box(88, 96, 168, 160), radius=8 * S, fill=WHITE)
+d.polygon([p(118, 112), p(144, 128), p(118, 144)], fill=(186, 72, 50, 255))
+d.arc(box(50, 50, 206, 206), start=200, end=340, fill=WHITE, width=12 * S)
+d.polygon([p(196, 74), p(214, 112), p(176, 106)], fill=WHITE)
+d.arc(box(50, 50, 206, 206), start=20, end=160, fill=WHITE, width=12 * S)
+d.polygon([p(60, 182), p(42, 144), p(80, 150)], fill=WHITE)
+save(img, "CoffeeEncoder")
+
+# --- CoffeeAnimate: pelota que rebota con estela ----------------------------------
+img, d = gradient_canvas((255, 107, 107), (255, 212, 59))
+d.line([p(40, 196), p(216, 196)], fill=(255, 255, 255, 200), width=5 * S)
+for i, (x, y, r, a) in enumerate([(62, 96, 10, 90), (88, 140, 13, 130), (112, 180, 15, 170)]):
+    d.ellipse(box(x - r, y - r, x + r, y + r), fill=(255, 255, 255, a))
+d.ellipse(box(146, 82, 206, 142), fill=WHITE)
+d.arc(box(112, 60, 230, 230), start=200, end=260, fill=(255, 255, 255, 160), width=4 * S)
+save(img, "CoffeeAnimate")
+
+# --- CoffeePuppet: cara de marioneta con puntos de control -----------------------
+img, d = gradient_canvas((247, 131, 172), (255, 135, 87))
+d.ellipse(box(62, 62, 194, 200), fill=WHITE)
+d.ellipse(box(94, 106, 114, 126), fill=(232, 89, 120, 255))
+d.ellipse(box(142, 106, 162, 126), fill=(232, 89, 120, 255))
+d.arc(box(98, 120, 158, 176), start=20, end=160, fill=(232, 89, 120, 255), width=7 * S)
+for x, y in ((128, 40), (40, 128), (216, 128)):
+    d.line([p(128, 128), p(x, y)], fill=(255, 255, 255, 150), width=3 * S)
+    d.ellipse(box(x - 9, y - 9, x + 9, y + 9), fill=WHITE)
+save(img, "CoffeePuppet")
