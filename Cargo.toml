@@ -11,6 +11,7 @@ members = [
   "CoffeeView/src-tauri",
   "CoffeePDF/src-tauri",
   "CoffeePage/src-tauri",
+  "CoffeeBooks/src-tauri",
   "CoffeeEdit/src-tauri",
   "CoffeeLive/src-tauri",
   "CoffeeDataBase/src-tauri",

@@ -1,7 +1,7 @@
 /* Generado por scripts/make-theme.mjs: no editar a mano. Tema oscuro de Launcher. */
 html[data-theme="dark"] { color-scheme: dark; }
 html[data-theme="dark"] body { background-color: #0b0b0d !important; color: #e6e6ea; }
-html[data-theme="dark"] :is(input, select, textarea):not([data-paper] *):not([type="color"]):not([type="range"]):not([type="checkbox"]):not([type="radio"]) { background-color: #141417; color: #e6e6ea; border-color: #2c2c32; }
+html[data-theme="dark"] :is(input, select, textarea):not([data-paper] *):not(.bg-transparent):not([type="color"]):not([type="range"]):not([type="checkbox"]):not([type="radio"]) { background-color: #141417; color: #e6e6ea; border-color: #2c2c32; }
 html[data-theme="dark"] ::-webkit-scrollbar-thumb { background-color: #33333a; }
 html[data-theme="dark"] img[data-invert-dark] { filter: invert(1) hue-rotate(180deg); }
 html[data-theme="dark"] .bg-\[\#4dabf7\]:not([data-paper] *):not([data-paper]) { background-color: hsl(206.8 20.1% 16.2%) !important; }
@@ -16,6 +16,7 @@ html[data-theme="dark"] .bg-\[\#e8f1fc\]:not([data-paper] *):not([data-paper]) {
 html[data-theme="dark"] .bg-\[\#eeddd0\]:not([data-paper] *):not([data-paper]) { background-color: hsl(26.0 10.3% 8.5%) !important; }
 html[data-theme="dark"] .bg-\[\#eeddd0\]\/50:not([data-paper] *):not([data-paper]) { background-color: hsl(26.0 10.3% 8.5% / 0.5) !important; }
 html[data-theme="dark"] .bg-\[\#eeddd0\]\/60:not([data-paper] *):not([data-paper]) { background-color: hsl(26.0 10.3% 8.5% / 0.6) !important; }
+html[data-theme="dark"] .bg-\[\#f1f1ef\]:not([data-paper] *):not([data-paper]) { background-color: hsl(60.0 1.5% 6.4%) !important; }
 html[data-theme="dark"] .bg-\[\#f3e5f5\]:not([data-paper] *):not([data-paper]) { background-color: hsl(292.5 9.8% 6.8%) !important; }
 html[data-theme="dark"] .bg-\[\#f4ede6\]:not([data-paper] *):not([data-paper]) { background-color: hsl(30.0 8.6% 6.8%) !important; }
 html[data-theme="dark"] .bg-\[\#f5ebe6\]\/60:not([data-paper] *):not([data-paper]) { background-color: hsl(20.0 9.4% 6.7% / 0.6) !important; }
@@ -88,6 +89,7 @@ html[data-theme="dark"] .text-\[\#185abd\]:not([data-paper] *):not([data-paper])
 html[data-theme="dark"] .text-\[\#26a680\]:not([data-paper] *):not([data-paper]) { color: hsl(162.2 62.7% 66.0%) !important; }
 html[data-theme="dark"] .text-\[\#2c1b12\]:not([data-paper] *):not([data-paper]) { color: hsl(20.8 12.6% 86.3%) !important; }
 html[data-theme="dark"] .text-\[\#2e6b58\]:not([data-paper] *):not([data-paper]) { color: hsl(161.3 12.0% 76.5%) !important; }
+html[data-theme="dark"] .text-\[\#2f2f2f\]:not([data-paper] *):not([data-paper]) { color: hsl(0.0 0.0% 82.9%) !important; }
 html[data-theme="dark"] .text-\[\#3e2723\]:not([data-paper] *):not([data-paper]) { color: hsl(8.9 8.4% 82.5%) !important; }
 html[data-theme="dark"] .text-\[\#5c3a21\]:not([data-paper] *):not([data-paper]) { color: hsl(25.4 47.2% 66.0%) !important; }
 html[data-theme="dark"] .text-\[\#6d4c00\]:not([data-paper] *):not([data-paper]) { color: hsl(41.8 100.0% 66.0%) !important; }

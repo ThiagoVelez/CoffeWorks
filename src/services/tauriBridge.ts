@@ -12,7 +12,7 @@ const INSTALLED_KEY = "coffeeworks_installed_apps";
 const FOCUS_KEY = "coffeeworks_focus_mode";
 
 /** Puertos de los servidores de desarrollo de cada aplicación. */
-const DEV_PORTS: Record<string, number> = { coffeedoc: 1421, coffeecalc: 1422, coffeeview: 1423, coffeepdf: 1424, coffeepage: 1425, coffeeedit: 1426, coffeelive: 1427, coffeedatabase: 1428, coffeeuiux: 1429, coffeeuml: 1430, coffeephoto: 1431, coffeevector: 1432, coffeepaint: 1433, coffeelens: 1434, coffeemotion: 1435, coffeesound: 1436, coffeeencoder: 1437, coffeeanimate: 1438, coffeepuppet: 1439 };
+const DEV_PORTS: Record<string, number> = { coffeedoc: 1421, coffeebooks: 1440, coffeecalc: 1422, coffeeview: 1423, coffeepdf: 1424, coffeepage: 1425, coffeeedit: 1426, coffeelive: 1427, coffeedatabase: 1428, coffeeuiux: 1429, coffeeuml: 1430, coffeephoto: 1431, coffeevector: 1432, coffeepaint: 1433, coffeelens: 1434, coffeemotion: 1435, coffeesound: 1436, coffeeencoder: 1437, coffeeanimate: 1438, coffeepuppet: 1439 };
 
 const ALIASES: Record<string, string> = { coffeesheet: "coffeecalc", coffeeslides: "coffeeview", coffeecams: "coffeeedit" };
 
@@ -31,6 +31,7 @@ export function appForDocument(doc: Pick<RecentDocument, "app_id" | "name">): st
   if (["csl", "pptx"].includes(extension)) return "coffeeview";
   if (extension === "pdf") return "coffeepdf";
   if (extension === "cpg") return "coffeepage";
+  if (extension === "cbk") return "coffeebooks";
   if (["ccm", "mp4", "webm", "mov", "mkv"].includes(extension)) return "coffeeedit";
   if (extension === "clv") return "coffeelive";
   if (["cdb", "db", "sqlite", "sqlite3"].includes(extension)) return "coffeedatabase";
@@ -180,6 +181,22 @@ const WEB_CATALOG: SuiteApp[] = [
     color_badge: "primary",
     icon_name: "file-text",
     icon_url: "/icons/CoffeeText.ico",
+    category: "Office",
+  },
+  {
+    id: "coffeebooks",
+    name: "CoffeeBooks",
+    subtitle: "Notas, wikis y bases de datos",
+    description:
+      "Notas, wikis y bases de datos en páginas hechas de bloques: escribe con «/», crea subpáginas, tablas con vistas de tablero, lista y calendario, y plantillas.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "notes",
+    icon_name: "notebook-pen",
+    icon_url: "/icons/CoffeeBooks.ico",
     category: "Office",
   },
   {

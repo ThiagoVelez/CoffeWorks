@@ -1,7 +1,7 @@
 /* Generado por scripts/make-theme.mjs: no editar a mano. Tema oscuro de CoffeePage. */
 html[data-theme="dark"] { color-scheme: dark; }
 html[data-theme="dark"] body { background-color: #0b0b0d !important; color: #e6e6ea; }
-html[data-theme="dark"] :is(input, select, textarea):not([data-paper] *):not([type="color"]):not([type="range"]):not([type="checkbox"]):not([type="radio"]) { background-color: #141417; color: #e6e6ea; border-color: #2c2c32; }
+html[data-theme="dark"] :is(input, select, textarea):not([data-paper] *):not(.bg-transparent):not([type="color"]):not([type="range"]):not([type="checkbox"]):not([type="radio"]) { background-color: #141417; color: #e6e6ea; border-color: #2c2c32; }
 html[data-theme="dark"] ::-webkit-scrollbar-thumb { background-color: #33333a; }
 html[data-theme="dark"] img[data-invert-dark] { filter: invert(1) hue-rotate(180deg); }
 html[data-theme="dark"] .bg-\[\#4dabf7\]:not([data-paper] *):not([data-paper]) { background-color: hsl(206.8 20.1% 16.2%) !important; }

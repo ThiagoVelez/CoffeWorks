@@ -1,7 +1,7 @@
 ; Instalador de CoffeeWorks para Windows (Inno Setup 6).
 ;
 ; Instala el Launcher (CoffeeWorks.exe) y deja los paquetes de CoffeeDoc,
-; CoffeeCalc, CoffeeView, CoffeePDF, CoffeePage, CoffeeDataBase, CoffeeEdit,
+; CoffeeCalc, CoffeeView, CoffeePDF, CoffeePage, CoffeeBooks, CoffeeDataBase, CoffeeEdit,
 ; CoffeeLive, CoffeeUI/UX, CoffeeUML, CoffeePhoto, CoffeeVector, CoffeePaint, CoffeeLens, CoffeeMotion, CoffeeSound, CoffeeEncoder, CoffeeAnimate y CoffeePuppet en la carpeta "packages". Las aplicaciones se instalan
 ; y desinstalan después desde la Tienda de Apps del propio Launcher.
 ;

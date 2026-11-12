@@ -1,10 +1,11 @@
 # CoffeeWorks
 
-Suite ofimática de escritorio para Windows, de código abierto y sin conexión. Se compone de un **Launcher** que instala y gestiona las aplicaciones y de diecinueve aplicaciones, en cuatro categorías (**Office**, **Multimedia**, **Desarrollador** e **Ilustración**):
+Suite ofimática de escritorio para Windows, de código abierto y sin conexión. Se compone de un **Launcher** que instala y gestiona las aplicaciones y de veinte aplicaciones, en cuatro categorías (**Office**, **Multimedia**, **Desarrollador** e **Ilustración**):
 
 | Aplicación | Qué es | Formato propio | Abre | Exporta |
 | :--- | :--- | :--- | :--- | :--- |
 | **CoffeeDoc** | Procesador de textos | `.cfd` | Word (`.docx`), Markdown, HTML, texto | Word (`.docx`), Markdown, HTML, texto, PDF |
+| **CoffeeBooks** *(Office)* | Notas, wikis y bases de datos (tipo Notion) | `.cbk` | Markdown, texto | Markdown, ZIP del espacio y PDF |
 | **CoffeeCalc** | Hoja de cálculo | `.cfs` | Excel (`.xlsx`, `.xls`), CSV | Excel (`.xlsx`) con formato, CSV, PDF |
 | **CoffeeView** | Presentaciones | `.csl` | PowerPoint (`.pptx`) | PowerPoint (`.pptx`), HTML, PDF |
 | **CoffeePDF** | Editor de PDF | `.pdf` | PDF | PDF, páginas sueltas, PNG |
@@ -127,7 +128,7 @@ npm install
 npm run dev:all
 ```
 
-Antes de la primera vez, instala también las dependencias de cada aplicación (`npm install` dentro de `CoffeeDoc`, `CoffeeCalc`, `CoffeeView`, `CoffeePDF`, `CoffeePage`, `CoffeeDataBase`, `CoffeeEdit`, `CoffeeLive`, `CoffeeUIUX`, `CoffeeUML`, `CoffeePhoto`, `CoffeeVector`, `CoffeePaint`, `CoffeeLens`, `CoffeeMotion`, `CoffeeSound`, `CoffeeEncoder`, `CoffeeAnimate` y `CoffeePuppet`). Los servidores quedan en:
+Antes de la primera vez, instala también las dependencias de cada aplicación (`npm install` dentro de `CoffeeDoc`, `CoffeeCalc`, `CoffeeView`, `CoffeePDF`, `CoffeePage`, `CoffeeBooks`, `CoffeeDataBase`, `CoffeeEdit`, `CoffeeLive`, `CoffeeUIUX`, `CoffeeUML`, `CoffeePhoto`, `CoffeeVector`, `CoffeePaint`, `CoffeeLens`, `CoffeeMotion`, `CoffeeSound`, `CoffeeEncoder`, `CoffeeAnimate` y `CoffeePuppet`). Los servidores quedan en:
 
 | Aplicación | Launcher | CoffeeDoc | CoffeeCalc | CoffeeView | CoffeePDF | CoffeePage | CoffeeEdit | CoffeeLive | CoffeeDataBase |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -140,6 +141,10 @@ Antes de la primera vez, instala también las dependencias de cada aplicación (
 | Aplicación | CoffeeMotion | CoffeeSound | CoffeeEncoder | CoffeeAnimate | CoffeePuppet |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | Puerto | 1435 | 1436 | 1437 | 1438 | 1439 |
+
+| Aplicación | CoffeeBooks |
+| :--- | :--- |
+| Puerto | 1440 |
 
 En el navegador los documentos se guardan en `localStorage` y el Launcher abre las aplicaciones en pestañas; en el ejecutable se usan archivos reales y ventanas nativas.
 
@@ -162,6 +167,7 @@ CoffeeWorks/
 ├── CoffeeView/              Presentaciones (src/ + src-tauri/)
 ├── CoffeePDF/               Editor de PDF (src/ + src-tauri/)
 ├── CoffeePage/              Cuaderno de notas (src/ + src-tauri/)
+├── CoffeeBooks/             Notas, wikis y bases de datos (src/ + src-tauri/)
 ├── CoffeeDataBase/          Bases de datos (src/ + src-tauri/)
 ├── CoffeeEdit/              Editor de video (src/ + src-tauri/)
 ├── CoffeeLive/              Grabación y transmisión en directo (src/ + src-tauri/)
@@ -219,6 +225,13 @@ También existen `--install-all` y `--uninstall-all`.
 **CoffeePage** — cuadernos con secciones de colores, páginas y subpáginas; notas que se colocan en cualquier punto de la página y se mueven arrastrándolas; formato de texto, listas, tablas, vínculos y fecha; etiquetas (tarea pendiente, importante, pregunta, idea); dibujo a mano con bolígrafo, marcador y borrador; imágenes pegadas o arrastradas; papel liso, rayado o cuadriculado; búsqueda en todo el cuaderno; guardado automático; exportación a HTML y Markdown e impresión.
 
 **CoffeeDataBase** — bases de datos de escritorio sobre SQLite (archivos `.cdb`, también abre `.db` y `.sqlite`): diseñador de tablas con tipos de campo (autonumérico, texto, números, moneda, fecha, sí/no, binario), clave principal, requeridos, únicos y valores predeterminados; hoja de datos con edición, búsqueda, orden y listas para los campos relacionados; formularios registro a registro; consola SQL con colores, historial y explicación de errores en español; diseñador visual de consultas; diagrama de relaciones (uno a varios, uno a uno y varios a varios con tabla intermedia); asistente con plantillas, datos de prueba y revisión del diseño; importación de Excel, CSV, scripts SQL y bases `.accdb`/`.mdb`; exportación a Excel, CSV, script SQL, informes y Access (con el complemento); ETL de semilleros; tema oscuro, manual de usuario (F1), búsqueda de comandos (Ctrl+K) y copias de seguridad con fecha.
+
+**CoffeeBooks** (blanco y negro) — notas, wikis y bases de datos, al estilo de Notion:
+
+- *Páginas* anidadas con icono y portada, favoritos, búsqueda en todo el espacio (`Ctrl+P`), papelera con restauración y ancho completo.
+- *Bloques*: texto, títulos, listas, tareas, desplegables, avisos, citas, código, tablas, imágenes, subpáginas y separadores. Se eligen con «/» o con atajos de Markdown (`#`, `-`, `1.`, `[]`, `>`, ```` ``` ````, `---`), se arrastran con el asa ⋮⋮ y se convierten o colorean desde su menú.
+- *Bases de datos* con propiedades de texto, número, selección, selección múltiple, fecha, casilla y enlace; vistas de tabla, tablero, lista y calendario, filtros, orden y búsqueda; cada fila se abre como una página.
+- Seis *plantillas* (notas de reunión, diario, wiki del equipo, seguimiento de tareas, lista de lectura y plan de proyecto). Importa Markdown y exporta cada página a Markdown, todo el espacio en ZIP o a PDF.
 
 **CoffeeEdit** — editor de video: biblioteca de medios (video, audio, imágenes), línea de tiempo con varias pistas de video, texto y audio, recortar y dividir clips, moverlos entre pistas con ajuste magnético, velocidad (0,25x a 4x), volumen, fundidos, encuadre (escala, posición, rotación, opacidad), filtros y ajustes de color, *corrección de color tipo Lumetri* (exposición, temperatura, matiz, iluminaciones, sombras, blancos, negros, intensidad, nueve looks creativos y viñeta), *transiciones* (disolución cruzada, fundido a negro o a blanco, barrido, deslizar y zoom), *eliminar cerrando el hueco* (Mayús+Supr), *marcadores* (M, con [ y ] para saltar), títulos animados y exportación a MP4 o WebM en horizontal, vertical, cuadrado o 4K. Abre las grabaciones de CoffeeLive.
 

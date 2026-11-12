@@ -11,7 +11,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 // Carpeta de shared/ → apps que la usan (se copia en src/<carpeta>)
 const GROUPS = {
   spell: ["CoffeeDoc", "CoffeeView", "CoffeePDF", "CoffeeCalc", "CoffeePage", "CoffeeDataBase"],
-  theme: [".", "CoffeeDoc", "CoffeeCalc", "CoffeeView", "CoffeePDF", "CoffeePage", "CoffeeDataBase", "CoffeeUIUX", "CoffeeUML", "CoffeeEdit", "CoffeeLive"],
+  theme: [".", "CoffeeDoc", "CoffeeBooks", "CoffeeCalc", "CoffeeView", "CoffeePDF", "CoffeePage", "CoffeeDataBase", "CoffeeUIUX", "CoffeeUML", "CoffeeEdit", "CoffeeLive"],
   studio: ["CoffeePhoto", "CoffeeVector", "CoffeePaint", "CoffeeLens", "CoffeeMotion", "CoffeeSound", "CoffeeEncoder", "CoffeeAnimate", "CoffeePuppet"],
 };
 const check = process.argv.includes("--check");

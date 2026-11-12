@@ -207,12 +207,12 @@ export function generate(app) {
     target === "dark"
       ? `${scope} { color-scheme: dark; }
 ${scope} body { background-color: #0b0b0d !important; color: #e6e6ea; }
-${scope} :is(input, select, textarea):not([data-paper] *):not([type="color"]):not([type="range"]):not([type="checkbox"]):not([type="radio"]) { background-color: #141417; color: #e6e6ea; border-color: #2c2c32; }
+${scope} :is(input, select, textarea):not([data-paper] *):not(.bg-transparent):not([type="color"]):not([type="range"]):not([type="checkbox"]):not([type="radio"]) { background-color: #141417; color: #e6e6ea; border-color: #2c2c32; }
 ${scope} ::-webkit-scrollbar-thumb { background-color: #33333a; }
 ${scope} img[data-invert-dark] { filter: invert(1) hue-rotate(180deg); }`
       : `${scope} { color-scheme: light; }
 ${scope} body { background-color: #f6f6f7 !important; color: #1d1d22; }
-${scope} :is(input, select, textarea):not([data-paper] *):not([type="color"]):not([type="range"]):not([type="checkbox"]):not([type="radio"]) { background-color: #ffffff; color: #1d1d22; border-color: #d4d4da; }
+${scope} :is(input, select, textarea):not([data-paper] *):not(.bg-transparent):not([type="color"]):not([type="range"]):not([type="checkbox"]):not([type="radio"]) { background-color: #ffffff; color: #1d1d22; border-color: #d4d4da; }
 ${scope} ::-webkit-scrollbar-thumb { background-color: #c4c4cc; }`;
   return `/* Generado por scripts/make-theme.mjs: no editar a mano. Tema ${target === "dark" ? "oscuro" : "claro"} de ${app === "." ? "Launcher" : app}. */\n${base}\n${[...rules].sort().join("\n")}\n`;
 }

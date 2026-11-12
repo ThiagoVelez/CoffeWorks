@@ -127,6 +127,7 @@ export default defineConfig({
         "**/CoffeePaint/dist/**",
         "**/CoffeeLens/dist/**",
         "**/CoffeeMotion/dist/**",
+        "**/CoffeeBooks/dist/**",
         "**/CoffeeSound/dist/**",
         "**/CoffeeEncoder/dist/**",
         "**/CoffeeAnimate/dist/**",

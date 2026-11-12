@@ -1,0 +1,22 @@
+[package]
+name = "coffeebooks"
+description = "Espacio de trabajo de notas, wikis y bases de datos de la suite CoffeeWorks"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "CoffeeBooks"
+path = "src/main.rs"
+
+[features]
+# Activa el modo de producción (frontend embebido en el ejecutable).
+custom-protocol = ["tauri/custom-protocol"]
+
+[build-dependencies]
+tauri-build = { workspace = true }
+
+[dependencies]
+tauri = { workspace = true }
+tauri-plugin-dialog = { workspace = true }
+coffee-core = { workspace = true }

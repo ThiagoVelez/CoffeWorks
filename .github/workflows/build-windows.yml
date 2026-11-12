@@ -115,6 +115,9 @@ jobs:
           Assert (Test-Path "$apps\CoffeeEncoder\CoffeeEncoder.exe") "CoffeeEncoder queda instalado"
           Assert (Test-Path "$apps\CoffeeAnimate\CoffeeAnimate.exe") "CoffeeAnimate queda instalado"
           Assert (Test-Path "$apps\CoffeePuppet\CoffeePuppet.exe") "CoffeePuppet queda instalado"
+          Assert (Test-Path "$apps\CoffeeBooks\CoffeeBooks.exe") "CoffeeBooks queda instalado"
+          $cbk = (Get-ItemProperty "HKCU:\Software\Classes\.cbk" -ErrorAction SilentlyContinue).'(default)'
+          Assert ($cbk -eq "CoffeeWorks.CoffeeBooks.cbk") "se asocia el tipo de archivo .cbk"
           Assert (Test-Path "$menu\CoffeeUIUX.lnk") "se crea el acceso directo de CoffeeUI/UX"
           $cpg = (Get-ItemProperty "HKCU:\Software\Classes\.cpg" -ErrorAction SilentlyContinue).'(default)'
           Assert ($cpg -eq "CoffeeWorks.CoffeePage.cpg") "se asocia el tipo de archivo .cpg"
@@ -153,7 +156,7 @@ jobs:
           # Las ventanas deben arrancar y seguir abiertas
           New-Item -ItemType Directory -Force screenshots | Out-Null
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-          foreach ($exe in @("$dir\CoffeeWorks.exe", "$apps\CoffeeDoc\CoffeeDoc.exe", "$apps\CoffeeCalc\CoffeeCalc.exe", "$apps\CoffeeView\CoffeeView.exe", "$apps\CoffeePDF\CoffeePDF.exe", "$apps\CoffeePage\CoffeePage.exe", "$apps\CoffeeDataBase\CoffeeDataBase.exe", "$apps\CoffeeEdit\CoffeeEdit.exe", "$apps\CoffeeLive\CoffeeLive.exe", "$apps\CoffeeUIUX\CoffeeUIUX.exe", "$apps\CoffeeUML\CoffeeUML.exe", "$apps\CoffeePhoto\CoffeePhoto.exe", "$apps\CoffeeVector\CoffeeVector.exe", "$apps\CoffeePaint\CoffeePaint.exe", "$apps\CoffeeLens\CoffeeLens.exe", "$apps\CoffeeMotion\CoffeeMotion.exe", "$apps\CoffeeSound\CoffeeSound.exe", "$apps\CoffeeEncoder\CoffeeEncoder.exe", "$apps\CoffeeAnimate\CoffeeAnimate.exe", "$apps\CoffeePuppet\CoffeePuppet.exe")) {
+          foreach ($exe in @("$dir\CoffeeWorks.exe", "$apps\CoffeeDoc\CoffeeDoc.exe", "$apps\CoffeeCalc\CoffeeCalc.exe", "$apps\CoffeeView\CoffeeView.exe", "$apps\CoffeePDF\CoffeePDF.exe", "$apps\CoffeePage\CoffeePage.exe", "$apps\CoffeeBooks\CoffeeBooks.exe", "$apps\CoffeeDataBase\CoffeeDataBase.exe", "$apps\CoffeeEdit\CoffeeEdit.exe", "$apps\CoffeeLive\CoffeeLive.exe", "$apps\CoffeeUIUX\CoffeeUIUX.exe", "$apps\CoffeeUML\CoffeeUML.exe", "$apps\CoffeePhoto\CoffeePhoto.exe", "$apps\CoffeeVector\CoffeeVector.exe", "$apps\CoffeePaint\CoffeePaint.exe", "$apps\CoffeeLens\CoffeeLens.exe", "$apps\CoffeeMotion\CoffeeMotion.exe", "$apps\CoffeeSound\CoffeeSound.exe", "$apps\CoffeeEncoder\CoffeeEncoder.exe", "$apps\CoffeeAnimate\CoffeeAnimate.exe", "$apps\CoffeePuppet\CoffeePuppet.exe")) {
             $name = [IO.Path]::GetFileNameWithoutExtension($exe)
             $process = Start-Process $exe -PassThru
             Start-Sleep -Seconds 12

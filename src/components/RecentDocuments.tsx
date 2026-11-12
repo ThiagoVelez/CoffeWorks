@@ -47,7 +47,7 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
     if (activeFilter === "spreadsheets") return app === "coffeecalc" || app === "coffeesheet" || lower.endsWith(".cfs") || lower.endsWith(".xlsx");
     if (activeFilter === "presentations") return app === "coffeeview" || app === "coffeeslides" || lower.endsWith(".csl") || lower.endsWith(".pptx");
     if (activeFilter === "pdf") return app === "coffeepdf" || lower.endsWith(".pdf");
-    if (activeFilter === "notes") return app === "coffeepage" || lower.endsWith(".cpg");
+    if (activeFilter === "notes") return app === "coffeepage" || app === "coffeebooks" || lower.endsWith(".cpg") || lower.endsWith(".cbk");
     if (activeFilter === "videos") return ["coffeecams", "coffeeedit", "coffeelive"].includes(app) || lower.endsWith(".ccm") || lower.endsWith(".clv");
     if (activeFilter === "databases") return app === "coffeedatabase" || /\.(cdb|db|sqlite3?)$/.test(lower);
     if (activeFilter === "designs") return app === "coffeeuiux" || app === "coffeeuml" || /\.(cux|cuml)$/.test(lower);
@@ -101,6 +101,9 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
         bg: "bg-[#faede4]",
         border: "border-[#dfd3c7]",
       };
+    }
+    if (lowerName.endsWith(".cbk") || appId === "coffeebooks") {
+      return { iconUrl: "/icons/CoffeeBooks.ico", alt: "CoffeeBooks", bg: "bg-[#f1f1ef]", border: "border-[#2f2f2f]/20" };
     }
     if (lowerName.endsWith(".cpg") || appId === "coffeepage") {
       return {
