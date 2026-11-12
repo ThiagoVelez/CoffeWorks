@@ -29,7 +29,7 @@ Cada aplicación es un ejecutable independiente construido con **Tauri 2** (Rust
 
 ## Cómo funciona la instalación
 
-1. El instalador de Windows (`CoffeeWorks-Setup-2.9.0.exe`, hecho con **Inno Setup**) instala solo el Launcher y deja los paquetes de las veinte aplicaciones en su carpeta `packages`.
+1. El instalador de Windows (`CoffeeWorks-Setup-2.10.0.exe`, hecho con **Inno Setup**) instala solo el Launcher y deja los paquetes de las veinte aplicaciones en su carpeta `packages`.
 2. Dentro del Launcher, en la **Tienda de Apps**, cada aplicación tiene sus botones **Instalar**, **Abrir App** y **Desinstalar**:
    - *Instalar* copia la aplicación a `%LOCALAPPDATA%\CoffeeWorks\Apps\<App>`, crea su acceso directo en el menú Inicio (carpeta *CoffeeWorks*) y asocia su tipo de archivo, de modo que un doble clic sobre un `.cfd`, `.cfs`, `.csl`, `.cpg`, `.cdb`, `.ccm` o `.clv` lo abre. CoffeePDF no reemplaza tu lector de PDF predeterminado: aparece en *Abrir con* del Explorador.
    - *Desinstalar* borra la aplicación, su acceso directo y su asociación. **Los documentos no se tocan.**
@@ -43,7 +43,7 @@ Cada aplicación es un ejecutable independiente construido con **Tauri 2** (Rust
 CoffeeWorks también se publica como paquete **`.deb`** para **Ubuntu 22.04 o posterior** y **Debian 12 o posterior** (64 bits), junto al instalador de Windows en cada versión (`coffeeworks_<versión>_amd64.deb`).
 
 ```bash
-sudo apt install ./coffeeworks_2.9.0_amd64.deb
+sudo apt install ./coffeeworks_2.10.0_amd64.deb
 ```
 
 - Se instala en `/opt/coffeeworks`, con el comando `coffeeworks` y su entrada en el menú de aplicaciones. Usa la WebKitGTK del sistema (`libwebkit2gtk-4.1`), así que el paquete pesa pocos MB.
@@ -85,6 +85,7 @@ El Launcher tiene dos secciones más en la barra lateral:
   - *Revisión del PDF original* (CoffeePDF, ~36 MB): revisa también la ortografía del texto que ya trae el PDF y, en los escaneados, lo reconoce con OCR ([Tesseract](https://github.com/tesseract-ocr/tesseract), español e inglés). Las faltas se corrigen con clic derecho: la palabra se tapa y la corrección se escribe encima (código en `addons/coffee-pdfcheck`).
   - La pestaña *Formatos e integración* resume qué abre y exporta cada app.
 - **Plantillas**: 58 plantillas para catorce apps (actas, cartas, planes de proyecto, trabajos académicos; presupuestos, cronogramas, calificaciones y nómina; clases y sustentaciones; formularios, actas y certificados en PDF; cuadernos de clase, bitácoras y planificadores; bases de tienda, semilleros, biblioteca e inventario; proyectos de video para YouTube, Reels y tutoriales; escenas para clases, videojuegos y podcasts; pantallas de app móvil, web y escritorio; un proyecto UML completo, un modelo entidad-relación y un diagrama de flujo; una publicación de oferta, una miniatura de YouTube y un collage de fotos; un logotipo, una tarjeta de visita y un cartel vectoriales; un boceto con perspectiva, una página de cómic y un mandala en acuarela; y siete espacios de CoffeeBooks: segundo cerebro, gestor de proyectos, wiki del equipo, planificador de estudios, diario y hábitos, CRM y planificador de viajes). CoffeeLens trae en su lugar trece ajustes preestablecidos de revelado.
+- **Games**: juegos originales hechos en Rust que se descargan aparte desde el Launcher (Instalar, Jugar, Actualizar y Desinstalar, con verificación SHA-256). El primero es **SurvivalForest**, de supervivencia y construcción en un mundo de bloques procedural ([repositorio](https://github.com/ThiagoVelez/juego-rust)). Cada juego tendrá sus Mods, TexturePacks y Shaders.
 
 No hacen falta permisos de administrador: todo se instala por usuario. El instalador incluye el motor **WebView2** para los equipos con Windows 10 que aún no lo tengan (Windows 11 lo trae de serie).
 
@@ -95,7 +96,7 @@ No hacen falta permisos de administrador: todo se instala por usuario. El instal
 Cada vez que se sube código, el flujo **Instalador de Windows** (`.github/workflows/build-windows.yml`) compila la suite en Windows, crea el instalador, lo prueba y lo publica:
 
 1. Abre la pestaña **Actions** del repositorio y entra en la última ejecución de *Instalador de Windows*.
-2. En **Artifacts**, descarga `CoffeeWorks-Setup` y descomprímelo: dentro está `CoffeeWorks-Setup-2.9.0.exe`.
+2. En **Artifacts**, descarga `CoffeeWorks-Setup` y descomprímelo: dentro está `CoffeeWorks-Setup-2.10.0.exe`.
 
 Cuando llega a `main` una versión que aún no está publicada, el flujo crea su *Release* con el instalador (ver «Actualizaciones automáticas»). Al subir una etiqueta `v*` el instalador también se adjunta a esa *Release*.
 
@@ -116,7 +117,7 @@ Después, desde la carpeta del repositorio:
 powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 ```
 
-El script compila las quince interfaces, los quince ejecutables y el instalador. El resultado queda en `installer\Output\CoffeeWorks-Setup-2.9.0.exe`.
+El script compila las quince interfaces, los quince ejecutables y el instalador. El resultado queda en `installer\Output\CoffeeWorks-Setup-2.10.0.exe`.
 
 Si prefieres hacerlo paso a paso:
 
