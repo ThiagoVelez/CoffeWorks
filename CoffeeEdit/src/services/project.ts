@@ -1,5 +1,7 @@
 // Operaciones puras sobre el proyecto: crear, validar y editar clips.
 
+import { DEFAULT_GRADE } from "./color";
+
 import type {
   Adjustments,
   Clip,
@@ -103,6 +105,8 @@ export function parseProject(text: string): Project {
         fit: m.fit === "cover" ? "cover" : "contain",
         transform: { ...DEFAULT_TRANSFORM, ...(m.transform || {}) },
         adjust: { ...DEFAULT_ADJUST, ...(m.adjust || {}) },
+        ...(m.color ? { color: { ...DEFAULT_GRADE, ...m.color } } : {}),
+        ...(m.transition && m.transition.kind ? { transition: { kind: m.transition.kind, duration: Math.max(0.1, Math.min(5, num(m.transition.duration, 1))) } } : {}),
       } as MediaClip;
     });
   return {
@@ -112,6 +116,7 @@ export function parseProject(text: string): Project {
     media,
     tracks: tracks.length ? tracks : base.tracks,
     clips,
+    markers: Array.isArray(raw.markers) ? raw.markers.filter((m: unknown) => typeof m === "number" && isFinite(m)).sort((a: number, b: number) => a - b) : [],
   };
 }
 

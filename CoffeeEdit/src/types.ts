@@ -37,6 +37,27 @@ export interface Adjustments {
   sepia: number; // 0-100
 }
 
+/** Corrección de color tipo Lumetri (valores −100..100 salvo la exposición, en pasos). */
+export interface ColorGrade {
+  exposure: number;
+  temperature: number;
+  tint: number;
+  highlights: number;
+  shadows: number;
+  whites: number;
+  blacks: number;
+  vibrance: number;
+  look: "none" | "cinematic" | "tealOrange" | "vintage" | "bwFilm" | "warmSunset" | "coolNight" | "bleach" | "faded" | "matrix";
+  lookIntensity: number;
+  vignette: number;
+}
+
+export interface ClipTransition {
+  kind: "dissolve" | "dipBlack" | "dipWhite" | "wipe" | "slide" | "zoom";
+  /** Segundos al principio del clip. */
+  duration: number;
+}
+
 export interface Transform {
   /** Desplazamiento respecto al centro, en fracción del ancho/alto del lienzo. */
   x: number;
@@ -67,6 +88,8 @@ export interface MediaClip extends ClipBase {
   fit: "contain" | "cover";
   transform: Transform;
   adjust: Adjustments;
+  color?: ColorGrade;
+  transition?: ClipTransition | null;
 }
 
 export type TextAnimation = "none" | "fade" | "slide" | "pop" | "typewriter";
@@ -104,6 +127,8 @@ export interface Project {
   media: MediaItem[];
   tracks: Track[];
   clips: Clip[];
+  /** Marcadores de la línea de tiempo (segundos). */
+  markers?: number[];
 }
 
 export const ACCENT = "#26a680";

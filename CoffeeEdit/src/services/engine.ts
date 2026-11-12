@@ -5,6 +5,7 @@
 import type { Clip, MediaClip, MediaItem, Project, TextClip, Track } from "../types";
 import { clipEnd, cssFilter, projectDuration } from "./project";
 import { Ticker } from "./media";
+import { drawVignette, gradeFilter } from "./color";
 
 interface Slot {
   clipId: string;
@@ -364,7 +365,7 @@ export class TimelineEngine {
     }
   }
 
-  private drawMedia(clip: MediaClip, t: number, W: number, H: number) {
+  private drawMedia(clip: MediaClip, t: number, W: number, H: number, nested = false) {
     const slot = this.slots.get(clip.id);
     if (!slot) return;
     const el = slot.el;
@@ -382,19 +383,48 @@ export class TimelineEngine {
       return; // audio
     }
     if (!sw || !sh) return;
+    const ctx = this.ctx;
+    // Transición al principio del clip
+    const tr = !nested && clip.transition ? clip.transition : null;
+    const u = tr && t < clip.start + tr.duration ? Math.max(0, Math.min(1, (t - clip.start) / tr.duration)) : 1;
+    if (tr && u < 1 && tr.kind === "dissolve") {
+      // El clip anterior de la pista, congelado en su último fotograma, debajo
+      const prev = this.project?.clips.find((c) => c.trackId === clip.trackId && c.type === "media" && Math.abs(clipEnd(c) - clip.start) < 0.05) as MediaClip | undefined;
+      if (prev) this.drawMedia(prev, clipEnd(prev) - 0.001, W, H, true);
+    }
+    const eased = 1 - Math.pow(1 - u, 3);
     const base = clip.fit === "cover" ? Math.max(W / sw, H / sh) : Math.min(W / sw, H / sh);
-    const s = base * clip.transform.scale;
+    let s = base * clip.transform.scale;
+    if (tr && u < 1 && tr.kind === "zoom") s *= 1.35 - 0.35 * eased;
     const dw = sw * s;
     const dh = sh * s;
-    const ctx = this.ctx;
     ctx.save();
-    ctx.globalAlpha = Math.max(0, Math.min(1, clip.transform.opacity * fadeFactor(clip, t)));
-    const filter = cssFilter(clip.adjust);
-    if (filter !== "none") ctx.filter = filter;
-    ctx.translate(W / 2 + clip.transform.x * W, H / 2 + clip.transform.y * H);
+    let alpha = clip.transform.opacity * fadeFactor(clip, t);
+    if (tr && u < 1 && (tr.kind === "dissolve" || tr.kind === "zoom")) alpha *= u;
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+    const css = cssFilter(clip.adjust);
+    const grade = gradeFilter(clip.color);
+    const filter = [css !== "none" ? css : "", grade].filter(Boolean).join(" ");
+    if (filter) ctx.filter = filter;
+    let x = W / 2 + clip.transform.x * W;
+    if (tr && u < 1 && tr.kind === "slide") x += (1 - eased) * W;
+    ctx.translate(x, H / 2 + clip.transform.y * H);
     if (clip.transform.rotation) ctx.rotate((clip.transform.rotation * Math.PI) / 180);
+    if (tr && u < 1 && tr.kind === "wipe") {
+      ctx.beginPath();
+      ctx.rect(-dw / 2, -dh / 2, dw * eased, dh);
+      ctx.clip();
+    }
     ctx.drawImage(el, -dw / 2, -dh / 2, dw, dh);
+    drawVignette(ctx, clip, dw, dh);
     ctx.restore();
+    if (tr && u < 1 && (tr.kind === "dipBlack" || tr.kind === "dipWhite")) {
+      ctx.save();
+      ctx.globalAlpha = 1 - u;
+      ctx.fillStyle = tr.kind === "dipBlack" ? "#000" : "#fff";
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
   }
 
   // -------------------------------------------------------------------------

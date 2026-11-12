@@ -548,6 +548,11 @@ export const App: React.FC = () => {
         { label: "Dividir en el cabezal", icon: Scissors, shortcut: "S", action: () => editorRef.current?.split() },
         { label: "Duplicar clip", icon: Copy, shortcut: "Ctrl+D", action: () => editorRef.current?.duplicateSelected() },
         { label: "Eliminar clip", icon: Trash2, shortcut: "Supr", action: () => editorRef.current?.deleteSelected() },
+        { label: "Eliminar y cerrar el hueco", shortcut: "Mayús+Supr", action: () => editorRef.current?.rippleDelete() },
+        { divider: true },
+        { label: "Añadir o quitar marcador", shortcut: "M", action: () => editorRef.current?.toggleMarker() },
+        { label: "Marcador anterior", shortcut: "[", action: () => editorRef.current?.jumpMarker(-1) },
+        { label: "Marcador siguiente", shortcut: "]", action: () => editorRef.current?.jumpMarker(1) },
       ],
     },
     {
