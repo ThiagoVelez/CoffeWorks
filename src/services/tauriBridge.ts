@@ -7,6 +7,17 @@ import type { AddonInfo, RecentDocument, SuiteApp, SuiteInfo, UpdateInfo } from 
 
 export const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
+/** Estado de un juego de CoffeeWorks Games (lo devuelve el Launcher de escritorio). */
+export interface GameStatus {
+  id: string;
+  installed: string | null;
+  latest: string | null;
+  stage: string | null;
+  size: number | null;
+  update_available: boolean;
+  error: string | null;
+}
+
 const RECENT_KEY = "coffeeworks_recent_docs";
 const INSTALLED_KEY = "coffeeworks_installed_apps";
 const FOCUS_KEY = "coffeeworks_focus_mode";
@@ -628,6 +639,25 @@ export const tauriBridge = {
 
   async updateSetAuto(enabled: boolean): Promise<UpdateInfo> {
     return invoke<UpdateInfo>("update_set_auto", { enabled });
+  },
+
+  /** Versión instalada y, con `online`, la última publicada. Sin la app de escritorio devuelve null. */
+  async gameStatus(id: string, online: boolean): Promise<GameStatus | null> {
+    return isTauri ? invoke<GameStatus>("game_status", { id, online }) : null;
+  },
+
+  async installGame(id: string): Promise<GameStatus> {
+    if (isTauri) return invoke<GameStatus>("game_install", { id });
+    throw new Error("Los juegos se instalan desde la app de escritorio de CoffeeWorks.");
+  },
+
+  async uninstallGame(id: string): Promise<void> {
+    if (isTauri) await invoke("game_uninstall", { id });
+  },
+
+  async launchGame(id: string): Promise<void> {
+    if (isTauri) await invoke("game_launch", { id });
+    else throw new Error("Los juegos se abren desde la app de escritorio de CoffeeWorks.");
   },
 
   async getAddons(): Promise<AddonInfo[]> {

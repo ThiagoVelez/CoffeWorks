@@ -29,15 +29,40 @@ export interface GameEntry {
   genre: string;
   version: string;
   size: string;
-  /** Degradado de la portada. */
+  /** Degradado de la portada (se ve mientras carga la imagen). */
   cover: [string, string];
+  /** Imagen de portada (captura del juego). */
+  image?: string;
+  /** Lo más destacado, en frases cortas. */
+  features: string[];
   download: string;
   /** Contenido adicional por tipo. */
   content: Record<GameContentKind, GameContent[]>;
 }
 
-/** Juegos publicados. Vacío hasta que salga el primero. */
-export const GAMES: GameEntry[] = [];
+/** Juegos publicados. La versión y el tamaño reales los da el manifiesto de cada juego. */
+export const GAMES: GameEntry[] = [
+  {
+    id: "survivalforest",
+    name: "SurvivalForest",
+    tagline: "Supervivencia y construcción en un mundo de bloques gigante",
+    description:
+      "Explora un mundo procedural prácticamente infinito, con montañas cafeteras, páramos con frailejones, selvas, desiertos rojos y nevados. Construye, cava cuevas y mira pasar el día y la noche. En desarrollo: llegan vida, hambre, crafteo, criaturas, clima y multijugador por LAN.",
+    genre: "Supervivencia",
+    version: "0.1.0",
+    size: "~45 MB",
+    cover: ["#3c8f45", "#b5532f"],
+    image: "/games/survivalforest.jpg",
+    download: "https://github.com/ThiagoVelez/juego-rust/releases/latest",
+    features: [
+      "Mundo procedural con 11 biomas, cuevas y menas",
+      "Modos supervivencia y creativo",
+      "Ciclo de día y noche con estrellas y nubes",
+      "Texturas propias de 32×32",
+    ],
+    content: { mods: [], texturepacks: [], shaders: [] },
+  },
+];
 
 export const CONTENT_INFO: Record<GameContentKind, { label: string; description: string; detail: string }> = {
   mods: {

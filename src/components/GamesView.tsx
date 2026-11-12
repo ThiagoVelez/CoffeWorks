@@ -1,9 +1,10 @@
-// Sección Games: juegos de CoffeeWorks y, para cada uno, sus Mods,
-// TexturePacks y Shaders. Mientras no haya juegos muestra «Próximamente».
+// Sección Games: juegos de CoffeeWorks (instalar, jugar, actualizar y
+// desinstalar) y, para cada uno, sus Mods, TexturePacks y Shaders.
 
-import React, { useState } from "react";
-import { Gamepad2, Puzzle, Palette, Sparkles, Rocket, ShieldCheck, Download, Cpu } from "lucide-react";
+import React, { useCallback, useEffect, useState } from "react";
+import { Gamepad2, Puzzle, Palette, Sparkles, Rocket, ShieldCheck, Download, Cpu, Play, RefreshCw, Trash2, Loader2, Check } from "lucide-react";
 import { CONTENT_INFO, GAMES, type GameContentKind, type GameEntry } from "../services/games";
+import { isTauri, tauriBridge, type GameStatus } from "../services/tauriBridge";
 
 type Tab = "games" | GameContentKind;
 
@@ -27,18 +28,112 @@ const ComingSoon: React.FC<{ title: string; text: string }> = ({ title, text }) 
   </div>
 );
 
-const GameCard: React.FC<{ game: GameEntry; active: boolean; onSelect: () => void }> = ({ game, active, onSelect }) => (
-  <button type="button" onClick={onSelect} className={`text-left rounded-2xl overflow-hidden border bg-white transition-all ${active ? "border-[#6f4e37] shadow-md" : "border-[#dfd3c7] hover:shadow-sm"}`} data-game={game.name}>
-    <div className="h-28" style={{ background: `linear-gradient(135deg, ${game.cover[0]}, ${game.cover[1]})` }} />
-    <div className="p-4 flex flex-col gap-1">
-      <span className="font-bold text-[#2c1b12]">{game.name}</span>
-      <span className="text-xs text-[#795548]">{game.tagline}</span>
-      <span className="font-mono text-[10px] text-[#8d6e63]">
-        {game.genre} · v{game.version} · {game.size}
-      </span>
+const mb = (bytes: number | null | undefined) => (bytes ? `${(bytes / 1048576).toFixed(0)} MB` : null);
+
+/** Tarjeta de un juego con su estado y sus acciones. */
+const GameCard: React.FC<{ game: GameEntry }> = ({ game }) => {
+  const [status, setStatus] = useState<GameStatus | null>(null);
+  const [busy, setBusy] = useState<null | "install" | "uninstall" | "launch">(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const refresh = useCallback(async (online: boolean) => {
+    try {
+      const st = await tauriBridge.gameStatus(game.id, online);
+      if (st) setStatus((prev) => ({ ...st, latest: st.latest ?? prev?.latest ?? null, stage: st.stage ?? prev?.stage ?? null, size: st.size ?? prev?.size ?? null }));
+    } catch (e) {
+      setMessage(String(e));
+    }
+  }, [game.id]);
+
+  useEffect(() => {
+    void refresh(false).then(() => refresh(true));
+  }, [refresh]);
+
+  const run = async (kind: "install" | "uninstall" | "launch") => {
+    setBusy(kind);
+    setMessage(null);
+    try {
+      if (kind === "install") {
+        setStatus(await tauriBridge.installGame(game.id));
+        setMessage(`${game.name} está listo para jugar.`);
+      } else if (kind === "uninstall") {
+        await tauriBridge.uninstallGame(game.id);
+        await refresh(false);
+        setMessage(`${game.name} se desinstaló.`);
+      } else {
+        await tauriBridge.launchGame(game.id);
+      }
+    } catch (e) {
+      setMessage(String(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const installed = status?.installed ?? null;
+  const version = status?.latest ?? installed ?? game.version;
+  const size = mb(status?.size) ?? game.size;
+  const btn = "flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-50";
+
+  return (
+    <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-[1.2fr_1fr] rounded-3xl overflow-hidden border border-[#dfd3c7] bg-white shadow-sm" data-game={game.name}>
+      <div className="relative min-h-[220px]" style={{ background: `linear-gradient(135deg, ${game.cover[0]}, ${game.cover[1]})` }}>
+        {game.image && <img src={game.image} alt="" className="absolute inset-0 w-full h-full object-cover" draggable={false} />}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0" />
+        <div className="absolute left-5 bottom-4 text-white">
+          <div className="font-display text-3xl font-bold drop-shadow">{game.name}</div>
+          <div className="text-sm text-white/90 drop-shadow">{game.tagline}</div>
+        </div>
+      </div>
+      <div className="p-5 flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] text-[#6f4e37]">
+          <span className="px-2 py-0.5 rounded-full bg-[#eeddd0] border border-[#dfd3c7]">{game.genre}</span>
+          <span className="px-2 py-0.5 rounded-full bg-[#eeddd0] border border-[#dfd3c7]">v{version}</span>
+          {status?.stage && <span className="px-2 py-0.5 rounded-full bg-[#fff3d6] border border-[#f0d9a8]">{status.stage}</span>}
+          <span className="px-2 py-0.5 rounded-full bg-[#eeddd0] border border-[#dfd3c7]">{size}</span>
+          {installed && (
+            <span className="px-2 py-0.5 rounded-full bg-[#e3f2e1] border border-[#bfe0ba] text-[#2e6b2a] flex items-center gap-1">
+              <Check size={11} /> Instalado (v{installed})
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-[#5c3a21] leading-relaxed">{game.description}</p>
+        <ul className="text-xs text-[#5c3a21] grid grid-cols-1 sm:grid-cols-2 gap-1">
+          {game.features.map((f) => (
+            <li key={f} className="flex gap-1.5">
+              <span className="text-[#6f4e37]">•</span>
+              {f}
+            </li>
+          ))}
+        </ul>
+        <div className="flex flex-wrap items-center gap-2 mt-auto pt-2">
+          {!isTauri ? (
+            <span className="text-xs text-[#8d6e63]">Instálalo desde la app de escritorio de CoffeeWorks.</span>
+          ) : installed ? (
+            <>
+              <button type="button" disabled={!!busy} onClick={() => void run("launch")} className={`${btn} bg-[#2e7d32] hover:bg-[#256628] text-white`} data-game-play>
+                {busy === "launch" ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />} Jugar
+              </button>
+              {status?.update_available && (
+                <button type="button" disabled={!!busy} onClick={() => void run("install")} className={`${btn} bg-[#6f4e37] hover:bg-[#5c3a21] text-white`}>
+                  {busy === "install" ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Actualizar a v{status.latest}
+                </button>
+              )}
+              <button type="button" disabled={!!busy} onClick={() => void run("uninstall")} className={`${btn} text-[#8d5b4c] hover:bg-[#f3eae1]`}>
+                {busy === "uninstall" ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />} Desinstalar
+              </button>
+            </>
+          ) : (
+            <button type="button" disabled={!!busy || !!status?.error} onClick={() => void run("install")} className={`${btn} bg-[#6f4e37] hover:bg-[#5c3a21] text-white`} data-game-install>
+              {busy === "install" ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} {busy === "install" ? "Descargando e instalando…" : `Instalar (${size})`}
+            </button>
+          )}
+        </div>
+        {(message || status?.error) && <p className="text-[11px] text-[#8d5b4c]">{message || status?.error}</p>}
+      </div>
     </div>
-  </button>
-);
+  );
+};
 
 export const GamesView: React.FC = () => {
   const [tab, setTab] = useState<Tab>("games");
@@ -88,7 +183,7 @@ export const GamesView: React.FC = () => {
         (GAMES.length ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {GAMES.map((g) => (
-              <GameCard key={g.id} game={g} active={g.id === gameId} onSelect={() => setGameId(g.id)} />
+              <GameCard key={g.id} game={g} />
             ))}
           </div>
         ) : (
