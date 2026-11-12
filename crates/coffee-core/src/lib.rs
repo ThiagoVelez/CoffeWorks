@@ -383,7 +383,10 @@ macro_rules! editor_handler {
             $crate::jobs::core_pick_folder,
             $crate::jobs::core_videos_dir,
             $crate::jobs::core_temp_path,
-            $crate::jobs::core_remove_temp
+            $crate::jobs::core_remove_temp,
+            $crate::jobs::core_addon_dir,
+            $crate::commands::core_get_theme,
+            $crate::commands::core_set_theme
             $(, $extra)*
         ]
     };

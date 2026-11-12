@@ -81,6 +81,7 @@ import type {
   SlideTransition,
 } from "./types";
 import { SLIDE_SIZE, TEXT_TYPES } from "./types";
+import { toggleTheme } from "./theme/theme";
 
 const HISTORY_LIMIT = 100;
 
@@ -1241,6 +1242,7 @@ export const App: React.FC = () => {
       id: "ver",
       label: "Ver",
       items: [
+        { label: "Modo oscuro / claro", action: () => void toggleTheme() },
         { label: "Presentar desde el principio", icon: Play, action: () => startPresentation(false), shortcut: "F5" },
         { label: "Presentar desde la diapositiva actual", action: () => startPresentation(true), shortcut: "Mayús+F5" },
         { divider: true },

@@ -12,9 +12,12 @@ import {
   Clapperboard,
   Code2,
   Palette,
+  Gamepad2,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 
-export type NavTab = "launcher" | "templates" | "addons" | "settings";
+export type NavTab = "launcher" | "games" | "templates" | "addons" | "settings";
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -27,6 +30,9 @@ interface SidebarProps {
   installedCount: number;
   documentCount: number;
   onOpenVault?: () => void;
+  /** Barra plegada: sólo se ven los iconos. */
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -39,24 +45,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
   installedCount,
   documentCount,
   onOpenVault,
+  collapsed,
+  onToggleCollapsed,
 }) => {
-  const [isAppsOpen, setIsAppsOpen] = useState<boolean>(true);
+  // Cerrado al abrir el Launcher; se despliega al hacer clic
+  const [isAppsOpen, setIsAppsOpen] = useState<boolean>(false);
 
   const staticNavItems: Array<{ id: NavTab; label: string; icon: React.FC<{ size?: number; className?: string }> }> = [
+    { id: "games", label: "Games", icon: Gamepad2 },
     { id: "templates", label: "Plantillas", icon: LayoutTemplate },
     { id: "addons", label: "Complementos", icon: Puzzle },
     { id: "settings", label: "Ajustes", icon: Settings },
   ];
 
   return (
-    <aside className="fixed left-0 top-10 bottom-0 w-64 bg-[#faf7f2] border-r border-[#e8dfd8] z-40 flex flex-col justify-between py-3 px-2 select-none shadow-xs">
+    <aside
+      className={`fixed left-0 top-10 bottom-0 ${collapsed ? "w-[68px]" : "w-64"} bg-[#faf7f2] border-r border-[#e8dfd8] z-40 flex flex-col justify-between py-3 px-2 select-none shadow-xs overflow-y-auto overflow-x-hidden transition-[width] duration-200`}
+    >
       <div className="flex flex-col gap-3">
         {/* Selector de espacio de trabajo / Bóveda estilo Tostaduría */}
         <div className="px-1">
-          <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-[#dfd3c7] shadow-xs">
+          <div className={`flex items-center justify-between rounded-xl bg-white border border-[#dfd3c7] shadow-xs ${collapsed ? "flex-col gap-1.5 p-1.5" : "p-2"}`}>
             <div className="flex items-center gap-2.5 min-w-0">
               <img src="/icons/CoffeeWorks.png" alt="" className="w-8 h-8 shrink-0" draggable={false} />
-              <div className="flex flex-col min-w-0">
+              <div className={`flex flex-col min-w-0 ${collapsed ? "hidden" : ""}`}>
                 <span className="text-xs font-bold text-[#2c1b12] truncate">
                   CoffeeWorks
                 </span>
@@ -65,11 +77,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </span>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={onToggleCollapsed}
+              title={collapsed ? "Mostrar el menú" : "Ocultar el menú"}
+              aria-label={collapsed ? "Mostrar el menú" : "Ocultar el menú"}
+              className="shrink-0 p-1.5 rounded-lg text-[#8d6e63] hover:bg-[#f3eae1] hover:text-[#3e2723] transition-colors"
+            >
+              {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+            </button>
           </div>
         </div>
 
         {/* Encabezado de navegación */}
-        <div className="px-2 pt-1 flex items-center justify-between">
+        <div className={`px-2 pt-1 flex items-center justify-between ${collapsed ? "hidden" : ""}`}>
           <span className="font-mono text-[10px] uppercase text-[#795548] tracking-wider font-bold">
             Suite de Trabajo
           </span>
@@ -85,14 +106,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onSelectTab("launcher");
               onSelectCategory(null);
             }}
-            className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all text-left ${
+            title={collapsed ? "Inicio / Launcher" : undefined}
+            className={`flex items-center gap-2.5 ${collapsed ? "justify-center px-0" : "px-3"} py-2 rounded-xl text-xs font-medium transition-all text-left ${
               currentTab === "launcher" && !selectedCategory
                 ? "bg-[#eeddd0] text-[#3e2723] font-bold shadow-xs border-l-4 border-[#6f4e37]"
                 : "text-[#5c3a21] hover:bg-[#f3eae1] hover:text-[#2c1b12]"
             }`}
           >
             <LayoutGrid size={17} className={currentTab === "launcher" && !selectedCategory ? "text-[#6f4e37]" : "text-[#8d6e63]"} />
-            <span>Inicio / Launcher</span>
+            {!collapsed && <span>Inicio / Launcher</span>}
           </button>
 
           {/* Acordeón Coffee Apps */}
@@ -100,9 +122,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               onClick={() => {
-                setIsAppsOpen((prev) => !prev);
+                if (collapsed) {
+                  onToggleCollapsed();
+                  setIsAppsOpen(true);
+                } else {
+                  setIsAppsOpen((prev) => !prev);
+                }
               }}
-              className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left ${
+              title={collapsed ? "Coffee Apps" : undefined}
+              className={`flex items-center ${collapsed ? "justify-center px-0" : "justify-between px-3"} py-2 rounded-xl text-xs font-medium transition-all text-left ${
                 selectedCategory !== null
                   ? "bg-[#eeddd0]/60 text-[#3e2723] font-bold"
                   : "text-[#5c3a21] hover:bg-[#f3eae1] hover:text-[#2c1b12]"
@@ -110,18 +138,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
             >
               <div className="flex items-center gap-2.5">
                 <Package size={17} className={selectedCategory ? "text-[#6f4e37]" : "text-[#8d6e63]"} />
-                <span>Coffee Apps</span>
+                {!collapsed && <span>Coffee Apps</span>}
               </div>
-              <ChevronDown
+              {!collapsed && <ChevronDown
                 size={15}
                 className={`text-[#8d6e63] transition-transform duration-200 ${
                   isAppsOpen ? "rotate-180 text-[#6f4e37]" : ""
                 }`}
-              />
+              />}
             </button>
 
             {/* Categorías del acordeón */}
-            {isAppsOpen && (
+            {isAppsOpen && !collapsed && (
               <div className="ml-5 pl-2.5 border-l-2 border-[#dfd3c7] flex flex-col gap-1 py-1 mt-0.5">
                 {categories.map(({ name, count }) => {
                   const active = currentTab === "launcher" && selectedCategory === name;
@@ -166,14 +194,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onSelectTab(item.id);
                   onSelectCategory(null);
                 }}
-                className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all text-left ${
+                title={collapsed ? item.label : undefined}
+            className={`flex items-center gap-2.5 ${collapsed ? "justify-center px-0" : "px-3"} py-2 rounded-xl text-xs font-medium transition-all text-left ${
                   isActive
                     ? "bg-[#eeddd0] text-[#3e2723] font-bold shadow-xs border-l-4 border-[#6f4e37]"
                     : "text-[#5c3a21] hover:bg-[#f3eae1] hover:text-[#2c1b12]"
                 }`}
               >
                 <Icon size={17} className={isActive ? "text-[#6f4e37]" : "text-[#8d6e63]"} />
-                <span>{item.label}</span>
+                {!collapsed && <span>{item.label}</span>}
               </button>
             );
           })}
@@ -181,6 +210,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Pie de barra lateral: estado real de la suite */}
+      {collapsed ? (
+        <div className="flex flex-col items-center gap-2 pt-2 border-t border-[#e8dfd8]">
+          <button
+            type="button"
+            onClick={onOpenVault}
+            disabled={!onOpenVault}
+            title={`Bóveda local: ${documentCount} ${documentCount === 1 ? "documento" : "documentos"}`}
+            className="p-2 rounded-lg text-[#6f4e37] enabled:hover:bg-[#f3eae1]"
+          >
+            <HardDrive size={16} />
+          </button>
+          <span title={`${installedCount} de ${appCount} apps instaladas`} className="font-mono text-[10px] text-[#795548] font-bold">
+            {installedCount}/{appCount}
+          </span>
+        </div>
+      ) : (
       <div className="p-2.5 border-t border-[#e8dfd8] flex flex-col gap-2 bg-white/70 rounded-xl mx-1">
         <button
           type="button"
@@ -204,6 +249,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </span>
         </div>
       </div>
+      )}
     </aside>
   );
 };

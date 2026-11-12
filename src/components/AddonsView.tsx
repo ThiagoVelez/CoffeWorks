@@ -28,12 +28,15 @@ import {
   Image as ImageIcon,
   PenLine,
   Brush,
+  Smile,
+  BookOpen,
 } from "lucide-react";
 import { isTauri, tauriBridge } from "../services/tauriBridge";
 import type { AddonInfo, SuiteApp } from "../types";
 
 /** Formatos que cada aplicación abre y guarda (pestaña «Formatos»). */
 const FORMAT_SUPPORT = [
+  { app: "CoffeeBooks", icon: BookOpen, color: "text-[#2f2f2f]", native: ".cbk (espacio de trabajo)", opens: "Markdown (.md) y texto (.txt)", exports: "Markdown por página, todo el espacio en ZIP y PDF (imprimir)" },
   { app: "CoffeeDoc", icon: FileText, color: "text-[#185abd]", native: ".cfd", opens: "Word (.docx), Markdown (.md), HTML, texto (.txt)", exports: "Word (.docx), Markdown, HTML, texto y PDF" },
   { app: "CoffeeCalc", icon: Table, color: "text-[#107c41]", native: ".cfs", opens: "Excel (.xlsx, .xls), CSV", exports: "Excel (.xlsx) con formato, CSV y PDF" },
   { app: "CoffeeView", icon: Presentation, color: "text-[#c43e1c]", native: ".csl", opens: "PowerPoint (.pptx)", exports: "PowerPoint (.pptx), HTML y PDF" },
@@ -86,6 +89,7 @@ const ADDON_LOOK: Record<string, { bg: string; fg: string; icon: React.FC<{ size
   aigen: { bg: "#fde4dc", fg: "#e8452c", icon: Sparkles },
   raw: { bg: "#ffead5", fg: "#d9480f", icon: Aperture },
   potrace: { bg: "#fff0db", fg: "#e8590c", icon: Spline },
+  puppetcompat: { bg: "#ffe0ec", fg: "#d6336c", icon: Smile },
 };
 
 const formatBytes = (bytes: number) =>

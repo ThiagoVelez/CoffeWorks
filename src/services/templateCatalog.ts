@@ -11,6 +11,7 @@ export const APP_STYLE: Record<string, { name: string; color: string; bg: string
   coffeeview: { name: "CoffeeView", color: "#c43e1c", bg: "#fbe7e1" },
   coffeepdf: { name: "CoffeePDF", color: "#c62828", bg: "#fdecea" },
   coffeepage: { name: "CoffeePage", color: "#7b1fa2", bg: "#f3e5f5" },
+  coffeebooks: { name: "CoffeeBooks", color: "#2f2f2f", bg: "#f1f1ef" },
   coffeedatabase: { name: "CoffeeDataBase", color: "#9b111e", bg: "#fbe9eb" },
   coffeeedit: { name: "CoffeeEdit", color: "#26a680", bg: "#e3f6ef" },
   coffeelive: { name: "CoffeeLive", color: "#ef6c00", bg: "#fff1e5" },
@@ -214,6 +215,57 @@ ${table(["Concepto", "Valor"], [["Personal", ""], ["Equipos y licencias", ""], [
     category: "Eventos & Educación",
     description: "Certificado con marco decorativo, nombre del participante, texto del evento, firmas y fecha. Complétalo y fírmalo en CoffeePDF.",
     features: ["Marco doble en color", "Espacios para nombre, horas y fechas", "Dos firmas"],
+  }),
+
+  // --- CoffeeBooks ---
+  item("coffeebooks", {
+    id: "books-segundo-cerebro",
+    title: "Segundo Cerebro",
+    category: "Productividad",
+    description: "Tu sistema personal: proyectos en tablero por estado, notas con etiquetas, recursos y una revisión semanal con casillas.",
+    features: ["Base de proyectos con tablero", "Notas con etiquetas", "Revisión semanal"],
+  }),
+  item("coffeebooks", {
+    id: "books-proyectos",
+    title: "Gestor de Proyectos",
+    category: "Trabajo",
+    description: "Objetivos, equipo y riesgos del proyecto, con tareas en tablero, tabla y calendario (estado, prioridad, responsable y entrega) y notas de reunión.",
+    features: ["Tablero, tabla y calendario", "Prioridad, responsable y etiquetas", "Notas de reunión"],
+  }),
+  item("coffeebooks", {
+    id: "books-wiki",
+    title: "Wiki del Equipo",
+    category: "Trabajo",
+    description: "Portada con bienvenida para nuevos, procesos en desplegables, calendario de reuniones y contactos.",
+    features: ["Onboarding con tareas", "Procesos desplegables", "Calendario de reuniones"],
+  }),
+  item("coffeebooks", {
+    id: "books-estudios",
+    title: "Planificador de Estudios",
+    category: "Estudio",
+    description: "Materias con notas y horario, tareas y exámenes en calendario y por materia, y apuntes con el método Cornell.",
+    features: ["Calendario de entregas", "Notas por materia", "Apuntes Cornell"],
+  }),
+  item("coffeebooks", {
+    id: "books-diario",
+    title: "Diario y Hábitos",
+    category: "Personal",
+    description: "Entradas diarias con ánimo en calendario, seguimiento de hábitos (ejercicio, lectura, agua) y una plantilla para escribir cada noche.",
+    features: ["Calendario de ánimo", "Hábitos con casillas", "Metas del mes"],
+  }),
+  item("coffeebooks", {
+    id: "books-crm",
+    title: "Clientes y Ventas (CRM)",
+    category: "Negocios",
+    description: "Embudo de ventas por etapa con valor, contacto y próximo paso en calendario, y un guion para la primera llamada.",
+    features: ["Embudo en tablero", "Seguimiento en calendario", "Guion de llamada"],
+  }),
+  item("coffeebooks", {
+    id: "books-viaje",
+    title: "Planificador de Viajes",
+    category: "Personal",
+    description: "Itinerario por días, lista de equipaje con casillas y presupuesto con categorías y pagos.",
+    features: ["Itinerario en tabla", "Lista de equipaje", "Presupuesto por categoría"],
   }),
 
   // --- CoffeePage ---

@@ -8,6 +8,8 @@ import { CommandPalette } from "./components/CommandPalette";
 import { CreateDocModal } from "./components/CreateDocModal";
 import { TemplatesView } from "./components/TemplatesView";
 import { AddonsView } from "./components/AddonsView";
+import { GamesView } from "./components/GamesView";
+import { ThemeSwitch } from "./theme/ThemeSwitch";
 import { UpdateBanner, UpdateSettings, useUpdates } from "./components/Updates";
 import { APP_STAGE, APP_VERSION } from "./version";
 import { isTauri, tauriBridge } from "./services/tauriBridge";
@@ -24,6 +26,24 @@ export const App: React.FC = () => {
   const [documents, setDocuments] = useState<RecentDocument[]>([]);
   const [suiteInfo, setSuiteInfo] = useState<SuiteInfo | null>(null);
   const [focusMode, setFocusMode] = useState<boolean>(() => tauriBridge.getFocusMode());
+  // Menú lateral plegable (sólo iconos); se recuerda entre sesiones
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("coffeeworks_sidebar_collapsed") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      try {
+        localStorage.setItem("coffeeworks_sidebar_collapsed", prev ? "0" : "1");
+      } catch {
+        /* sin almacenamiento */
+      }
+      return !prev;
+    });
+  }, []);
   const [currentTab, setCurrentTab] = useState<NavTab>("launcher");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -225,9 +245,11 @@ export const App: React.FC = () => {
           installedCount={installedCount}
           documentCount={documents.length}
           onOpenVault={isTauri ? () => void handleOpenVault() : undefined}
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={toggleSidebar}
         />
 
-        <main className="flex-1 ml-64 p-5 lg:p-8 flex flex-col gap-8 max-w-7xl">
+        <main className={`flex-1 min-w-0 ${sidebarCollapsed ? "ml-[68px]" : "ml-64"} p-5 lg:p-8 flex flex-col gap-8 max-w-7xl transition-[margin] duration-200`}>
           <UpdateBanner info={updates.info} onError={(message) => showNotification(message, true)} />
           {currentTab === "launcher" && (
             <>
@@ -260,6 +282,8 @@ export const App: React.FC = () => {
             </>
           )}
 
+          {currentTab === "games" && <GamesView />}
+
           {currentTab === "templates" && <TemplatesView onNotify={showNotification} />}
 
           {currentTab === "addons" && (
@@ -283,6 +307,14 @@ export const App: React.FC = () => {
                     <span className="text-[#2c1b12] font-semibold text-right break-all select-text">{value}</span>
                   </div>
                 ))}
+              </div>
+
+              <div className="p-6 rounded-2xl bg-white border border-[#dfd3c7] flex items-center justify-between gap-4 text-xs text-[#5c3a21]" data-appearance>
+                <div className="flex flex-col gap-1">
+                  <span className="font-bold text-sm text-[#2c1b12]">Apariencia</span>
+                  <span>Modo claro u oscuro para el Launcher y las apps de la suite. Las apps de Ilustración son siempre oscuras.</span>
+                </div>
+                <ThemeSwitch className="text-[#2c1b12] shrink-0" />
               </div>
 
               <UpdateSettings

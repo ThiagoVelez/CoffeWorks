@@ -66,7 +66,7 @@ pub const ADDONS: &[CatalogAddon] = &[
             "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
             "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip",
         ],
-        manual_hint: "Instala ffmpeg con el gestor de paquetes del sistema (por ejemplo: sudo apt install ffmpeg).",
+        manual_hint: "Instala ffmpeg con el gestor de paquetes del sistema: sudo apt install ffmpeg",
     },
     CatalogAddon {
         id: "pdfcheck",
@@ -124,6 +124,21 @@ pub const ADDONS: &[CatalogAddon] = &[
         downloads: &["https://github.com/ThiagoVelez/CoffeWorks/releases/download/addons/coffee-potrace-win64.zip"],
         manual_hint: "Instala Potrace con el gestor de paquetes del sistema (por ejemplo: sudo apt install potrace).",
     },
+    CatalogAddon {
+        id: "puppetcompat",
+        name: "Compatibilidad para equipos antiguos",
+        summary: "Seguimiento facial de CoffeePuppet en procesadores sin instrucciones SIMD",
+        description: "CoffeePuppet sigue tu cara con un motor optimizado para los procesadores actuales. Este complemento añade la versión compatible con equipos muy antiguos, cuyo procesador no tiene instrucciones SIMD. Solo hace falta si CoffeePuppet te lo pide.",
+        apps: &["coffeepuppet"],
+        version: "0.10.21",
+        download_size: "4 MB",
+        publisher: "Google (MediaPipe)",
+        license: "Apache 2.0",
+        // Complemento de datos: el «ejecutable» es el archivo que se comprueba
+        executable: "vision_wasm_nosimd_internal.wasm",
+        downloads: &["https://github.com/ThiagoVelez/CoffeWorks/releases/download/addons/coffee-puppetcompat.zip"],
+        manual_hint: "Este complemento se instala desde el Launcher de CoffeeWorks.",
+    },
 ];
 
 /// Archivo que marca como activado un complemento de servicio.
@@ -138,8 +153,15 @@ pub fn find_addon(id: &str) -> Option<&'static CatalogAddon> {
     ADDONS.iter().find(|a| a.id == id)
 }
 
+/// Los complementos de datos indican un archivo con extensión, que se usa tal cual.
+fn is_data_file(base: &str) -> bool {
+    base.contains('.')
+}
+
 fn exe_name(base: &str) -> String {
-    if cfg!(windows) {
+    if is_data_file(base) {
+        base.to_string()
+    } else if cfg!(windows) {
         format!("{base}.exe")
     } else {
         base.to_string()
@@ -158,7 +180,7 @@ pub fn addon_executable(id: &str) -> Option<PathBuf> {
         return Some(path);
     }
     // Fuera de Windows se usa el programa instalado con el gestor de paquetes.
-    if cfg!(windows) {
+    if cfg!(windows) || is_data_file(addon.executable) {
         return None;
     }
     std::env::var_os("PATH").and_then(|paths| {
@@ -220,7 +242,7 @@ pub fn addon_info(addon: &CatalogAddon) -> AddonInfo {
         license: addon.license.into(),
         installed,
         installed_bytes: if installed { dir_size(&addons_dir().join(addon.id)) } else { 0 },
-        can_install: cfg!(windows) || addon.executable.is_empty(),
+        can_install: cfg!(windows) || addon.executable.is_empty() || is_data_file(addon.executable) || !linux_packages(addon.id).is_empty(),
         manual_hint: addon.manual_hint.into(),
     }
 }
@@ -266,8 +288,51 @@ pub fn run_powershell(script: &str) -> Result<String, String> {
     }
 }
 
+/// Paquetes de Debian/Ubuntu que dan el programa de cada complemento en Linux.
+pub fn linux_packages(id: &str) -> &'static [&'static str] {
+    match id {
+        "ffmpeg" => &["ffmpeg"],
+        "pdfcheck" => &["tesseract-ocr", "tesseract-ocr-spa", "tesseract-ocr-eng"],
+        "raw" => &["libraw-bin"],
+        "potrace" => &["potrace"],
+        _ => &[],
+    }
+}
+
+/// Instala paquetes del sistema con apt; pkexec muestra la ventana de contraseña.
+fn apt_install(packages: &[&str]) -> Result<(), String> {
+    let output = Command::new("pkexec")
+        .args(["apt-get", "install", "-y"])
+        .args(packages)
+        .stdin(Stdio::null())
+        .output()
+        .map_err(|e| format!("No se pudo pedir permiso para instalar (pkexec): {e}"))?;
+    if output.status.success() {
+        Ok(())
+    } else if output.status.code() == Some(126) || output.status.code() == Some(127) {
+        Err("Se canceló la instalación (no se dio la contraseña).".into())
+    } else {
+        let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        Err(format!("apt no pudo instalar {}: {}", packages.join(", "), err.lines().last().unwrap_or("error desconocido")))
+    }
+}
+
 /// Descarga un archivo (HTTPS) a la ruta indicada.
 pub fn download_file(url: &str, target: &Path) -> Result<(), String> {
+    if !cfg!(windows) {
+        let output = Command::new("curl")
+            .args(["-fsSL", "--retry", "3", "-A", "CoffeeWorks", "-o"])
+            .arg(target)
+            .arg(url)
+            .stdin(Stdio::null())
+            .output()
+            .map_err(|e| format!("No se pudo ejecutar curl: {e}"))?;
+        return if output.status.success() {
+            Ok(())
+        } else {
+            Err(format!("No se pudo descargar {url}: {}", String::from_utf8_lossy(&output.stderr).trim()))
+        };
+    }
     let script = format!(
         "$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'; \
          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; \
@@ -290,7 +355,33 @@ pub fn install_addon(id: &str) -> Result<AddonInfo, String> {
         return Ok(addon_info(addon));
     }
     if !cfg!(windows) {
-        return Err(addon.manual_hint.to_string());
+        // Linux: los programas vienen de apt; los complementos de datos se descargan
+        let packages = linux_packages(addon.id);
+        if !packages.is_empty() {
+            apt_install(packages)?;
+            return if addon_executable(addon.id).is_some() { Ok(addon_info(addon)) } else { Err(addon.manual_hint.to_string()) };
+        }
+        if !is_data_file(addon.executable) {
+            return Err(addon.manual_hint.to_string());
+        }
+        let target_dir = addons_dir().join(addon.id);
+        fs::create_dir_all(&target_dir).map_err(|e| format!("No se pudo preparar la carpeta: {e}"))?;
+        let zip = std::env::temp_dir().join(format!("coffeeworks-addon-{}.zip", addon.id));
+        let mut last = String::new();
+        for url in addon.downloads {
+            if let Err(e) = download_file(url, &zip) {
+                last = e;
+                continue;
+            }
+            let out = Command::new("unzip").args(["-o", "-j", "-q"]).arg(&zip).arg("-d").arg(&target_dir).stdin(Stdio::null()).output();
+            let _ = fs::remove_file(&zip);
+            match out {
+                Ok(o) if o.status.success() && addon_executable(addon.id).is_some() => return Ok(addon_info(addon)),
+                Ok(o) => last = String::from_utf8_lossy(&o.stderr).trim().to_string(),
+                Err(e) => last = format!("No se pudo ejecutar unzip: {e}"),
+            }
+        }
+        return Err(format!("No se pudo instalar «{}». {last}", addon.name));
     }
     let target_dir = addons_dir().join(addon.id);
     fs::create_dir_all(&target_dir).map_err(|e| format!("No se pudo preparar la carpeta: {e}"))?;
@@ -308,7 +399,7 @@ pub fn install_addon(id: &str) -> Result<AddonInfo, String> {
              if (Test-Path {unpack}) {{ Remove-Item {unpack} -Recurse -Force }}; \
              Expand-Archive -Path {zip} -DestinationPath {unpack} -Force; \
              $exe = Get-ChildItem {unpack} -Recurse -Filter {exe} | Select-Object -First 1; \
-             if (-not $exe) {{ throw 'El paquete no contiene {exe}' }}; \
+             if (-not $exe) {{ throw ('El paquete no contiene ' + {exe}) }}; \
              Get-ChildItem $exe.DirectoryName -File | Copy-Item -Destination {target} -Force",
             url = ps_quote(url),
             zip = ps_quote(&zip.to_string_lossy()),

@@ -1,10 +1,11 @@
 # CoffeeWorks
 
-Suite ofimática de escritorio para Windows, de código abierto y sin conexión. Se compone de un **Launcher** que instala y gestiona las aplicaciones y de diecinueve aplicaciones, en cuatro categorías (**Office**, **Multimedia**, **Desarrollador** e **Ilustración**):
+Suite ofimática de escritorio para Windows, de código abierto y sin conexión. Se compone de un **Launcher** que instala y gestiona las aplicaciones y de veinte aplicaciones, en cuatro categorías (**Office**, **Multimedia**, **Desarrollador** e **Ilustración**):
 
 | Aplicación | Qué es | Formato propio | Abre | Exporta |
 | :--- | :--- | :--- | :--- | :--- |
 | **CoffeeDoc** | Procesador de textos | `.cfd` | Word (`.docx`), Markdown, HTML, texto | Word (`.docx`), Markdown, HTML, texto, PDF |
+| **CoffeeBooks** *(Office)* | Notas, wikis y bases de datos (tipo Notion) | `.cbk` | Markdown, texto | Markdown, ZIP del espacio y PDF |
 | **CoffeeCalc** | Hoja de cálculo | `.cfs` | Excel (`.xlsx`, `.xls`), CSV | Excel (`.xlsx`) con formato, CSV, PDF |
 | **CoffeeView** | Presentaciones | `.csl` | PowerPoint (`.pptx`) | PowerPoint (`.pptx`), HTML, PDF |
 | **CoffeePDF** | Editor de PDF | `.pdf` | PDF | PDF, páginas sueltas, PNG |
@@ -28,7 +29,7 @@ Cada aplicación es un ejecutable independiente construido con **Tauri 2** (Rust
 
 ## Cómo funciona la instalación
 
-1. El instalador (`CoffeeWorks-Setup-2.8.0.exe`, hecho con **Inno Setup**) instala solo el Launcher y deja los paquetes de las catorce aplicaciones en su carpeta `packages`.
+1. El instalador de Windows (`CoffeeWorks-Setup-2.9.0.exe`, hecho con **Inno Setup**) instala solo el Launcher y deja los paquetes de las veinte aplicaciones en su carpeta `packages`.
 2. Dentro del Launcher, en la **Tienda de Apps**, cada aplicación tiene sus botones **Instalar**, **Abrir App** y **Desinstalar**:
    - *Instalar* copia la aplicación a `%LOCALAPPDATA%\CoffeeWorks\Apps\<App>`, crea su acceso directo en el menú Inicio (carpeta *CoffeeWorks*) y asocia su tipo de archivo, de modo que un doble clic sobre un `.cfd`, `.cfs`, `.csl`, `.cpg`, `.cdb`, `.ccm` o `.clv` lo abre. CoffeePDF no reemplaza tu lector de PDF predeterminado: aparece en *Abrir con* del Explorador.
    - *Desinstalar* borra la aplicación, su acceso directo y su asociación. **Los documentos no se tocan.**
@@ -36,6 +37,20 @@ Cada aplicación es un ejecutable independiente construido con **Tauri 2** (Rust
 4. Si tenías instalada una versión anterior (cuando la suite se llamaba «CoffeWorks»), al abrir el Launcher por primera vez se migra todo solo: los documentos pasan de `Documentos\CoffeWorks` a `Documentos\CoffeeWorks`, los recientes se conservan y las aplicaciones instaladas se reinstalan con sus nombres nuevos.
 5. CoffeeCams (versión 2.5) se dividió en **CoffeeEdit** y **CoffeeLive**: si la tenías instalada, el Launcher instala las dos en su lugar y los proyectos `.ccm` se abren en CoffeeEdit.
 6. Al desinstalar CoffeeWorks desde *Aplicaciones* de Windows se quitan también las aplicaciones instaladas; los documentos se conservan.
+
+## Linux (Debian y Ubuntu)
+
+CoffeeWorks también se publica como paquete **`.deb`** para **Ubuntu 22.04 o posterior** y **Debian 12 o posterior** (64 bits), junto al instalador de Windows en cada versión (`coffeeworks_<versión>_amd64.deb`).
+
+```bash
+sudo apt install ./coffeeworks_2.9.0_amd64.deb
+```
+
+- Se instala en `/opt/coffeeworks`, con el comando `coffeeworks` y su entrada en el menú de aplicaciones. Usa la WebKitGTK del sistema (`libwebkit2gtk-4.1`), así que el paquete pesa pocos MB.
+- La primera vez que cada usuario abre el Launcher se le instalan todas las apps en `~/.local/share/CoffeeWorks/Apps`, con su entrada en el menú y sus tipos de archivo (un doble clic en un `.cfd`, `.cbk`, `.cmo`… lo abre con su app). Los documentos van a `~/Documentos/CoffeeWorks` (o `~/Documents/CoffeeWorks`).
+- *Complementos*: FFmpeg, la revisión del PDF original (Tesseract), el revelado RAW (LibRaw) y el calco vectorial (Potrace) se instalan desde *Complementos* con los paquetes del sistema; el Launcher pide la contraseña con la ventana del sistema. La compatibilidad con Access solo está disponible en Windows.
+- *Actualizaciones*: el Launcher descarga el `.deb` de la versión nueva, comprueba su suma SHA-256 e instala con `apt` al pulsar *Reiniciar y actualizar*.
+- Para quitarlo: `sudo apt remove coffeeworks` (tus documentos se conservan).
 
 ## Actualizaciones automáticas
 
@@ -69,7 +84,7 @@ El Launcher tiene dos secciones más en la barra lateral:
   - *Calco vectorial* (CoffeeVector y CoffeePaint, ~1 MB): convierte imágenes y dibujos en trazados con [Potrace](https://potrace.sourceforge.net), en blanco y negro o por colores (código en `addons/coffee-potrace`).
   - *Revisión del PDF original* (CoffeePDF, ~36 MB): revisa también la ortografía del texto que ya trae el PDF y, en los escaneados, lo reconoce con OCR ([Tesseract](https://github.com/tesseract-ocr/tesseract), español e inglés). Las faltas se corrigen con clic derecho: la palabra se tapa y la corrección se escribe encima (código en `addons/coffee-pdfcheck`).
   - La pestaña *Formatos e integración* resume qué abre y exporta cada app.
-- **Plantillas**: 51 plantillas para trece apps (actas, cartas, planes de proyecto, trabajos académicos; presupuestos, cronogramas, calificaciones y nómina; clases y sustentaciones; formularios, actas y certificados en PDF; cuadernos de clase, bitácoras y planificadores; bases de tienda, semilleros, biblioteca e inventario; proyectos de video para YouTube, Reels y tutoriales; escenas para clases, videojuegos y podcasts; pantallas de app móvil, web y escritorio; un proyecto UML completo, un modelo entidad-relación y un diagrama de flujo; una publicación de oferta, una miniatura de YouTube y un collage de fotos; un logotipo, una tarjeta de visita y un cartel vectoriales; y un boceto con perspectiva, una página de cómic y un mandala en acuarela). CoffeeLens trae en su lugar trece ajustes preestablecidos de revelado.
+- **Plantillas**: 58 plantillas para catorce apps (actas, cartas, planes de proyecto, trabajos académicos; presupuestos, cronogramas, calificaciones y nómina; clases y sustentaciones; formularios, actas y certificados en PDF; cuadernos de clase, bitácoras y planificadores; bases de tienda, semilleros, biblioteca e inventario; proyectos de video para YouTube, Reels y tutoriales; escenas para clases, videojuegos y podcasts; pantallas de app móvil, web y escritorio; un proyecto UML completo, un modelo entidad-relación y un diagrama de flujo; una publicación de oferta, una miniatura de YouTube y un collage de fotos; un logotipo, una tarjeta de visita y un cartel vectoriales; un boceto con perspectiva, una página de cómic y un mandala en acuarela; y siete espacios de CoffeeBooks: segundo cerebro, gestor de proyectos, wiki del equipo, planificador de estudios, diario y hábitos, CRM y planificador de viajes). CoffeeLens trae en su lugar trece ajustes preestablecidos de revelado.
 
 No hacen falta permisos de administrador: todo se instala por usuario. El instalador incluye el motor **WebView2** para los equipos con Windows 10 que aún no lo tengan (Windows 11 lo trae de serie).
 
@@ -80,7 +95,7 @@ No hacen falta permisos de administrador: todo se instala por usuario. El instal
 Cada vez que se sube código, el flujo **Instalador de Windows** (`.github/workflows/build-windows.yml`) compila la suite en Windows, crea el instalador, lo prueba y lo publica:
 
 1. Abre la pestaña **Actions** del repositorio y entra en la última ejecución de *Instalador de Windows*.
-2. En **Artifacts**, descarga `CoffeeWorks-Setup` y descomprímelo: dentro está `CoffeeWorks-Setup-2.8.0.exe`.
+2. En **Artifacts**, descarga `CoffeeWorks-Setup` y descomprímelo: dentro está `CoffeeWorks-Setup-2.9.0.exe`.
 
 Cuando llega a `main` una versión que aún no está publicada, el flujo crea su *Release* con el instalador (ver «Actualizaciones automáticas»). Al subir una etiqueta `v*` el instalador también se adjunta a esa *Release*.
 
@@ -101,7 +116,7 @@ Después, desde la carpeta del repositorio:
 powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 ```
 
-El script compila las quince interfaces, los quince ejecutables y el instalador. El resultado queda en `installer\Output\CoffeeWorks-Setup-2.8.0.exe`.
+El script compila las quince interfaces, los quince ejecutables y el instalador. El resultado queda en `installer\Output\CoffeeWorks-Setup-2.9.0.exe`.
 
 Si prefieres hacerlo paso a paso:
 
@@ -127,7 +142,7 @@ npm install
 npm run dev:all
 ```
 
-Antes de la primera vez, instala también las dependencias de cada aplicación (`npm install` dentro de `CoffeeDoc`, `CoffeeCalc`, `CoffeeView`, `CoffeePDF`, `CoffeePage`, `CoffeeDataBase`, `CoffeeEdit`, `CoffeeLive`, `CoffeeUIUX`, `CoffeeUML`, `CoffeePhoto`, `CoffeeVector`, `CoffeePaint`, `CoffeeLens`, `CoffeeMotion`, `CoffeeSound`, `CoffeeEncoder`, `CoffeeAnimate` y `CoffeePuppet`). Los servidores quedan en:
+Antes de la primera vez, instala también las dependencias de cada aplicación (`npm install` dentro de `CoffeeDoc`, `CoffeeCalc`, `CoffeeView`, `CoffeePDF`, `CoffeePage`, `CoffeeBooks`, `CoffeeDataBase`, `CoffeeEdit`, `CoffeeLive`, `CoffeeUIUX`, `CoffeeUML`, `CoffeePhoto`, `CoffeeVector`, `CoffeePaint`, `CoffeeLens`, `CoffeeMotion`, `CoffeeSound`, `CoffeeEncoder`, `CoffeeAnimate` y `CoffeePuppet`). Los servidores quedan en:
 
 | Aplicación | Launcher | CoffeeDoc | CoffeeCalc | CoffeeView | CoffeePDF | CoffeePage | CoffeeEdit | CoffeeLive | CoffeeDataBase |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -140,6 +155,10 @@ Antes de la primera vez, instala también las dependencias de cada aplicación (
 | Aplicación | CoffeeMotion | CoffeeSound | CoffeeEncoder | CoffeeAnimate | CoffeePuppet |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | Puerto | 1435 | 1436 | 1437 | 1438 | 1439 |
+
+| Aplicación | CoffeeBooks |
+| :--- | :--- |
+| Puerto | 1440 |
 
 En el navegador los documentos se guardan en `localStorage` y el Launcher abre las aplicaciones en pestañas; en el ejecutable se usan archivos reales y ventanas nativas.
 
@@ -162,6 +181,7 @@ CoffeeWorks/
 ├── CoffeeView/              Presentaciones (src/ + src-tauri/)
 ├── CoffeePDF/               Editor de PDF (src/ + src-tauri/)
 ├── CoffeePage/              Cuaderno de notas (src/ + src-tauri/)
+├── CoffeeBooks/             Notas, wikis y bases de datos (src/ + src-tauri/)
 ├── CoffeeDataBase/          Bases de datos (src/ + src-tauri/)
 ├── CoffeeEdit/              Editor de video (src/ + src-tauri/)
 ├── CoffeeLive/              Grabación y transmisión en directo (src/ + src-tauri/)
@@ -219,6 +239,13 @@ También existen `--install-all` y `--uninstall-all`.
 **CoffeePage** — cuadernos con secciones de colores, páginas y subpáginas; notas que se colocan en cualquier punto de la página y se mueven arrastrándolas; formato de texto, listas, tablas, vínculos y fecha; etiquetas (tarea pendiente, importante, pregunta, idea); dibujo a mano con bolígrafo, marcador y borrador; imágenes pegadas o arrastradas; papel liso, rayado o cuadriculado; búsqueda en todo el cuaderno; guardado automático; exportación a HTML y Markdown e impresión.
 
 **CoffeeDataBase** — bases de datos de escritorio sobre SQLite (archivos `.cdb`, también abre `.db` y `.sqlite`): diseñador de tablas con tipos de campo (autonumérico, texto, números, moneda, fecha, sí/no, binario), clave principal, requeridos, únicos y valores predeterminados; hoja de datos con edición, búsqueda, orden y listas para los campos relacionados; formularios registro a registro; consola SQL con colores, historial y explicación de errores en español; diseñador visual de consultas; diagrama de relaciones (uno a varios, uno a uno y varios a varios con tabla intermedia); asistente con plantillas, datos de prueba y revisión del diseño; importación de Excel, CSV, scripts SQL y bases `.accdb`/`.mdb`; exportación a Excel, CSV, script SQL, informes y Access (con el complemento); ETL de semilleros; tema oscuro, manual de usuario (F1), búsqueda de comandos (Ctrl+K) y copias de seguridad con fecha.
+
+**CoffeeBooks** (blanco y negro) — notas, wikis y bases de datos, al estilo de Notion:
+
+- *Páginas* anidadas con icono y portada, favoritos, búsqueda en todo el espacio (`Ctrl+P`), papelera con restauración y ancho completo.
+- *Bloques*: texto, títulos, listas, tareas, desplegables, avisos, citas, código, tablas, imágenes, subpáginas y separadores. Se eligen con «/» o con atajos de Markdown (`#`, `-`, `1.`, `[]`, `>`, ```` ``` ````, `---`), se arrastran con el asa ⋮⋮ y se convierten o colorean desde su menú.
+- *Bases de datos* con propiedades de texto, número, selección, selección múltiple, fecha, casilla y enlace; vistas de tabla, tablero, lista y calendario, filtros, orden y búsqueda; cada fila se abre como una página.
+- Seis *plantillas* (notas de reunión, diario, wiki del equipo, seguimiento de tareas, lista de lectura y plan de proyecto). Importa Markdown y exporta cada página a Markdown, todo el espacio en ZIP o a PDF.
 
 **CoffeeEdit** — editor de video: biblioteca de medios (video, audio, imágenes), línea de tiempo con varias pistas de video, texto y audio, recortar y dividir clips, moverlos entre pistas con ajuste magnético, velocidad (0,25x a 4x), volumen, fundidos, encuadre (escala, posición, rotación, opacidad), filtros y ajustes de color, *corrección de color tipo Lumetri* (exposición, temperatura, matiz, iluminaciones, sombras, blancos, negros, intensidad, nueve looks creativos y viñeta), *transiciones* (disolución cruzada, fundido a negro o a blanco, barrido, deslizar y zoom), *eliminar cerrando el hueco* (Mayús+Supr), *marcadores* (M, con [ y ] para saltar), títulos animados y exportación a MP4 o WebM en horizontal, vertical, cuadrado o 4K. Abre las grabaciones de CoffeeLive.
 
@@ -329,5 +356,7 @@ Las nueve apps de Ilustración comparten una interfaz oscura, autoguardado, desh
 - *Boca con el micrófono*, 9 *gestos* con el teclado (saludar, saltar, sorpresa, corazones, reír, pulgar arriba, tristeza, enfado, dormir) y desplazamiento por la escena con las flechas.
 - Cinco personajes personalizables (taza de café, persona, robot y gato: colores, pelo y accesorios) y escenas con color, degradado o imagen.
 - *Tomas* grabadas con la voz, reproducción y exportación a video (WebM con audio, GIF; con FFmpeg, MP4 y MOV).
+
+**Modo claro y oscuro**: toda la suite usa el modo claro por defecto. En el Launcher (*Ajustes › Apariencia*), en el menú *Ver* de cada app o en los ajustes de CoffeeLive se cambia al modo oscuro, en negro, y el cambio vale para todas las apps. Los temas se generan a partir de los colores de cada app con `scripts/make-theme.mjs`; la hoja de los documentos, las diapositivas, las páginas PDF y los lienzos de diseño conservan sus colores. Las apps de Ilustración son siempre oscuras.
 
 En CoffeeDoc, CoffeeCalc y CoffeeView: autoguardado, *Guardar como*, deshacer y rehacer, impresión y PDF, buscador de menús (`Alt+/`) y documentos fijados en el Launcher.

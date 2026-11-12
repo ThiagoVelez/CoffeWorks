@@ -76,6 +76,7 @@ import { exportBox, exportHtml, exportHtmlSingle, exportPdf, exportRaster, expor
 import { makeZip, type ZipEntry } from "./services/zip";
 import { appWindow, bytesToText, getLaunchArgs, isTauri, listRecent, pickOpenFile, renameInVault, saveFileAs, setPinned, stripExtension, type RecentEntry } from "./services/desktop";
 import { ACCENT_DARK, DEVICES, PLATFORM_LABEL, isContainer, type Page, type Platform, type Tool, type UNode, type UxDocument } from "./types";
+import { toggleTheme } from "./theme/theme";
 
 const HISTORY_LIMIT = 150;
 const AUTOSAVE_DELAY = 1200;
@@ -1096,6 +1097,7 @@ export const App: React.FC = () => {
       id: "view",
       label: "Ver",
       items: [
+        { label: "Modo oscuro / claro", action: () => void toggleTheme() },
         { label: "Acercar", icon: ZoomIn, shortcut: "Ctrl +", action: () => zoom("in") },
         { label: "Alejar", icon: ZoomOut, shortcut: "Ctrl −", action: () => zoom("out") },
         { label: "Zoom al 100%", shortcut: "Ctrl+0", action: () => zoom("100") },

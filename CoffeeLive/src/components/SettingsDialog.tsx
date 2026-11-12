@@ -26,6 +26,7 @@ import { isTauri, openExternal } from "../services/desktop";
 import { ffmpegInstall, ffmpegStatus, pickFolder, videosDir, type FfmpegStatus } from "../services/store";
 import { canRecordMp4 } from "../services/media";
 import { comboFromEvent } from "../services/hotkeys";
+import { ThemeSwitch } from "../theme/ThemeSwitch";
 
 export type SettingsTab = "general" | "stream" | "output" | "audio" | "video" | "hotkeys";
 
@@ -176,6 +177,10 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ settings, stream
 
             {tab === "general" && (
               <>
+                <div className="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2" data-appearance>
+                  <span className="text-[12px]">Apariencia de la suite (claro u oscuro)</span>
+                  <ThemeSwitch />
+                </div>
                 <Row title="Modo estudio" hint="Prepara una escena en la vista previa y pásala al directo con una transición.">
                   <Check checked={s.general.studioMode} onChange={(v) => set("general", { studioMode: v })}>
                     Mostrar vista previa y programa por separado

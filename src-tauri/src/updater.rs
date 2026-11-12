@@ -130,6 +130,20 @@ pub struct Asset {
     pub size: u64,
 }
 
+/// Instalador de esta plataforma: el .exe en Windows y el paquete .deb en Linux.
+pub fn is_installer(name: &str) -> bool {
+    if cfg!(windows) {
+        name.starts_with("CoffeeWorks-Setup") && name.ends_with(".exe")
+    } else {
+        name.starts_with("coffeeworks_") && name.ends_with("_amd64.deb")
+    }
+}
+
+/// Linux con apt (Debian, Ubuntu y derivadas).
+fn linux_supported() -> bool {
+    cfg!(target_os = "linux") && Path::new("/usr/bin/dpkg").exists()
+}
+
 /// Elige la versión más nueva que tenga instalador y suma SHA-256.
 pub fn choose_release(releases: &[Release], current: &str, include_prerelease: bool) -> Option<(Release, Version)> {
     let current = parse_version(current)?;
@@ -138,7 +152,7 @@ pub fn choose_release(releases: &[Release], current: &str, include_prerelease: b
         .filter(|r| !r.draft && (include_prerelease || !r.prerelease))
         .filter_map(|r| {
             let version = parse_version(r.tag_name.strip_prefix('v')?)?;
-            let installer = r.assets.iter().find(|a| a.name.starts_with("CoffeeWorks-Setup") && a.name.ends_with(".exe"))?;
+            let installer = r.assets.iter().find(|a| is_installer(&a.name))?;
             let checksum = format!("{}.sha256", installer.name);
             r.assets.iter().any(|a| a.name == checksum).then(|| (r.clone(), version))
         })
@@ -168,7 +182,7 @@ fn info_from_state(state: &UpdateState) -> UpdateInfo {
     UpdateInfo {
         current: current_version().into(),
         stage: stage_label(),
-        supported: cfg!(windows),
+        supported: cfg!(windows) || linux_supported(),
         auto_install: state.auto_install,
         last_check: state.last_check,
         latest: pending.map(|p| p.version.clone()).unwrap_or_default(),
@@ -192,6 +206,12 @@ pub fn set_auto_install(enabled: bool) -> UpdateInfo {
 
 fn fetch_releases() -> Result<Vec<Release>, String> {
     let temp = std::env::temp_dir().join(format!("coffeeworks-releases-{}.json", coffee_core::now_millis()));
+    if !cfg!(windows) {
+        coffee_core::addons::download_file(&format!("https://api.github.com/repos/{REPO}/releases?per_page=30"), &temp)?;
+        let text = fs::read_to_string(&temp).map_err(|e| format!("No se pudo leer la respuesta: {e}"));
+        let _ = fs::remove_file(&temp);
+        return serde_json::from_str(&text?).map_err(|e| format!("Respuesta inesperada de GitHub: {e}"));
+    }
     let script = format!(
         "$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'; \
          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; \
@@ -207,8 +227,8 @@ fn fetch_releases() -> Result<Vec<Release>, String> {
 
 /// Busca una versión nueva. Si la encuentra, la descarga y la deja lista.
 pub fn check_and_download() -> Result<UpdateInfo, String> {
-    if !cfg!(windows) {
-        return Err("Las actualizaciones automáticas solo están disponibles en Windows.".into());
+    if !cfg!(windows) && !linux_supported() {
+        return Err("Las actualizaciones automáticas están disponibles en Windows y en Linux con apt (Debian y Ubuntu).".into());
     }
     let mut state = load_state();
     let releases = fetch_releases()?;
@@ -227,8 +247,8 @@ pub fn check_and_download() -> Result<UpdateInfo, String> {
     let installer = release
         .assets
         .iter()
-        .find(|a| a.name.starts_with("CoffeeWorks-Setup") && a.name.ends_with(".exe"))
-        .ok_or("La versión publicada no tiene instalador.")?;
+        .find(|a| is_installer(&a.name))
+        .ok_or("La versión publicada no tiene instalador para este sistema.")?;
     let checksum = release
         .assets
         .iter()
@@ -283,6 +303,26 @@ fn launch_installer(pending: &PendingUpdate, relaunch: bool) -> Result<(), Strin
     if !Path::new(&pending.installer).is_file() {
         return Err("No se encuentra la actualización descargada.".into());
     }
+    if !cfg!(windows) {
+        // Linux: apt instala el paquete (pkexec pide la contraseña) y se vuelve a abrir el Launcher
+        let deb = pending.installer.clone();
+        let exe = std::env::current_exe().ok();
+        std::thread::spawn(move || {
+            let ok = Command::new("pkexec").args(["apt-get", "install", "-y", "--allow-downgrades"]).arg(&deb).status().map(|s| s.success()).unwrap_or(false);
+            if !ok {
+                // Sin pkexec (o cancelado): se abre con el instalador de software del sistema
+                let _ = Command::new("xdg-open").arg(&deb).spawn();
+                return;
+            }
+            if relaunch {
+                if let Some(exe) = exe {
+                    let _ = Command::new(exe).spawn();
+                }
+                std::process::exit(0);
+            }
+        });
+        return Ok(());
+    }
     Command::new(&pending.installer)
         .args([
             "/VERYSILENT".to_string(),
@@ -325,6 +365,8 @@ mod tests {
             vec![
                 Asset { name: format!("CoffeeWorks-Setup-{version}.exe"), browser_download_url: String::new(), size: 1 },
                 Asset { name: format!("CoffeeWorks-Setup-{version}.exe.sha256"), browser_download_url: String::new(), size: 1 },
+                Asset { name: format!("coffeeworks_{version}_amd64.deb"), browser_download_url: String::new(), size: 1 },
+                Asset { name: format!("coffeeworks_{version}_amd64.deb.sha256"), browser_download_url: String::new(), size: 1 },
             ]
         } else {
             vec![]

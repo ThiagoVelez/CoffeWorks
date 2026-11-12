@@ -481,6 +481,7 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
               backgroundColor: settings.pageColor || "#ffffff",
               backgroundImage: pageGuides,
             }}
+            data-paper
             className="cfd-page relative border border-[#e1dfdd]/40 shadow-[0_1px_3px_1px_rgba(60,64,67,0.15)]"
           >
             {settings.watermark && (

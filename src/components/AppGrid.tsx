@@ -108,6 +108,8 @@ export const AppGrid: React.FC<AppGridProps> = ({
         return FilePen;
       case "notebook":
         return NotebookPen;
+      case "notebook-pen":
+        return BookOpen;
       case "video":
         return Video;
       case "scissors":

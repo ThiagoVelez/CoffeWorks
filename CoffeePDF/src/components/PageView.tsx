@@ -439,6 +439,7 @@ export const PageView: React.FC<PageViewProps> = ({
       <div
         ref={wrapperRef}
         data-page-id={item.id}
+        data-paper
         className={`relative bg-white shadow-[0_1px_3px_rgba(60,64,67,0.3),0_4px_12px_rgba(60,64,67,0.12)] ${
           isCurrent ? "outline outline-2 outline-[#c62828]/40" : ""
         }`}

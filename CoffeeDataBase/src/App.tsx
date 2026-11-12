@@ -82,6 +82,7 @@ import {
   type RecentEntry,
 } from "./services/desktop";
 import { ACCENT, ACCENT_DARK, type Schema, type ViewId } from "./types";
+import { useTheme } from "./theme/theme";
 
 const AUTOSAVE_DELAY = 1500;
 const EMPTY_SCHEMA: Schema = { tables: [], views: [], queries: [], indexes: [] };
@@ -135,22 +136,9 @@ export const App: React.FC = () => {
   const [exportOpen, setExportOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
-  const [dark, setDark] = useState(() => {
-    try {
-      return localStorage.getItem("coffeedatabase_dark") === "1";
-    } catch {
-      return false;
-    }
-  });
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", dark);
-    try {
-      localStorage.setItem("coffeedatabase_dark", dark ? "1" : "0");
-    } catch {
-      // Sin almacenamiento
-    }
-  }, [dark]);
+  // Tema común de la suite (claro u oscuro)
+  const [theme, setTheme] = useTheme();
+  const dark = theme === "dark";
   const startedRef = useRef(false);
 
   const db = dbRef.current;
@@ -671,7 +659,7 @@ export const App: React.FC = () => {
         ...VIEWS.map((v) => ({ label: v.label, icon: v.icon, checked: view === v.id, disabled: v.needsTable && !currentTable, action: () => setView(v.id) })),
         { divider: true as const },
         { label: "Actualizar", icon: RefreshCw, shortcut: "F5", action: refreshSchema },
-        { label: "Tema oscuro", icon: Moon, checked: dark, action: () => setDark((v) => !v) },
+        { label: "Modo oscuro", icon: Moon, checked: dark, action: () => setTheme(dark ? "light" : "dark") },
       ],
     },
     {

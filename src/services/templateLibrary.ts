@@ -3,6 +3,7 @@
 // Cada función genera el contenido del archivo nativo que abre la aplicación.
 
 import { PAINT_TEMPLATES, PHOTO_TEMPLATES, VECTOR_TEMPLATES } from "./artTemplates";
+import { BOOKS_TEMPLATES } from "./booksTemplates";
 const uid = (prefix: string) => `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
 export interface ExtraTemplate {
@@ -917,6 +918,7 @@ const DG_TEMPLATES: Record<string, () => string> = {
 export function buildExtraTemplate(templateId: string, appId: string, title: string): ExtraTemplate | null {
   if (appId === "coffeepdf" && PDF_TEMPLATES[templateId]) return { extension: "pdf", prefix: "pdf", contents: PDF_TEMPLATES[templateId]() };
   if (appId === "coffeepage" && PAGE_TEMPLATES[templateId]) return { extension: "cpg", prefix: "cpg", contents: PAGE_TEMPLATES[templateId]() };
+  if (appId === "coffeebooks" && BOOKS_TEMPLATES[templateId]) return { extension: "cbk", prefix: "cbk", contents: BOOKS_TEMPLATES[templateId]() };
   if (appId === "coffeedatabase" && DB_SCRIPTS[templateId]) {
     // La primera línea marca el archivo como plantilla; CoffeeDataBase lo convierte en SQLite
     return { extension: "cdb", prefix: "cdb", contents: `-- CoffeeWorks plantilla: ${title}\n${DB_SCRIPTS[templateId].trim()}\n` };
@@ -935,6 +937,7 @@ export function buildExtraTemplate(templateId: string, appId: string, title: str
 export const EXTRA_TEMPLATE_IDS = {
   coffeepdf: Object.keys(PDF_TEMPLATES),
   coffeepage: Object.keys(PAGE_TEMPLATES),
+  coffeebooks: Object.keys(BOOKS_TEMPLATES),
   coffeedatabase: Object.keys(DB_SCRIPTS),
   coffeeedit: Object.keys(EDIT_PROJECTS),
   coffeelive: Object.keys(LIVE_COLLECTIONS),

@@ -1,6 +1,9 @@
 // Seguimiento de la cara con la cámara (MediaPipe Face Landmarker, incluido
 // en la app: no necesita Internet) y del micrófono para mover la boca.
 
+import { invoke } from "@tauri-apps/api/core";
+import { readFileBytes, isTauri } from "./studio/desktop";
+import { ensureAddon } from "./studio/addons";
 import type { Rig } from "./types";
 
 type Landmarker = {
@@ -27,7 +30,10 @@ export class FaceTracker {
 
   async start(): Promise<void> {
     const vision = await import("@mediapipe/tasks-vision");
-    const files = await vision.FilesetResolver.forVisionTasks(new URL("mediapipe", document.baseURI).href.replace(/\/$/, ""));
+    const base = new URL("mediapipe", document.baseURI).href.replace(/\/$/, "");
+    let files: Awaited<ReturnType<typeof vision.FilesetResolver.forVisionTasks>>;
+    if ((await vision.FilesetResolver.isSimdSupported()) || import.meta.env.DEV) files = await vision.FilesetResolver.forVisionTasks(base);
+    else files = await compatFileset();
     const opts = (delegate: "GPU" | "CPU") => ({
       baseOptions: { modelAssetPath: new URL("models/face_landmarker.task", document.baseURI).href, delegate },
       runningMode: "VIDEO" as const,
@@ -109,6 +115,23 @@ export class FaceTracker {
       smile: Math.max(-1, Math.min(1, (((s.mouthSmileLeft || 0) + (s.mouthSmileRight || 0)) / 2 - ((s.mouthFrownLeft || 0) + (s.mouthFrownRight || 0)) / 2) * 1.4 * e + 0.1)),
     };
   }
+}
+
+/**
+ * Motor para procesadores sin SIMD: viene en el complemento
+ * «Compatibilidad para equipos antiguos» y se carga desde su carpeta.
+ */
+async function compatFileset(): Promise<{ wasmLoaderPath: string; wasmBinaryPath: string }> {
+  const fail = () => new Error("Este equipo necesita el complemento «Compatibilidad para equipos antiguos» para el seguimiento facial. Sin cámara, el personaje sigue el ratón y la voz.");
+  if (!isTauri || !(await ensureAddon("puppetcompat", "CoffeePuppet"))) throw fail();
+  const dir = await invoke<string | null>("core_addon_dir", { id: "puppetcompat" });
+  if (!dir) throw fail();
+  const sep = dir.includes("\\") ? "\\" : "/";
+  const url = async (name: string, type: string) => URL.createObjectURL(new Blob([(await readFileBytes(`${dir}${sep}${name}`)) as BlobPart], { type }));
+  return {
+    wasmLoaderPath: await url("vision_wasm_nosimd_internal.js", "text/javascript"),
+    wasmBinaryPath: await url("vision_wasm_nosimd_internal.wasm", "application/wasm"),
+  };
 }
 
 /** Nivel del micrófono para mover la boca. */
