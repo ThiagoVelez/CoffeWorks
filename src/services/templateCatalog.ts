@@ -1,5 +1,6 @@
 // Plantillas añadidas en la versión 2.6: más documentos, hojas y presentaciones,
-// y plantillas para CoffeePDF, CoffeePage, CoffeeDataBase, CoffeeEdit y CoffeeLive.
+// y plantillas para CoffeePDF, CoffeePage, CoffeeDataBase, CoffeeEdit, CoffeeLive,
+// las apps de Desarrollador y las de Ilustración.
 
 import type { TemplateItem } from "../components/TemplatesView";
 
@@ -15,6 +16,9 @@ export const APP_STYLE: Record<string, { name: string; color: string; bg: string
   coffeelive: { name: "CoffeeLive", color: "#ef6c00", bg: "#fff1e5" },
   coffeeuiux: { name: "CoffeeUI/UX", color: "#b38600", bg: "#fff6d6" },
   coffeeuml: { name: "CoffeeUML", color: "#2e6b58", bg: "#e3f1ec" },
+  coffeephoto: { name: "CoffeePhoto", color: "#e8452c", bg: "#fde4dc" },
+  coffeevector: { name: "CoffeeVector", color: "#e8590c", bg: "#fff0db" },
+  coffeepaint: { name: "CoffeePaint", color: "#e64980", bg: "#ffe3ec" },
 };
 
 const item = (appId: TemplateItem["appId"], data: Omit<TemplateItem, "appId" | "appName" | "port" | "badgeBg" | "badgeText" | "accentBorder">): TemplateItem => ({
@@ -355,5 +359,74 @@ ${table(["Concepto", "Valor"], [["Personal", ""], ["Equipos y licencias", ""], [
     category: "Programación",
     description: "Algoritmo «par o impar» con inicio, entrada, decisión, procesos y fin. Ideal para explicar lógica de programación.",
     features: ["Símbolos estándar de diagrama de flujo", "Decisión con ramas Sí/No", "Exportable a Mermaid"],
+  }),
+
+  // --- CoffeePhoto ---
+  item("coffeephoto", {
+    id: "ph-post-oferta",
+    title: "Publicación de Oferta (Instagram)",
+    category: "Redes sociales",
+    description: "Post cuadrado de 1080 px con fondo degradado, titular con sombra, porcentaje de descuento y botón. Todo en capas editables.",
+    features: ["Capas de texto editables", "Estilo de capa con sombra", "Listo para exportar a PNG o JPG"],
+  }),
+  item("coffeephoto", {
+    id: "ph-miniatura-youtube",
+    title: "Miniatura de YouTube",
+    category: "Redes sociales",
+    description: "Miniatura de 1280 × 720 con fondo llamativo, titular con contorno grueso, etiqueta «NUEVO» y elemento gráfico.",
+    features: ["Texto con contorno", "Fondo con trama", "Tamaño exacto de YouTube"],
+  }),
+  item("coffeephoto", {
+    id: "ph-collage",
+    title: "Collage de Fotos",
+    category: "Fotografía",
+    description: "Retrato de 1080 × 1350 con cinco huecos para fotos y titular. Coloca tus fotos con Archivo › Colocar imagen y recórtalas con máscaras.",
+    features: ["5 huecos de distintos tamaños", "Titular con tipografía serif", "Formato de Instagram 4:5"],
+  }),
+
+  // --- CoffeeVector ---
+  item("coffeevector", {
+    id: "vc-logotipo",
+    title: "Logotipo con Emblema",
+    category: "Identidad",
+    description: "Emblema circular con degradado cálido, anillo punteado, estrella y nombre de marca con eslogan. Todo vectorial y escalable.",
+    features: ["Degradados y trazos discontinuos", "Texto con espaciado", "Exportable a SVG y PDF"],
+  }),
+  item("coffeevector", {
+    id: "vc-tarjeta-visita",
+    title: "Tarjeta de Visita (anverso y reverso)",
+    category: "Identidad",
+    description: "Dos mesas de trabajo de 1050 × 600: anverso con nombre, cargo y contacto, y reverso oscuro con el logotipo.",
+    features: ["2 mesas de trabajo", "Exportación PDF de dos páginas", "Colores de marca"],
+  }),
+  item("coffeevector", {
+    id: "vc-cartel",
+    title: "Cartel de Festival",
+    category: "Carteles",
+    description: "Cartel A3 con sol degradado, montañas y titulares grandes. Cambia los textos y exporta a PDF para imprimir.",
+    features: ["Formato A3", "Formas y degradados", "PDF vectorial"],
+  }),
+
+  // --- CoffeePaint ---
+  item("coffeepaint", {
+    id: "pt-boceto-perspectiva",
+    title: "Boceto con Perspectiva",
+    category: "Dibujo",
+    description: "Papel de boceto con guías de perspectiva a un punto bloqueadas y capas Boceto, Tinta y Color listas para trabajar.",
+    features: ["Guías de perspectiva", "4 capas preparadas", "Papel con grano"],
+  }),
+  item("coffeepaint", {
+    id: "pt-pagina-comic",
+    title: "Página de Cómic",
+    category: "Cómic",
+    description: "Página de 1800 × 2700 con seis viñetas trazadas y capas para lápiz, tinta y color plano.",
+    features: ["6 viñetas", "Capa de color en multiplicar", "Viñetas bloqueadas"],
+  }),
+  item("coffeepaint", {
+    id: "pt-mandala",
+    title: "Mandala en Acuarela",
+    category: "Pintura",
+    description: "Lienzo cuadrado en papel de acuarela con círculos guía. Activa la simetría radial (barra inferior) y pinta.",
+    features: ["Papel de acuarela", "Círculos guía", "Perfecto para la simetría radial"],
   }),
 ];

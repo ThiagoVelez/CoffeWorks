@@ -101,6 +101,10 @@ jobs:
           Assert (Test-Path "$apps\CoffeeLive\CoffeeLive.exe") "CoffeeLive queda instalado"
           Assert (Test-Path "$apps\CoffeeUIUX\CoffeeUIUX.exe") "CoffeeUI/UX queda instalado"
           Assert (Test-Path "$apps\CoffeeUML\CoffeeUML.exe") "CoffeeUML queda instalado"
+          Assert (Test-Path "$apps\CoffeePhoto\CoffeePhoto.exe") "CoffeePhoto queda instalado"
+          Assert (Test-Path "$apps\CoffeeVector\CoffeeVector.exe") "CoffeeVector queda instalado"
+          Assert (Test-Path "$apps\CoffeePaint\CoffeePaint.exe") "CoffeePaint queda instalado"
+          Assert (Test-Path "$apps\CoffeeLens\CoffeeLens.exe") "CoffeeLens queda instalado"
           Assert (Test-Path "$menu\CoffeeUIUX.lnk") "se crea el acceso directo de CoffeeUI/UX"
           $cpg = (Get-ItemProperty "HKCU:\Software\Classes\.cpg" -ErrorAction SilentlyContinue).'(default)'
           Assert ($cpg -eq "CoffeeWorks.CoffeePage.cpg") "se asocia el tipo de archivo .cpg"
@@ -114,6 +118,14 @@ jobs:
           Assert ($cux -eq "CoffeeWorks.CoffeeUIUX.cux") "se asocia el tipo de archivo .cux"
           $cuml = (Get-ItemProperty "HKCU:\Software\Classes\.cuml" -ErrorAction SilentlyContinue).'(default)'
           Assert ($cuml -eq "CoffeeWorks.CoffeeUML.cuml") "se asocia el tipo de archivo .cuml"
+          $t = (Get-ItemProperty "HKCU:\Software\Classes\.cph" -ErrorAction SilentlyContinue).'(default)'
+          Assert ($t -eq "CoffeeWorks.CoffeePhoto.cph") "se asocia el tipo de archivo .cph"
+          $t = (Get-ItemProperty "HKCU:\Software\Classes\.cvc" -ErrorAction SilentlyContinue).'(default)'
+          Assert ($t -eq "CoffeeWorks.CoffeeVector.cvc") "se asocia el tipo de archivo .cvc"
+          $t = (Get-ItemProperty "HKCU:\Software\Classes\.cpt" -ErrorAction SilentlyContinue).'(default)'
+          Assert ($t -eq "CoffeeWorks.CoffeePaint.cpt") "se asocia el tipo de archivo .cpt"
+          $t = (Get-ItemProperty "HKCU:\Software\Classes\.clc" -ErrorAction SilentlyContinue).'(default)'
+          Assert ($t -eq "CoffeeWorks.CoffeeLens.clc") "se asocia el tipo de archivo .clc"
           $pdfDefault = (Get-ItemProperty "HKCU:\Software\Classes\.pdf" -ErrorAction SilentlyContinue).'(default)'
           Assert ($pdfDefault -ne "CoffeeWorks.CoffeePDF.pdf") "CoffeePDF no reemplaza el lector de PDF predeterminado"
           Assert ((Get-ItemProperty "HKCU:\Software\Classes\.pdf\OpenWithProgids" -ErrorAction SilentlyContinue).'CoffeeWorks.CoffeePDF.pdf' -ne $null) "CoffeePDF aparece en Abrir con"
@@ -121,7 +133,7 @@ jobs:
           # Las ventanas deben arrancar y seguir abiertas
           New-Item -ItemType Directory -Force screenshots | Out-Null
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-          foreach ($exe in @("$dir\CoffeeWorks.exe", "$apps\CoffeeDoc\CoffeeDoc.exe", "$apps\CoffeeCalc\CoffeeCalc.exe", "$apps\CoffeeView\CoffeeView.exe", "$apps\CoffeePDF\CoffeePDF.exe", "$apps\CoffeePage\CoffeePage.exe", "$apps\CoffeeDataBase\CoffeeDataBase.exe", "$apps\CoffeeEdit\CoffeeEdit.exe", "$apps\CoffeeLive\CoffeeLive.exe", "$apps\CoffeeUIUX\CoffeeUIUX.exe", "$apps\CoffeeUML\CoffeeUML.exe")) {
+          foreach ($exe in @("$dir\CoffeeWorks.exe", "$apps\CoffeeDoc\CoffeeDoc.exe", "$apps\CoffeeCalc\CoffeeCalc.exe", "$apps\CoffeeView\CoffeeView.exe", "$apps\CoffeePDF\CoffeePDF.exe", "$apps\CoffeePage\CoffeePage.exe", "$apps\CoffeeDataBase\CoffeeDataBase.exe", "$apps\CoffeeEdit\CoffeeEdit.exe", "$apps\CoffeeLive\CoffeeLive.exe", "$apps\CoffeeUIUX\CoffeeUIUX.exe", "$apps\CoffeeUML\CoffeeUML.exe", "$apps\CoffeePhoto\CoffeePhoto.exe", "$apps\CoffeeVector\CoffeeVector.exe", "$apps\CoffeePaint\CoffeePaint.exe", "$apps\CoffeeLens\CoffeeLens.exe")) {
             $name = [IO.Path]::GetFileNameWithoutExtension($exe)
             $process = Start-Process $exe -PassThru
             Start-Sleep -Seconds 12

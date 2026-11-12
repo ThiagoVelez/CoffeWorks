@@ -6,6 +6,10 @@
 //   CoffeeEdit http://localhost:1426      CoffeeLive http://localhost:1427
 //   CoffeeDataBase http://localhost:1428  CoffeeUI/UX http://localhost:1429
 //   CoffeeUML http://localhost:1430
+//   CoffeePhoto http://localhost:1431
+//   CoffeeVector http://localhost:1432
+//   CoffeePaint http://localhost:1433
+//   CoffeeLens http://localhost:1434
 
 import { spawn } from "node:child_process";
 import path from "node:path";
@@ -13,7 +17,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
-const children = [".", "CoffeeDoc", "CoffeeCalc", "CoffeeView", "CoffeePDF", "CoffeePage", "CoffeeDataBase", "CoffeeEdit", "CoffeeLive", "CoffeeUIUX", "CoffeeUML"].map((dir) =>
+const children = [".", "CoffeeDoc", "CoffeeCalc", "CoffeeView", "CoffeePDF", "CoffeePage", "CoffeeDataBase", "CoffeeEdit", "CoffeeLive", "CoffeeUIUX", "CoffeeUML", "CoffeePhoto", "CoffeeVector", "CoffeePaint", "CoffeeLens"].map((dir) =>
   spawn(npm, ["run", "dev"], { cwd: path.join(root, dir), stdio: "inherit", shell: process.platform === "win32" })
 );
 

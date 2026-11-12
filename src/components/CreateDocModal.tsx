@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, FileText, Table, Presentation, FilePen, NotebookPen, Database, Scissors, Radio, Plus, PenTool, Workflow } from "lucide-react";
+import { X, FileText, Table, Presentation, FilePen, NotebookPen, Database, Scissors, Radio, Plus, PenTool, Workflow, Image as ImageIcon, PenLine, Brush, Aperture } from "lucide-react";
 
 interface CreateDocModalProps {
   isOpen: boolean;
@@ -30,6 +30,10 @@ export const CreateDocModal: React.FC<CreateDocModalProps> = ({
     { id: "coffeelive", name: "CoffeeLive", ext: ".clv", icon: Radio, color: "text-[#ef6c00]", bg: "bg-[#fff1e3]" },
     { id: "coffeeuiux", name: "CoffeeUI/UX", ext: ".cux", icon: PenTool, color: "text-[#b38600]", bg: "bg-[#fff6d6]" },
     { id: "coffeeuml", name: "CoffeeUML", ext: ".cuml", icon: Workflow, color: "text-[#2e6b58]", bg: "bg-[#e3f1ec]" },
+    { id: "coffeephoto", name: "CoffeePhoto", ext: ".cph", icon: ImageIcon, color: "text-[#e8452c]", bg: "bg-[#fde4dc]" },
+    { id: "coffeevector", name: "CoffeeVector", ext: ".cvc", icon: PenLine, color: "text-[#e8590c]", bg: "bg-[#fff0db]" },
+    { id: "coffeepaint", name: "CoffeePaint", ext: ".cpt", icon: Brush, color: "text-[#e64980]", bg: "bg-[#ffe3ec]" },
+    { id: "coffeelens", name: "CoffeeLens", ext: ".clc", icon: Aperture, color: "text-[#d9480f]", bg: "bg-[#ffead5]" },
   ];
 
 

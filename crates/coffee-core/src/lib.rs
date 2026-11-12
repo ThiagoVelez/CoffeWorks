@@ -358,6 +358,7 @@ macro_rules! editor_handler {
             $crate::commands::core_set_pinned,
             $crate::commands::core_list_recent,
             $crate::commands::core_pick_open,
+            $crate::commands::core_pick_open_many,
             $crate::commands::core_pick_save,
             $crate::commands::core_open_external,
             $crate::commands::core_window_minimize,

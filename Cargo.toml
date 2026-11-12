@@ -16,6 +16,10 @@ members = [
   "CoffeeDataBase/src-tauri",
   "CoffeeUIUX/src-tauri",
   "CoffeeUML/src-tauri",
+  "CoffeePhoto/src-tauri",
+  "CoffeeVector/src-tauri",
+  "CoffeePaint/src-tauri",
+  "CoffeeLens/src-tauri",
 ]
 
 [workspace.package]

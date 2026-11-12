@@ -399,6 +399,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "coffeelens"
+version = "2.7.0"
+dependencies = [
+ "coffee-core",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+]
+
+[[package]]
 name = "coffeelive"
 version = "2.7.0"
 dependencies = [
@@ -422,7 +432,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "coffeepaint"
+version = "2.7.0"
+dependencies = [
+ "coffee-core",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+]
+
+[[package]]
 name = "coffeepdf"
+version = "2.7.0"
+dependencies = [
+ "coffee-core",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+]
+
+[[package]]
+name = "coffeephoto"
 version = "2.7.0"
 dependencies = [
  "coffee-core",
@@ -443,6 +473,16 @@ dependencies = [
 
 [[package]]
 name = "coffeeuml"
+version = "2.7.0"
+dependencies = [
+ "coffee-core",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+]
+
+[[package]]
+name = "coffeevector"
 version = "2.7.0"
 dependencies = [
  "coffee-core",

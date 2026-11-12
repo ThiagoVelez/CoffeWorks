@@ -10,6 +10,10 @@ import {
   Radio,
   PenTool,
   Workflow,
+  Image as ImageIcon,
+  PenLine,
+  Brush,
+  Aperture,
   Database,
   CornerDownLeft,
   X,
@@ -148,7 +152,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
               </span>
               {filteredDocs.map((doc) => {
                 const docApp = appForDocument(doc);
-                const DocIcon = docApp === "coffeecalc" ? Table : docApp === "coffeeview" ? Presentation : docApp === "coffeepdf" ? FilePen : docApp === "coffeepage" ? NotebookPen : docApp === "coffeeedit" ? Scissors : docApp === "coffeelive" ? Radio : docApp === "coffeedatabase" ? Database : docApp === "coffeeuiux" ? PenTool : docApp === "coffeeuml" ? Workflow : FileText;
+                const DocIcon = docApp === "coffeecalc" ? Table : docApp === "coffeeview" ? Presentation : docApp === "coffeepdf" ? FilePen : docApp === "coffeepage" ? NotebookPen : docApp === "coffeeedit" ? Scissors : docApp === "coffeelive" ? Radio : docApp === "coffeedatabase" ? Database : docApp === "coffeeuiux" ? PenTool : docApp === "coffeeuml" ? Workflow : docApp === "coffeephoto" ? ImageIcon : docApp === "coffeevector" ? PenLine : docApp === "coffeepaint" ? Brush : docApp === "coffeelens" ? Aperture : FileText;
 
                 return (
                   <button

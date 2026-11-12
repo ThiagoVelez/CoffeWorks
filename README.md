@@ -1,6 +1,6 @@
 # CoffeeWorks
 
-Suite ofimática de escritorio para Windows, de código abierto y sin conexión. Se compone de un **Launcher** que instala y gestiona las aplicaciones y de diez aplicaciones, en tres categorías (**Office**, **Multimedia** y **Desarrollador**):
+Suite ofimática de escritorio para Windows, de código abierto y sin conexión. Se compone de un **Launcher** que instala y gestiona las aplicaciones y de catorce aplicaciones, en cuatro categorías (**Office**, **Multimedia**, **Desarrollador** e **Ilustración**):
 
 | Aplicación | Qué es | Formato propio | Abre | Exporta |
 | :--- | :--- | :--- | :--- | :--- |
@@ -14,12 +14,16 @@ Suite ofimática de escritorio para Windows, de código abierto y sin conexión.
 | **CoffeeLive** *(Multimedia)* | Grabación y transmisión en directo | `.clv` | Pantalla, cámara, imágenes y videos como fuentes | Grabaciones MP4/WebM, transmisión RTMP/SRT |
 | **CoffeeUI/UX** *(Desarrollador)* | Diseño de interfaces y prototipos | `.cux` | Diseños; imágenes para insertar | PNG, JPG, SVG, PDF, HTML/CSS |
 | **CoffeeUML** *(Desarrollador)* | Modelado UML y diagramas | `.cuml` | Modelos; scripts SQL (`CREATE TABLE`) | PNG, SVG, PDF, Java, C#, TypeScript, Python, SQL, Mermaid, PlantUML |
+| **CoffeePhoto** *(Ilustración)* | Edición de imágenes y retoque | `.cph` | PNG, JPG, WebP, BMP, GIF; RAW (con complemento) | PNG, JPG, WebP, PDF, capas en ZIP |
+| **CoffeeVector** *(Ilustración)* | Gráficos vectoriales e ilustración | `.cvc` | SVG; PNG/JPG para colocar o calcar | SVG, PDF vectorial, PNG, JPG |
+| **CoffeePaint** *(Ilustración)* | Pintura y dibujo digital | `.cpt` | PNG, JPG, WebP | PNG, JPG, capas en ZIP, SVG vectorizado (con complemento) |
+| **CoffeeLens** *(Ilustración)* | Revelado y organización de fotos | `.clc` (catálogo) | JPG, PNG, WebP, TIFF; RAW (con complemento) | JPG, PNG, WebP por lotes |
 
 Cada aplicación es un ejecutable independiente construido con **Tauri 2** (Rust + WebView2) y **React + TypeScript**.
 
 ## Cómo funciona la instalación
 
-1. El instalador (`CoffeeWorks-Setup-2.7.0.exe`, hecho con **Inno Setup**) instala solo el Launcher y deja los paquetes de las diez aplicaciones en su carpeta `packages`.
+1. El instalador (`CoffeeWorks-Setup-2.7.0.exe`, hecho con **Inno Setup**) instala solo el Launcher y deja los paquetes de las catorce aplicaciones en su carpeta `packages`.
 2. Dentro del Launcher, en la **Tienda de Apps**, cada aplicación tiene sus botones **Instalar**, **Abrir App** y **Desinstalar**:
    - *Instalar* copia la aplicación a `%LOCALAPPDATA%\CoffeeWorks\Apps\<App>`, crea su acceso directo en el menú Inicio (carpeta *CoffeeWorks*) y asocia su tipo de archivo, de modo que un doble clic sobre un `.cfd`, `.cfs`, `.csl`, `.cpg`, `.cdb`, `.ccm` o `.clv` lo abre. CoffeePDF no reemplaza tu lector de PDF predeterminado: aparece en *Abrir con* del Explorador.
    - *Desinstalar* borra la aplicación, su acceso directo y su asociación. **Los documentos no se tocan.**
@@ -55,9 +59,12 @@ El Launcher tiene dos secciones más en la barra lateral:
 - **Complementos**: un mercado de herramientas opcionales para las apps. No vienen en el instalador para que la suite siga siendo ligera; se descargan una sola vez en `%LOCALAPPDATA%\CoffeeWorks\Addons` y se quitan con un clic. Cada app también ofrece instalar el suyo en el momento en que lo necesita.
   - *Compatibilidad con Access* (CoffeeDataBase, ~8 MB): exporta tablas, datos, claves y relaciones a `.accdb` y `.mdb`. Es [Jackcess](https://jackcess.sourceforge.io) compilado a un ejecutable nativo con GraalVM, así que no necesita Java (código en `addons/coffee-accdb`).
   - *Motor de video FFmpeg* (CoffeeLive, ~90 MB): necesario para transmitir en directo.
+  - *IA generativa* (CoffeePhoto, sin descarga): relleno generativo de una selección y «Generar imagen» como capa nueva, con un servicio compatible con la API de imágenes de OpenAI y la clave del usuario (se guarda solo en el equipo). Sin el complemento, CoffeePhoto ya trae *Relleno según el contenido*, que funciona sin internet.
+  - *Revelado RAW* (CoffeeLens y CoffeePhoto, ~4 MB): abre los RAW de casi cualquier cámara con [LibRaw](https://www.libraw.org) (código en `addons/coffee-raw`).
+  - *Calco vectorial* (CoffeeVector y CoffeePaint, ~1 MB): convierte imágenes y dibujos en trazados con [Potrace](https://potrace.sourceforge.net), en blanco y negro o por colores (código en `addons/coffee-potrace`).
   - *Revisión del PDF original* (CoffeePDF, ~36 MB): revisa también la ortografía del texto que ya trae el PDF y, en los escaneados, lo reconoce con OCR ([Tesseract](https://github.com/tesseract-ocr/tesseract), español e inglés). Las faltas se corrigen con clic derecho: la palabra se tapa y la corrección se escribe encima (código en `addons/coffee-pdfcheck`).
   - La pestaña *Formatos e integración* resume qué abre y exporta cada app.
-- **Plantillas**: 42 plantillas para las diez apps (actas, cartas, planes de proyecto, trabajos académicos; presupuestos, cronogramas, calificaciones y nómina; clases y sustentaciones; formularios, actas y certificados en PDF; cuadernos de clase, bitácoras y planificadores; bases de tienda, semilleros, biblioteca e inventario; proyectos de video para YouTube, Reels y tutoriales; escenas para clases, videojuegos y podcasts; pantallas de app móvil, web y escritorio; y un proyecto UML completo, un modelo entidad-relación y un diagrama de flujo).
+- **Plantillas**: 51 plantillas para trece apps (actas, cartas, planes de proyecto, trabajos académicos; presupuestos, cronogramas, calificaciones y nómina; clases y sustentaciones; formularios, actas y certificados en PDF; cuadernos de clase, bitácoras y planificadores; bases de tienda, semilleros, biblioteca e inventario; proyectos de video para YouTube, Reels y tutoriales; escenas para clases, videojuegos y podcasts; pantallas de app móvil, web y escritorio; un proyecto UML completo, un modelo entidad-relación y un diagrama de flujo; una publicación de oferta, una miniatura de YouTube y un collage de fotos; un logotipo, una tarjeta de visita y un cartel vectoriales; y un boceto con perspectiva, una página de cómic y un mandala en acuarela). CoffeeLens trae en su lugar trece ajustes preestablecidos de revelado.
 
 No hacen falta permisos de administrador: todo se instala por usuario. El instalador incluye el motor **WebView2** para los equipos con Windows 10 que aún no lo tengan (Windows 11 lo trae de serie).
 
@@ -115,11 +122,15 @@ npm install
 npm run dev:all
 ```
 
-Antes de la primera vez, instala también las dependencias de cada aplicación (`npm install` dentro de `CoffeeDoc`, `CoffeeCalc`, `CoffeeView`, `CoffeePDF`, `CoffeePage`, `CoffeeDataBase`, `CoffeeEdit` y `CoffeeLive`). Los servidores quedan en:
+Antes de la primera vez, instala también las dependencias de cada aplicación (`npm install` dentro de `CoffeeDoc`, `CoffeeCalc`, `CoffeeView`, `CoffeePDF`, `CoffeePage`, `CoffeeDataBase`, `CoffeeEdit`, `CoffeeLive`, `CoffeeUIUX`, `CoffeeUML`, `CoffeePhoto`, `CoffeeVector`, `CoffeePaint` y `CoffeeLens`). Los servidores quedan en:
 
 | Aplicación | Launcher | CoffeeDoc | CoffeeCalc | CoffeeView | CoffeePDF | CoffeePage | CoffeeEdit | CoffeeLive | CoffeeDataBase |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | Puerto | 1420 | 1421 | 1422 | 1423 | 1424 | 1425 | 1426 | 1427 | 1428 |
+
+| Aplicación | CoffeeUI/UX | CoffeeUML | CoffeePhoto | CoffeeVector | CoffeePaint | CoffeeLens |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| Puerto | 1429 | 1430 | 1431 | 1432 | 1433 | 1434 |
 
 En el navegador los documentos se guardan en `localStorage` y el Launcher abre las aplicaciones en pestañas; en el ejecutable se usan archivos reales y ventanas nativas.
 
@@ -147,8 +158,13 @@ CoffeeWorks/
 ├── CoffeeLive/              Grabación y transmisión en directo (src/ + src-tauri/)
 ├── CoffeeUIUX/              Diseño de interfaces y prototipos (src/ + src-tauri/)
 ├── CoffeeUML/               Modelado UML y diagramas (src/ + src-tauri/)
+├── CoffeePhoto/             Edición de imágenes (src/ + src-tauri/)
+├── CoffeeVector/            Gráficos vectoriales (src/ + src-tauri/)
+├── CoffeePaint/             Pintura digital (src/ + src-tauri/)
+├── CoffeeLens/              Revelado y catálogo de fotos (src/ + src-tauri/)
 ├── crates/coffee-core/      Código Rust compartido: bóveda, recientes, archivos, diálogos, complementos y diccionarios
 ├── shared/spell/            Corrector ortográfico compartido (se copia a cada app con scripts/sync-shared.mjs)
+├── shared/studio/           Base de las apps de Ilustración: encabezado, controles oscuros, guardado, historial y complementos
 ├── dictionaries/            Diccionarios Hunspell de español e inglés
 ├── addons/coffee-accdb/     Complemento de compatibilidad con Access (Java + GraalVM)
 ├── addons/coffee-pdfcheck/  Complemento de revisión del PDF original (Tesseract OCR)
@@ -223,5 +239,42 @@ También existen `--install-all` y `--uninstall-all`.
 - *Entidad-relación*: tablas con PK, FK, NOT NULL y UNIQUE, y cardinalidades 1, 0..1, 1..* y 0..*.
 - *Generación de código* Java, C#, TypeScript y Python (herencia, interfaces y asociaciones), SQL `CREATE TABLE` con claves foráneas, Mermaid y PlantUML; importación de scripts SQL (por ejemplo, los que exporta CoffeeDataBase).
 - Organización automática, alinear y repartir, cuadrícula, copiar y pegar, y exportación a PNG, SVG y PDF (todos los diagramas en un PDF).
+
+### Ilustración
+
+Las cuatro apps de Ilustración comparten una interfaz oscura, autoguardado, deshacer y rehacer, buscador de comandos (`Ctrl+K`) y atajos parecidos. Sus iconos usan degradados cálidos (`scripts/make-art-icons.py`).
+
+**CoffeePhoto** (naranja → carmesí) — edición avanzada de imágenes:
+
+- *Capas* de píxeles, texto y ajuste, con modos de fusión, opacidad, bloqueo, máscaras de capa (desde la selección), estilos (sombra paralela, trazo, resplandor), combinar, acoplar y rasterizar.
+- *Selecciones*: marco rectangular y elíptico, lazo y lazo poligonal, varita mágica (contigua o no), sumar/restar/intersecar, calar, expandir, contraer, invertir y cargar desde una capa.
+- *Herramientas*: mover, transformación libre (escalar y girar), recortar, cuentagotas, pincel y lápiz con presión, tampón de clonar, pincel corrector puntual, borrador, degradado, bote de pintura, desenfocar, sobreexponer, subexponer, texto y formas.
+- *Ajustes* (directos o como capa de ajuste): brillo/contraste, niveles, curvas por canal, exposición, intensidad, tono/saturación, equilibrio de color, blanco y negro, filtro de fotografía, invertir, posterizar, umbral y mapa de degradado, con vista previa e histograma.
+- *Filtros*: desenfoque gaussiano y de movimiento, enfocar y máscara de enfoque, ruido, reducir ruido, pixelar, relieve, hallar bordes, viñeta y pintura al óleo.
+- *Relleno según el contenido* (borra objetos y rellena con lo que hay alrededor, sin internet) y, con el complemento, *relleno generativo* y *generar imagen* con IA.
+- Tamaño de imagen y de lienzo, girar y voltear, recortar a la selección, portapapeles del sistema y exportación a PNG, JPG, WebP, PDF y capas en ZIP.
+
+**CoffeeVector** (amarillo → naranja) — gráficos vectoriales e ilustración:
+
+- *Pluma Bézier* (clic para esquinas, arrastrar para curvas, añadir y quitar nodos), *selección directa* de nodos y manejadores, convertir punto de ancla y *lápiz* con suavizado.
+- *Formas*: rectángulo, rectángulo redondeado, elipse, polígono, estrella y línea.
+- *Apariencia*: relleno sólido o con degradado lineal o radial (varias paradas), trazo con grosor, extremos, esquinas y discontinuo; opacidad y modos de fusión.
+- *Buscatrazos* (unir, menos frente, intersecar, excluir), alinear y distribuir, agrupar, máscaras de recorte, unir y simplificar trazados, reflejar y girar.
+- *Texto* editable en el lienzo, *mesas de trabajo* múltiples, capas con bloqueo y visibilidad.
+- Importa SVG (trazados con arcos, formas, texto, grupos, transformaciones y degradados) y, con el complemento, *calca imágenes* en blanco y negro o por colores. Exporta SVG, PDF vectorial (una página por mesa), PNG y JPG.
+
+**CoffeePaint** (rosa → mandarina) — pintura y dibujo digital:
+
+- *Pinceles* con presión del lápiz y grano del papel: lápiz, carboncillo, pastel, pluma de tinta, rotulador pincel, caligrafía, marcador, acuarela (con bordes húmedos al secarse), aguada, óleo (arrastra y mezcla el color), aerógrafo y salpicaduras; *difuminar* y borrador.
+- *Estabilizador* del trazo, *simetría* vertical, horizontal, en cuatro y radial (mandalas).
+- *Lienzo* con papel de boceto, acuarela, lienzo o liso; zoom, desplazamiento y *giro de la vista*, también con dos dedos en pantallas táctiles.
+- Capas con modos de fusión, bloquear transparencia, combinar y referencias importadas; exporta PNG (con o sin papel), JPG, capas en ZIP y, con el complemento, el dibujo vectorizado en SVG.
+
+**CoffeeLens** (ámbar → terracota) — revelado y organización de fotografías:
+
+- *Biblioteca*: importa varias fotos a la vez (o arrastrándolas), lee los datos EXIF, estrellas, banderas, etiquetas de color, palabras clave, descripción, colecciones y filtros.
+- *Revelar* (no destructivo): balance de blancos, exposición, contraste, iluminaciones, sombras, blancos, negros, textura, claridad, eliminar neblina, intensidad y saturación; curva de tonos, mezcla de color HSL por gamas, virado, enfoque, reducción de ruido, viñeta y grano; recorte con proporciones y enderezado, giro y volteo; antes y después e histograma.
+- Trece *ajustes preestablecidos* (y los tuyos), copiar y pegar ajustes entre fotos y *exportación por lotes* a JPG, PNG o WebP con cambio de tamaño.
+- Con el complemento *Revelado RAW* abre los archivos RAW de las cámaras.
 
 En CoffeeDoc, CoffeeCalc y CoffeeView: autoguardado, *Guardar como*, deshacer y rehacer, impresión y PDF, buscador de menús (`Alt+/`) y documentos fijados en el Launcher.

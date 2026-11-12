@@ -20,6 +20,10 @@ import {
   Database,
   PenTool,
   Workflow,
+  Image as ImageIcon,
+  PenLine,
+  Brush,
+  Aperture,
 } from "lucide-react";
 import type { SuiteApp } from "../types";
 
@@ -111,6 +115,14 @@ export const AppGrid: React.FC<AppGridProps> = ({
         return PenTool;
       case "workflow":
         return Workflow;
+      case "image":
+        return ImageIcon;
+      case "pen-line":
+        return PenLine;
+      case "brush":
+        return Brush;
+      case "aperture":
+        return Aperture;
       default:
         return FileText;
     }

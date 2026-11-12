@@ -219,6 +219,27 @@ pub async fn core_pick_open(
         .map(|path| display_path(&path))
 }
 
+/// Diálogo nativo "Abrir" con selección múltiple (importar varias fotos).
+#[tauri::command]
+pub async fn core_pick_open_many(
+    app: AppHandle,
+    title: Option<String>,
+    filters: Option<Vec<FileFilter>>,
+) -> Vec<String> {
+    let mut builder = app.dialog().file();
+    if let Some(title) = title {
+        builder = builder.set_title(title);
+    }
+    builder = apply_filters(builder, filters.as_deref().unwrap_or(&[]));
+    builder
+        .blocking_pick_files()
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|file| file.into_path().ok())
+        .map(|path| display_path(&path))
+        .collect()
+}
+
 /// Diálogo nativo "Guardar como". Devuelve la ruta elegida o `None`.
 #[tauri::command]
 pub async fn core_pick_save(
