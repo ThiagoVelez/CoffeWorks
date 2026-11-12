@@ -132,7 +132,7 @@ export function useOriginalText(sources: SourcePdf[], pages: PageItem[], loaded:
   );
 
   const install = useCallback(async () => {
-    const size = info?.download_size || "45 MB";
+    const size = info?.download_size || "36 MB";
     if (info && !info.can_install) {
       await showMessage("Revisión del PDF original", info.manual_hint);
       return;

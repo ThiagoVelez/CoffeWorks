@@ -81,7 +81,7 @@ const WEB_ADDONS: AddonInfo[] = [
       "CoffeePDF revisa por defecto solo los textos que agregas. Con este complemento también revisa el texto original del documento: lo subraya en rojo, lo cuenta en el indicador de faltas y lo corrige con clic derecho (tapa la palabra y escribe la corrección encima). En las páginas escaneadas reconoce el texto con OCR (Tesseract) en español e inglés.",
     apps: ["coffeepdf"],
     version: "5.4",
-    download_size: "45 MB",
+    download_size: "36 MB",
     publisher: "Proyecto Tesseract OCR",
     license: "Apache 2.0",
     installed: false,
