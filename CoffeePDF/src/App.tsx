@@ -79,6 +79,7 @@ import {
 } from "./services/desktop";
 import { displaySize, newId, rotateAnnotation, translate, type Bounds } from "./services/geometry";
 import type { Annotation, DocumentInfo, DocumentModel, FormField, PageItem, Tool, ToolStyle } from "./types";
+import { toggleTheme } from "./theme/theme";
 
 const HISTORY_LIMIT = 80;
 const ZOOM_STEPS = [0.25, 0.33, 0.5, 0.67, 0.75, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4];
@@ -1147,6 +1148,7 @@ export const App: React.FC = () => {
       id: "ver",
       label: "Ver",
       items: [
+        { label: "Modo oscuro / claro", action: () => void toggleTheme() },
         { label: "Acercar", action: () => stepZoom(1), shortcut: "Ctrl++" },
         { label: "Alejar", action: () => stepZoom(-1), shortcut: "Ctrl+-" },
         { label: "Ajustar al ancho", action: () => setZoomMode("fit"), shortcut: "Ctrl+0", checked: zoomMode === "fit" },

@@ -45,6 +45,7 @@ import { diagramPng, diagramSvg, diagramsPdf } from "./services/exporters";
 import { importSql } from "./services/codegen";
 import { appWindow, bytesToText, getLaunchArgs, isTauri, listRecent, pickOpenFile, renameInVault, saveFileAs, setPinned, stripExtension, type RecentEntry } from "./services/desktop";
 import { ACCENT, kindInfo, type DEdge, type DNode, type Diagram, type DiagramDocument, type DiagramKind } from "./types";
+import { toggleTheme } from "./theme/theme";
 
 const HISTORY_LIMIT = 150;
 const AUTOSAVE_DELAY = 1200;
@@ -627,6 +628,7 @@ export const App: React.FC = () => {
       id: "view",
       label: "Ver",
       items: [
+        { label: "Modo oscuro / claro", action: () => void toggleTheme() },
         { label: "Acercar", icon: ZoomIn, shortcut: "Ctrl +", action: () => canvasRef.current?.zoomBy(1.2) },
         { label: "Alejar", icon: ZoomOut, shortcut: "Ctrl −", action: () => canvasRef.current?.zoomBy(1 / 1.2) },
         { label: "Ver todo el diagrama", icon: Maximize, shortcut: "Ctrl+0", action: () => canvasRef.current?.fit() },

@@ -490,6 +490,7 @@ export const Canvas = forwardRef<CanvasHandle, Props>(function Canvas(props, ref
     <div
       ref={wrapRef}
       data-canvas
+      data-paper
       className="relative flex-1 overflow-hidden"
       style={{
         cursor,

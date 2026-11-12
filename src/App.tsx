@@ -9,6 +9,7 @@ import { CreateDocModal } from "./components/CreateDocModal";
 import { TemplatesView } from "./components/TemplatesView";
 import { AddonsView } from "./components/AddonsView";
 import { GamesView } from "./components/GamesView";
+import { ThemeSwitch } from "./theme/ThemeSwitch";
 import { UpdateBanner, UpdateSettings, useUpdates } from "./components/Updates";
 import { APP_STAGE, APP_VERSION } from "./version";
 import { isTauri, tauriBridge } from "./services/tauriBridge";
@@ -286,6 +287,14 @@ export const App: React.FC = () => {
                     <span className="text-[#2c1b12] font-semibold text-right break-all select-text">{value}</span>
                   </div>
                 ))}
+              </div>
+
+              <div className="p-6 rounded-2xl bg-white border border-[#dfd3c7] flex items-center justify-between gap-4 text-xs text-[#5c3a21]" data-appearance>
+                <div className="flex flex-col gap-1">
+                  <span className="font-bold text-sm text-[#2c1b12]">Apariencia</span>
+                  <span>Modo claro u oscuro para el Launcher y las apps de la suite. Las apps de Ilustración son siempre oscuras.</span>
+                </div>
+                <ThemeSwitch className="text-[#2c1b12] shrink-0" />
               </div>
 
               <UpdateSettings

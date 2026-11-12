@@ -80,6 +80,7 @@ import {
   type RecentEntry,
 } from "./services/desktop";
 import { ACCENT, ACCENT_DARK, type Block, type ImageBlock, type InkStyle, type Notebook, type Page, type PaperStyle, type Tool } from "./types";
+import { toggleTheme } from "./theme/theme";
 
 const HISTORY_LIMIT = 100;
 const AUTOSAVE_DELAY = 1200;
@@ -1089,6 +1090,7 @@ export const App: React.FC = () => {
       id: "view",
       label: "Ver",
       items: [
+        { label: "Modo oscuro / claro", action: () => void toggleTheme() },
         { label: "Acercar", icon: ZoomIn, shortcut: "Ctrl++", action: () => setZoom((z) => Math.min(2, Math.round((z + 0.1) * 10) / 10)) },
         { label: "Alejar", icon: ZoomOut, shortcut: "Ctrl+-", action: () => setZoom((z) => Math.max(0.5, Math.round((z - 0.1) * 10) / 10)) },
         { label: "Tamaño real", shortcut: "Ctrl+0", action: () => setZoom(1) },

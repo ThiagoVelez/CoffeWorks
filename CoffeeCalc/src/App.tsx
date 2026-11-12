@@ -113,6 +113,7 @@ import type {
   Workbook,
 } from "./types";
 import { DEFAULT_COL_WIDTH, DEFAULT_ROW_HEIGHT, HEADER_HEIGHT, HEADER_WIDTH } from "./types";
+import { toggleTheme } from "./theme/theme";
 
 const HISTORY_LIMIT = 100;
 
@@ -1565,6 +1566,7 @@ export const App: React.FC = () => {
       id: "ver",
       label: "Ver",
       items: [
+        { label: "Modo oscuro / claro", action: () => void toggleTheme() },
         { label: "Líneas de cuadrícula", action: () => setShowGridlines((v) => !v), checked: showGridlines },
         { label: "Barra de fórmulas", action: () => setShowFormulaBar((v) => !v), checked: showFormulaBar },
         { label: "Mostrar las fórmulas en las celdas", action: () => setShowFormulas((v) => !v), checked: showFormulas },

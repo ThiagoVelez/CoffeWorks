@@ -55,6 +55,7 @@ import {
   type RecentEntry,
 } from "./services/desktop";
 import { ACCENT_DARK, HOTKEY_LABELS, type HotkeyAction, type LiveDocument } from "./types";
+import { toggleTheme } from "./theme/theme";
 
 const HISTORY_LIMIT = 120;
 const AUTOSAVE_DELAY = 1200;
@@ -448,6 +449,7 @@ export const App: React.FC = () => {
       id: "help",
       label: "Ayuda",
       items: [
+        { label: "Modo oscuro / claro", action: () => void toggleTheme() },
         { label: "Guía rápida", icon: BookOpen, action: showGuide },
         {
           label: "Acerca de CoffeeLive",

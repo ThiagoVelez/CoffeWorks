@@ -96,6 +96,7 @@ import type {
   PageSettings,
 } from "./types";
 import { MARGIN_PIXELS, PAGE_DIMENSIONS } from "./types";
+import { toggleTheme } from "./theme/theme";
 
 const DEFAULT_FORMAT: FormatState = {
   bold: false,
@@ -917,6 +918,7 @@ export const App: React.FC = () => {
       id: "ver",
       label: "Ver",
       items: [
+        { label: "Modo oscuro / claro", action: () => void toggleTheme() },
         { label: "Regla", action: () => setShowRuler((prev) => !prev), checked: showRuler },
         { label: "Pestañas y esquema", action: () => setOutlineOpen((prev) => !prev), checked: outlineOpen },
         { divider: true },

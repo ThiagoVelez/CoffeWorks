@@ -404,7 +404,9 @@ fn main() {
             update_status,
             update_check,
             update_apply,
-            update_set_auto
+            update_set_auto,
+            coffee_core::commands::core_get_theme,
+            coffee_core::commands::core_set_theme
         ])
         .build(tauri::generate_context!())
         .unwrap_or_else(|_| panic!("Error al iniciar el Launcher de {SUITE_DIR}"))

@@ -272,7 +272,7 @@ export const SlideView: React.FC<SlideViewProps> = ({
   const scale = width / size.width;
 
   return (
-    <div className={`relative overflow-hidden shrink-0 ${className}`} style={{ width, height: size.height * scale }}>
+    <div data-paper className={`relative overflow-hidden shrink-0 ${className}`} style={{ width, height: size.height * scale }}>
       <div
         ref={innerRef}
         onMouseDown={onMouseDown}

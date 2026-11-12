@@ -718,6 +718,7 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(prop
     <div
       ref={wrapRef}
       data-canvas
+      data-paper
       className="relative flex-1 overflow-hidden"
       style={{ background: page.background, cursor }}
       onPointerDown={onPointerDown}

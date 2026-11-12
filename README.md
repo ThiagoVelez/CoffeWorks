@@ -330,4 +330,6 @@ Las nueve apps de Ilustración comparten una interfaz oscura, autoguardado, desh
 - Cinco personajes personalizables (taza de café, persona, robot y gato: colores, pelo y accesorios) y escenas con color, degradado o imagen.
 - *Tomas* grabadas con la voz, reproducción y exportación a video (WebM con audio, GIF; con FFmpeg, MP4 y MOV).
 
+**Modo claro y oscuro**: toda la suite usa el modo claro por defecto. En el Launcher (*Ajustes › Apariencia*), en el menú *Ver* de cada app o en los ajustes de CoffeeLive se cambia al modo oscuro, en negro, y el cambio vale para todas las apps. Los temas se generan a partir de los colores de cada app con `scripts/make-theme.mjs`; la hoja de los documentos, las diapositivas, las páginas PDF y los lienzos de diseño conservan sus colores. Las apps de Ilustración son siempre oscuras.
+
 En CoffeeDoc, CoffeeCalc y CoffeeView: autoguardado, *Guardar como*, deshacer y rehacer, impresión y PDF, buscador de menús (`Alt+/`) y documentos fijados en el Launcher.

@@ -9,6 +9,10 @@ import "@fontsource/jetbrains-mono/600.css";
 import { App } from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./index.css";
+import "./theme.generated.css";
+import { initTheme } from "./theme/theme";
+
+initTheme();
 
 const rootElement = document.getElementById("root");
 if (rootElement) {

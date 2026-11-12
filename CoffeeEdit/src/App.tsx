@@ -55,6 +55,7 @@ import {
 } from "./services/desktop";
 import { invoke } from "@tauri-apps/api/core";
 import { ACCENT, ACCENT_DARK, type MediaItem, type Project } from "./types";
+import { toggleTheme } from "./theme/theme";
 
 const HISTORY_LIMIT = 120;
 const AUTOSAVE_DELAY = 1500;
@@ -569,6 +570,7 @@ export const App: React.FC = () => {
       id: "help",
       label: "Ayuda",
       items: [
+        { label: "Modo oscuro / claro", action: () => void toggleTheme() },
         {
           label: "Atajos de teclado",
           icon: Keyboard,

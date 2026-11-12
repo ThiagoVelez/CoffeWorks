@@ -38,6 +38,11 @@ jobs:
       - name: Pruebas del núcleo
         run: cargo test -p coffee-core
 
+      - name: Código compartido y temas al día
+        run: |
+          node scripts/sync-shared.mjs --check
+          node scripts/make-theme.mjs --check
+
       - name: Compilar la suite
         run: node scripts/build.mjs
 

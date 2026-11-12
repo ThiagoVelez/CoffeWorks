@@ -365,3 +365,30 @@ pub async fn core_spell_add_word(word: String) -> Result<Vec<String>, String> {
 pub async fn core_spell_remove_word(word: String) -> Result<Vec<String>, String> {
     blocking(move || crate::spell::remove_user_word(&word)).await
 }
+
+// ---------------------------------------------------------------------------
+// Tema (claro u oscuro), común a todas las apps de la suite
+// ---------------------------------------------------------------------------
+
+fn theme_file() -> std::path::PathBuf {
+    crate::local_dir().join("tema.txt")
+}
+
+/// Tema elegido para toda la suite: "light" (predeterminado) o "dark".
+#[tauri::command]
+pub async fn core_get_theme() -> String {
+    match fs::read_to_string(theme_file()) {
+        Ok(t) if t.trim() == "dark" => "dark".into(),
+        _ => "light".into(),
+    }
+}
+
+#[tauri::command]
+pub async fn core_set_theme(theme: String) -> Result<(), String> {
+    let value = if theme == "dark" { "dark" } else { "light" };
+    let path = theme_file();
+    if let Some(dir) = path.parent() {
+        fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
+    fs::write(path, value).map_err(|e| format!("No se pudo guardar el tema: {e}"))
+}
