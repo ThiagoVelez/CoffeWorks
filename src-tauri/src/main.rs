@@ -2,6 +2,7 @@
 // Evita abrir una consola en las versiones de producción para Windows.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod games;
 mod apps;
 mod platform;
 mod updater;
@@ -349,6 +350,27 @@ fn run_cli(args: &[String]) -> Option<i32> {
                     }
                 }
             }
+            "--install-game" => {
+                handled = true;
+                index += 1;
+                let id = args.get(index).cloned().unwrap_or_default();
+                match games::install(&id) {
+                    Ok(st) => println!("Juego {id}: instalado (v{})", st.installed.unwrap_or_default()),
+                    Err(error) => {
+                        eprintln!("Juego {id}: {error}");
+                        addon_failed = true;
+                    }
+                }
+            }
+            "--uninstall-game" => {
+                handled = true;
+                index += 1;
+                let id = args.get(index).cloned().unwrap_or_default();
+                if let Err(error) = games::uninstall(&id) {
+                    eprintln!("Juego {id}: {error}");
+                    addon_failed = true;
+                }
+            }
             "--refresh-apps" => {
                 handled = true;
                 coffee_core::spell::sync_dictionaries(&apps::packages_dir().join("dictionaries"));
@@ -373,6 +395,28 @@ fn run_cli(args: &[String]) -> Option<i32> {
     }
 
     handled.then_some(if failed || addon_failed { 1 } else { 0 })
+}
+
+/// Estado de un juego: versión instalada y, si `online`, la más reciente publicada.
+#[tauri::command]
+async fn game_status(id: String, online: bool) -> Result<games::GameStatus, String> {
+    tauri::async_runtime::spawn_blocking(move || games::status(&id, online)).await.map_err(|e| e.to_string())?
+}
+
+/// Descarga, verifica e instala (o actualiza) un juego.
+#[tauri::command]
+async fn game_install(id: String) -> Result<games::GameStatus, String> {
+    tauri::async_runtime::spawn_blocking(move || games::install(&id)).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn game_uninstall(id: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || games::uninstall(&id)).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+fn game_launch(id: String) -> Result<(), String> {
+    games::launch(&id)
 }
 
 fn main() {
@@ -433,6 +477,10 @@ fn main() {
             update_check,
             update_apply,
             update_set_auto,
+            game_status,
+            game_install,
+            game_uninstall,
+            game_launch,
             coffee_core::commands::core_get_theme,
             coffee_core::commands::core_set_theme
         ])
