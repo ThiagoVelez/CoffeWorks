@@ -375,6 +375,20 @@ fn main() {
     // Tras una actualización: limpia el instalador descargado y pone al día las apps
     updater::cleanup_after_update();
     std::thread::spawn(|| {
+        // Linux: el paquete .deb se instala para todo el equipo; la primera vez
+        // que cada usuario abre el Launcher se le instalan todas las apps.
+        if cfg!(target_os = "linux") {
+            let marker = coffee_core::local_dir().join("linux-primera-vez.txt");
+            if !marker.exists() && apps::packages_dir().is_dir() {
+                for app in CATALOG {
+                    if !apps::is_installed(app) {
+                        let _ = apps::install(app.id);
+                    }
+                }
+                let _ = fs::create_dir_all(coffee_core::local_dir());
+                let _ = fs::write(&marker, "Apps instaladas automáticamente la primera vez.");
+            }
+        }
         apps::refresh_installed();
         // Diccionarios del corrector ortográfico para todas las apps
         coffee_core::spell::sync_dictionaries(&apps::packages_dir().join("dictionaries"));

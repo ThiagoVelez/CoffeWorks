@@ -1,0 +1,138 @@
+name: Paquete de Linux
+
+# Compila la suite en Ubuntu 22.04 (funciona en Ubuntu 22.04+ y Debian 12+),
+# crea el paquete .deb, lo instala y lo prueba (apps, menús, tipos de archivo
+# y arranque de la ventana) y lo publica como artefacto. En main, cuando el
+# flujo de Windows publica una versión nueva, se adjunta el .deb a la misma.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, "claude/**"]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: linux-package-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Compilar y empaquetar (.deb)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Dependencias de compilación
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libsoup-3.0-dev librsvg2-dev patchelf xvfb imagemagick desktop-file-utils shared-mime-info xdg-utils
+
+      - name: Pruebas del núcleo y del Launcher
+        run: cargo test -p coffee-core -p coffeeworks-launcher
+
+      - name: Código compartido y temas al día
+        run: |
+          node scripts/sync-shared.mjs --check
+          node scripts/make-theme.mjs --check
+
+      - name: Compilar la suite
+        run: node scripts/build.mjs
+
+      - name: Crear el paquete .deb
+        run: node scripts/package-deb.mjs
+
+      - name: Instalar y probar el paquete
+        run: |
+          set -e
+          deb=$(ls installer/Output/*.deb)
+          sudo apt-get install -y "./$deb"
+          test -x /opt/coffeeworks/CoffeeWorks
+          test -L /usr/bin/coffeeworks
+          desktop-file-validate /usr/share/applications/coffeeworks.desktop
+          if ldd /opt/coffeeworks/CoffeeWorks | grep "not found"; then exit 1; fi
+          coffeeworks --list > /dev/null
+          # Instalación por usuario: apps, menús y tipos de archivo
+          coffeeworks --install-all
+          for app in CoffeeDoc CoffeeCalc CoffeeView CoffeePDF CoffeePage CoffeeBooks CoffeeDataBase CoffeeEdit CoffeeLive CoffeeUIUX CoffeeUML CoffeePhoto CoffeeVector CoffeePaint CoffeeLens CoffeeMotion CoffeeSound CoffeeEncoder CoffeeAnimate CoffeePuppet; do
+            test -x "$HOME/.local/share/CoffeeWorks/Apps/$app/$app" || { echo "Falta $app"; exit 1; }
+          done
+          test -f "$HOME/.local/share/applications/coffeeworks-coffeebooks.desktop"
+          echo x > /tmp/prueba.cbk
+          test "$(xdg-mime query filetype /tmp/prueba.cbk)" = "application/x-coffeeworks-cbk"
+          echo x > /tmp/prueba.cfd
+          test "$(xdg-mime query default application/x-coffeeworks-cfd)" = "coffeeworks-coffeedoc.desktop"
+          echo "Paquete instalado y apps registradas"
+
+      - name: Arranque de las ventanas
+        run: |
+          mkdir -p screenshots
+          export XDG_RUNTIME_DIR=/tmp/rt; mkdir -p $XDG_RUNTIME_DIR; chmod 700 $XDG_RUNTIME_DIR
+          for exe in /opt/coffeeworks/CoffeeWorks "$HOME/.local/share/CoffeeWorks/Apps/CoffeeBooks/CoffeeBooks" "$HOME/.local/share/CoffeeWorks/Apps/CoffeeDoc/CoffeeDoc"; do
+            name=$(basename "$exe")
+            xvfb-run -a -s "-screen 0 1440x900x24" sh -c "\"$exe\" & pid=\$!; sleep 12; import -window root screenshots/$name.png; kill -0 \$pid || exit 1; kill \$pid"
+            echo "$name arranca"
+          done
+
+      - name: Desinstalar
+        run: |
+          coffeeworks --uninstall-all
+          sudo apt-get remove -y coffeeworks
+          test ! -e /opt/coffeeworks/CoffeeWorks
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coffeeworks-deb
+          path: |
+            installer/Output/*.deb
+            installer/Output/*.sha256
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: capturas-linux
+          path: screenshots/*.png
+          if-no-files-found: ignore
+
+      - name: Adjuntar a la versión (etiqueta)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            installer/Output/*.deb
+            installer/Output/*.sha256
+
+      # El flujo de Windows crea la versión cuando la de main es nueva; aquí se
+      # espera a que exista y, si es de este mismo commit, se le añade el .deb.
+      - name: Adjuntar a la versión nueva
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          tag="v$version"
+          for i in $(seq 1 50); do
+            if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then break; fi
+            echo "Esperando a que se publique $tag ($i)…"
+            sleep 60
+          done
+          target=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json targetCommitish -q .targetCommitish 2>/dev/null || true)
+          if [ "$target" != "$GITHUB_SHA" ]; then
+            echo "La versión $tag no es de este commit ($target): no se adjunta."
+            exit 0
+          fi
+          gh release upload "$tag" installer/Output/*.deb installer/Output/*.sha256 --repo "$GITHUB_REPOSITORY" --clobber
+          echo "Adjuntado el paquete .deb a $tag"

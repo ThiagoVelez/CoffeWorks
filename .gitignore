@@ -38,3 +38,4 @@ Thumbs.db
 # Salida del instalador
 installer/Output/
 installer/build/
+installer/deb/

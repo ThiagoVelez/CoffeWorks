@@ -29,7 +29,7 @@ Cada aplicación es un ejecutable independiente construido con **Tauri 2** (Rust
 
 ## Cómo funciona la instalación
 
-1. El instalador (`CoffeeWorks-Setup-2.8.0.exe`, hecho con **Inno Setup**) instala solo el Launcher y deja los paquetes de las catorce aplicaciones en su carpeta `packages`.
+1. El instalador de Windows (`CoffeeWorks-Setup-2.9.0.exe`, hecho con **Inno Setup**) instala solo el Launcher y deja los paquetes de las veinte aplicaciones en su carpeta `packages`.
 2. Dentro del Launcher, en la **Tienda de Apps**, cada aplicación tiene sus botones **Instalar**, **Abrir App** y **Desinstalar**:
    - *Instalar* copia la aplicación a `%LOCALAPPDATA%\CoffeeWorks\Apps\<App>`, crea su acceso directo en el menú Inicio (carpeta *CoffeeWorks*) y asocia su tipo de archivo, de modo que un doble clic sobre un `.cfd`, `.cfs`, `.csl`, `.cpg`, `.cdb`, `.ccm` o `.clv` lo abre. CoffeePDF no reemplaza tu lector de PDF predeterminado: aparece en *Abrir con* del Explorador.
    - *Desinstalar* borra la aplicación, su acceso directo y su asociación. **Los documentos no se tocan.**
@@ -37,6 +37,20 @@ Cada aplicación es un ejecutable independiente construido con **Tauri 2** (Rust
 4. Si tenías instalada una versión anterior (cuando la suite se llamaba «CoffeWorks»), al abrir el Launcher por primera vez se migra todo solo: los documentos pasan de `Documentos\CoffeWorks` a `Documentos\CoffeeWorks`, los recientes se conservan y las aplicaciones instaladas se reinstalan con sus nombres nuevos.
 5. CoffeeCams (versión 2.5) se dividió en **CoffeeEdit** y **CoffeeLive**: si la tenías instalada, el Launcher instala las dos en su lugar y los proyectos `.ccm` se abren en CoffeeEdit.
 6. Al desinstalar CoffeeWorks desde *Aplicaciones* de Windows se quitan también las aplicaciones instaladas; los documentos se conservan.
+
+## Linux (Debian y Ubuntu)
+
+CoffeeWorks también se publica como paquete **`.deb`** para **Ubuntu 22.04 o posterior** y **Debian 12 o posterior** (64 bits), junto al instalador de Windows en cada versión (`coffeeworks_<versión>_amd64.deb`).
+
+```bash
+sudo apt install ./coffeeworks_2.9.0_amd64.deb
+```
+
+- Se instala en `/opt/coffeeworks`, con el comando `coffeeworks` y su entrada en el menú de aplicaciones. Usa la WebKitGTK del sistema (`libwebkit2gtk-4.1`), así que el paquete pesa pocos MB.
+- La primera vez que cada usuario abre el Launcher se le instalan todas las apps en `~/.local/share/CoffeeWorks/Apps`, con su entrada en el menú y sus tipos de archivo (un doble clic en un `.cfd`, `.cbk`, `.cmo`… lo abre con su app). Los documentos van a `~/Documentos/CoffeeWorks` (o `~/Documents/CoffeeWorks`).
+- *Complementos*: FFmpeg, la revisión del PDF original (Tesseract), el revelado RAW (LibRaw) y el calco vectorial (Potrace) se instalan desde *Complementos* con los paquetes del sistema; el Launcher pide la contraseña con la ventana del sistema. La compatibilidad con Access solo está disponible en Windows.
+- *Actualizaciones*: el Launcher descarga el `.deb` de la versión nueva, comprueba su suma SHA-256 e instala con `apt` al pulsar *Reiniciar y actualizar*.
+- Para quitarlo: `sudo apt remove coffeeworks` (tus documentos se conservan).
 
 ## Actualizaciones automáticas
 
@@ -81,7 +95,7 @@ No hacen falta permisos de administrador: todo se instala por usuario. El instal
 Cada vez que se sube código, el flujo **Instalador de Windows** (`.github/workflows/build-windows.yml`) compila la suite en Windows, crea el instalador, lo prueba y lo publica:
 
 1. Abre la pestaña **Actions** del repositorio y entra en la última ejecución de *Instalador de Windows*.
-2. En **Artifacts**, descarga `CoffeeWorks-Setup` y descomprímelo: dentro está `CoffeeWorks-Setup-2.8.0.exe`.
+2. En **Artifacts**, descarga `CoffeeWorks-Setup` y descomprímelo: dentro está `CoffeeWorks-Setup-2.9.0.exe`.
 
 Cuando llega a `main` una versión que aún no está publicada, el flujo crea su *Release* con el instalador (ver «Actualizaciones automáticas»). Al subir una etiqueta `v*` el instalador también se adjunta a esa *Release*.
 
@@ -102,7 +116,7 @@ Después, desde la carpeta del repositorio:
 powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 ```
 
-El script compila las quince interfaces, los quince ejecutables y el instalador. El resultado queda en `installer\Output\CoffeeWorks-Setup-2.8.0.exe`.
+El script compila las quince interfaces, los quince ejecutables y el instalador. El resultado queda en `installer\Output\CoffeeWorks-Setup-2.9.0.exe`.
 
 Si prefieres hacerlo paso a paso:
 
