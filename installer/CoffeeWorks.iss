@@ -1,8 +1,8 @@
 ; Instalador de CoffeeWorks para Windows (Inno Setup 6).
 ;
 ; Instala el Launcher (CoffeeWorks.exe) y deja los paquetes de CoffeeDoc,
-; CoffeeCalc, CoffeeView, CoffeePDF, CoffeePage, CoffeeDataBase, CoffeeEdit y
-; CoffeeLive en la carpeta "packages". Las aplicaciones se instalan
+; CoffeeCalc, CoffeeView, CoffeePDF, CoffeePage, CoffeeDataBase, CoffeeEdit,
+; CoffeeLive, CoffeeUI/UX y CoffeeDiagram en la carpeta "packages". Las aplicaciones se instalan
 ; y desinstalan después desde la Tienda de Apps del propio Launcher.
 ;
 ; Antes de compilar este script hay que generar los ejecutables con
@@ -53,8 +53,8 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [CustomMessages]
-spanish.InstallApps=Instalar ahora todas las aplicaciones (Office y Multimedia)
-english.InstallApps=Install all apps now (Office and Multimedia)
+spanish.InstallApps=Instalar ahora todas las aplicaciones (Office, Multimedia y Desarrollador)
+english.InstallApps=Install all apps now (Office, Multimedia and Developer)
 spanish.SuiteApps=Aplicaciones de la suite:
 english.SuiteApps=Suite applications:
 spanish.InstallingApps=Instalando las aplicaciones de la suite...

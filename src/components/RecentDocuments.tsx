@@ -50,6 +50,7 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
     if (activeFilter === "notes") return app === "coffeepage" || lower.endsWith(".cpg");
     if (activeFilter === "videos") return ["coffeecams", "coffeeedit", "coffeelive"].includes(app) || lower.endsWith(".ccm") || lower.endsWith(".clv");
     if (activeFilter === "databases") return app === "coffeedatabase" || /\.(cdb|db|sqlite3?)$/.test(lower);
+    if (activeFilter === "designs") return app === "coffeeuiux" || app === "coffeediagram" || /\.(cux|cdg)$/.test(lower);
     return true;
   });
 
@@ -124,6 +125,22 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
         border: "border-[#ffd2a8]",
       };
     }
+    if (lowerName.endsWith(".cux") || appId === "coffeeuiux") {
+      return {
+        iconUrl: "/icons/CoffeeUIUX.ico",
+        alt: "CoffeeUI/UX / Diseño",
+        bg: "bg-[#fff6d6]",
+        border: "border-[#ffe08a]",
+      };
+    }
+    if (lowerName.endsWith(".cdg") || appId === "coffeediagram") {
+      return {
+        iconUrl: "/icons/CoffeeDiagram.ico",
+        alt: "CoffeeDiagram / Modelo",
+        bg: "bg-[#e7eef7]",
+        border: "border-[#c3d3e6]",
+      };
+    }
     if (/\.(cdb|db|sqlite3?)$/.test(lowerName) || appId === "coffeedatabase") {
       return {
         iconUrl: "/icons/CoffeeDataBase.ico",
@@ -173,6 +190,7 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
               { id: "notes", label: "Notas" },
               { id: "videos", label: "Videos" },
               { id: "databases", label: "Bases de datos" },
+              { id: "designs", label: "Diseño y diagramas" },
               { id: "pinned", label: "Fijados" },
             ] as Array<{ id: DocumentFilter; label: string }>
           ).map((filter) => {

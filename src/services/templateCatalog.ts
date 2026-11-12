@@ -13,6 +13,8 @@ export const APP_STYLE: Record<string, { name: string; color: string; bg: string
   coffeedatabase: { name: "CoffeeDataBase", color: "#9b111e", bg: "#fbe9eb" },
   coffeeedit: { name: "CoffeeEdit", color: "#26a680", bg: "#e3f6ef" },
   coffeelive: { name: "CoffeeLive", color: "#ef6c00", bg: "#fff1e5" },
+  coffeeuiux: { name: "CoffeeUI/UX", color: "#b38600", bg: "#fff6d6" },
+  coffeediagram: { name: "CoffeeDiagram", color: "#1e3a5f", bg: "#e7eef7" },
 };
 
 const item = (appId: TemplateItem["appId"], data: Omit<TemplateItem, "appId" | "appName" | "port" | "badgeBg" | "badgeText" | "accentBorder">): TemplateItem => ({
@@ -307,5 +309,51 @@ ${table(["Concepto", "Valor"], [["Personal", ""], ["Equipos y licencias", ""], [
     category: "Streaming",
     description: "Dos cámaras lado a lado con rótulos de presentador e invitado, planos individuales e intro del episodio.",
     features: ["Pantalla dividida", "Rótulos de nombre", "Intro del episodio"],
+  }),
+
+  // --- CoffeeUI/UX ---
+  item("coffeeuiux", {
+    id: "ux-login-movil",
+    title: "App Móvil: Inicio de Sesión",
+    category: "Móvil",
+    description: "Dos pantallas de iPhone (inicio de sesión e inicio con pedidos) enlazadas como prototipo: pulsa «Iniciar sesión» en Presentar para navegar.",
+    features: ["Formulario con campos y botón", "Prototipo navegable con transición", "Barra de pestañas"],
+  }),
+  item("coffeeuiux", {
+    id: "ux-landing-web",
+    title: "Página Web de Producto",
+    category: "Web",
+    description: "Landing page de 1440 px con navegación, sección principal, llamadas a la acción, tres tarjetas de características y pie de página. Lista para exportar a HTML/CSS.",
+    features: ["Diseño de escritorio web", "Botones y tarjetas", "Exportable a HTML y CSS"],
+  }),
+  item("coffeeuiux", {
+    id: "ux-panel-escritorio",
+    title: "Panel de Administración (Escritorio)",
+    category: "Escritorio",
+    description: "Ventana de aplicación con barra de título, menú lateral, indicadores y tabla de documentos recientes.",
+    features: ["Ventana de 1280×800", "Indicadores con colores", "Tabla con filas alternas"],
+  }),
+
+  // --- CoffeeDiagram ---
+  item("coffeediagram", {
+    id: "dg-proyecto-uml",
+    title: "Proyecto de Software (UML completo)",
+    category: "Ingeniería de software",
+    description: "Modelo de una tienda en línea con cuatro diagramas: casos de uso, clases (herencia, composición, interfaz y enumeración), secuencia de compra y actividad.",
+    features: ["4 diagramas UML enlazados en un modelo", "Genera Java, C#, TypeScript o Python", "Exportable a PDF"],
+  }),
+  item("coffeediagram", {
+    id: "dg-modelo-er",
+    title: "Modelo Entidad-Relación de una Tienda",
+    category: "Bases de datos",
+    description: "Cinco tablas con claves principales y foráneas y cardinalidades en notación pata de gallo. Genera el SQL para crearlas en CoffeeDataBase.",
+    features: ["PK, FK, NOT NULL y UNIQUE", "Cardinalidades 1, 0..1, 1..* y 0..*", "Genera SQL CREATE TABLE"],
+  }),
+  item("coffeediagram", {
+    id: "dg-diagrama-flujo",
+    title: "Diagrama de Flujo de un Algoritmo",
+    category: "Programación",
+    description: "Algoritmo «par o impar» con inicio, entrada, decisión, procesos y fin. Ideal para explicar lógica de programación.",
+    features: ["Símbolos estándar de diagrama de flujo", "Decisión con ramas Sí/No", "Exportable a Mermaid"],
   }),
 ];

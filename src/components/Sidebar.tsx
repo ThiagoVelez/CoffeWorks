@@ -10,6 +10,7 @@ import {
   HardDrive,
   ShieldCheck,
   Clapperboard,
+  Code2,
 } from "lucide-react";
 
 export type NavTab = "launcher" | "templates" | "addons" | "settings";
@@ -123,7 +124,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div className="ml-5 pl-2.5 border-l-2 border-[#dfd3c7] flex flex-col gap-1 py-1 mt-0.5">
                 {categories.map(({ name, count }) => {
                   const active = currentTab === "launcher" && selectedCategory === name;
-                  const CategoryIcon = name === "Multimedia" ? Clapperboard : Briefcase;
+                  const CategoryIcon = name === "Multimedia" ? Clapperboard : name === "Desarrollador" ? Code2 : Briefcase;
                   return (
                     <button
                       key={name}

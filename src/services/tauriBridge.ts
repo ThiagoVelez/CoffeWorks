@@ -12,7 +12,7 @@ const INSTALLED_KEY = "coffeeworks_installed_apps";
 const FOCUS_KEY = "coffeeworks_focus_mode";
 
 /** Puertos de los servidores de desarrollo de cada aplicación. */
-const DEV_PORTS: Record<string, number> = { coffeedoc: 1421, coffeecalc: 1422, coffeeview: 1423, coffeepdf: 1424, coffeepage: 1425, coffeeedit: 1426, coffeelive: 1427, coffeedatabase: 1428 };
+const DEV_PORTS: Record<string, number> = { coffeedoc: 1421, coffeecalc: 1422, coffeeview: 1423, coffeepdf: 1424, coffeepage: 1425, coffeeedit: 1426, coffeelive: 1427, coffeedatabase: 1428, coffeeuiux: 1429, coffeediagram: 1430 };
 
 const ALIASES: Record<string, string> = { coffeesheet: "coffeecalc", coffeeslides: "coffeeview", coffeecams: "coffeeedit" };
 
@@ -34,6 +34,8 @@ export function appForDocument(doc: Pick<RecentDocument, "app_id" | "name">): st
   if (["ccm", "mp4", "webm", "mov", "mkv"].includes(extension)) return "coffeeedit";
   if (extension === "clv") return "coffeelive";
   if (["cdb", "db", "sqlite", "sqlite3"].includes(extension)) return "coffeedatabase";
+  if (extension === "cux") return "coffeeuiux";
+  if (extension === "cdg") return "coffeediagram";
   return "coffeedoc";
 }
 
@@ -202,7 +204,39 @@ const WEB_CATALOG: SuiteApp[] = [
     icon_name: "radio",
     icon_url: "/icons/CoffeeLive.ico",
     category: "Multimedia",
+  },  {
+    id: "coffeeuiux",
+    name: "CoffeeUI/UX",
+    subtitle: "Diseño de interfaces y prototipos",
+    description:
+      "Diseña interfaces para móvil, escritorio y web: marcos con tamaños de dispositivo, formas, textos, componentes, diseño automático, prototipos navegables y exportación a PNG, SVG, PDF y HTML/CSS.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "design",
+    icon_name: "pen-tool",
+    icon_url: "/icons/CoffeeUIUX.ico",
+    category: "Desarrollador",
   },
+  {
+    id: "coffeediagram",
+    name: "CoffeeDiagram",
+    subtitle: "Modelado UML y diagramas",
+    description:
+      "Diagramas UML de clases, casos de uso, secuencia, actividad, estados, componentes y despliegue; modelos entidad-relación y diagramas de flujo. Genera código y SQL y exporta a PNG, SVG y PDF.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "diagram",
+    icon_name: "workflow",
+    icon_url: "/icons/CoffeeDiagram.ico",
+    category: "Desarrollador",
+  },
+
 ];
 
 function readJson<T>(key: string, fallback: T): T {

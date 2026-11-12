@@ -18,6 +18,8 @@ import {
   Scissors,
   Radio,
   Database,
+  PenTool,
+  Workflow,
 } from "lucide-react";
 import type { SuiteApp } from "../types";
 
@@ -105,6 +107,10 @@ export const AppGrid: React.FC<AppGridProps> = ({
         return Radio;
       case "database":
         return Database;
+      case "pen-tool":
+        return PenTool;
+      case "workflow":
+        return Workflow;
       default:
         return FileText;
     }

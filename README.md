@@ -1,6 +1,6 @@
 # CoffeeWorks
 
-Suite ofimática de escritorio para Windows, de código abierto y sin conexión. Se compone de un **Launcher** que instala y gestiona las aplicaciones y de ocho aplicaciones, en dos categorías (**Office** y **Multimedia**):
+Suite ofimática de escritorio para Windows, de código abierto y sin conexión. Se compone de un **Launcher** que instala y gestiona las aplicaciones y de diez aplicaciones, en tres categorías (**Office**, **Multimedia** y **Desarrollador**):
 
 | Aplicación | Qué es | Formato propio | Abre | Exporta |
 | :--- | :--- | :--- | :--- | :--- |
@@ -12,12 +12,14 @@ Suite ofimática de escritorio para Windows, de código abierto y sin conexión.
 | **CoffeeDataBase** | Bases de datos | `.cdb` (SQLite) | SQLite (`.db`, `.sqlite`); importa Excel, CSV y `.accdb`/`.mdb` | Excel, CSV, script SQL, informes, Access (`.accdb`/`.mdb`, con complemento) |
 | **CoffeeEdit** *(Multimedia)* | Editor de video | `.ccm` | Video (MP4, WebM, MOV, MKV), audio e imágenes | Video MP4/WebM |
 | **CoffeeLive** *(Multimedia)* | Grabación y transmisión en directo | `.clv` | Pantalla, cámara, imágenes y videos como fuentes | Grabaciones MP4/WebM, transmisión RTMP/SRT |
+| **CoffeeUI/UX** *(Desarrollador)* | Diseño de interfaces y prototipos | `.cux` | Diseños; imágenes para insertar | PNG, JPG, SVG, PDF, HTML/CSS |
+| **CoffeeDiagram** *(Desarrollador)* | Modelado UML y diagramas | `.cdg` | Modelos; scripts SQL (`CREATE TABLE`) | PNG, SVG, PDF, Java, C#, TypeScript, Python, SQL, Mermaid, PlantUML |
 
 Cada aplicación es un ejecutable independiente construido con **Tauri 2** (Rust + WebView2) y **React + TypeScript**.
 
 ## Cómo funciona la instalación
 
-1. El instalador (`CoffeeWorks-Setup-2.7.0.exe`, hecho con **Inno Setup**) instala solo el Launcher y deja los paquetes de las ocho aplicaciones en su carpeta `packages`.
+1. El instalador (`CoffeeWorks-Setup-2.7.0.exe`, hecho con **Inno Setup**) instala solo el Launcher y deja los paquetes de las diez aplicaciones en su carpeta `packages`.
 2. Dentro del Launcher, en la **Tienda de Apps**, cada aplicación tiene sus botones **Instalar**, **Abrir App** y **Desinstalar**:
    - *Instalar* copia la aplicación a `%LOCALAPPDATA%\CoffeeWorks\Apps\<App>`, crea su acceso directo en el menú Inicio (carpeta *CoffeeWorks*) y asocia su tipo de archivo, de modo que un doble clic sobre un `.cfd`, `.cfs`, `.csl`, `.cpg`, `.cdb`, `.ccm` o `.clv` lo abre. CoffeePDF no reemplaza tu lector de PDF predeterminado: aparece en *Abrir con* del Explorador.
    - *Desinstalar* borra la aplicación, su acceso directo y su asociación. **Los documentos no se tocan.**
@@ -54,7 +56,7 @@ El Launcher tiene dos secciones más en la barra lateral:
   - *Compatibilidad con Access* (CoffeeDataBase, ~8 MB): exporta tablas, datos, claves y relaciones a `.accdb` y `.mdb`. Es [Jackcess](https://jackcess.sourceforge.io) compilado a un ejecutable nativo con GraalVM, así que no necesita Java (código en `addons/coffee-accdb`).
   - *Motor de video FFmpeg* (CoffeeLive, ~90 MB): necesario para transmitir en directo.
   - La pestaña *Formatos e integración* resume qué abre y exporta cada app.
-- **Plantillas**: 36 plantillas para las ocho apps (actas, cartas, planes de proyecto, trabajos académicos; presupuestos, cronogramas, calificaciones y nómina; clases y sustentaciones; formularios, actas y certificados en PDF; cuadernos de clase, bitácoras y planificadores; bases de tienda, semilleros, biblioteca e inventario; proyectos de video para YouTube, Reels y tutoriales; y escenas para clases, videojuegos y podcasts).
+- **Plantillas**: 42 plantillas para las diez apps (actas, cartas, planes de proyecto, trabajos académicos; presupuestos, cronogramas, calificaciones y nómina; clases y sustentaciones; formularios, actas y certificados en PDF; cuadernos de clase, bitácoras y planificadores; bases de tienda, semilleros, biblioteca e inventario; proyectos de video para YouTube, Reels y tutoriales; escenas para clases, videojuegos y podcasts; pantallas de app móvil, web y escritorio; y un proyecto UML completo, un modelo entidad-relación y un diagrama de flujo).
 
 No hacen falta permisos de administrador: todo se instala por usuario. El instalador incluye el motor **WebView2** para los equipos con Windows 10 que aún no lo tengan (Windows 11 lo trae de serie).
 
@@ -86,7 +88,7 @@ Después, desde la carpeta del repositorio:
 powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 ```
 
-El script compila las nueve interfaces, los nueve ejecutables y el instalador. El resultado queda en `installer\Output\CoffeeWorks-Setup-2.7.0.exe`.
+El script compila las once interfaces, los once ejecutables y el instalador. El resultado queda en `installer\Output\CoffeeWorks-Setup-2.7.0.exe`.
 
 Si prefieres hacerlo paso a paso:
 
@@ -142,6 +144,8 @@ CoffeeWorks/
 ├── CoffeeDataBase/          Bases de datos (src/ + src-tauri/)
 ├── CoffeeEdit/              Editor de video (src/ + src-tauri/)
 ├── CoffeeLive/              Grabación y transmisión en directo (src/ + src-tauri/)
+├── CoffeeUIUX/              Diseño de interfaces y prototipos (src/ + src-tauri/)
+├── CoffeeDiagram/           Modelado UML y diagramas (src/ + src-tauri/)
 ├── crates/coffee-core/      Código Rust compartido: bóveda, recientes, archivos, diálogos y complementos
 ├── addons/coffee-accdb/     Complemento de compatibilidad con Access (Java + GraalVM)
 ├── installer/CoffeeWorks.iss  Script de Inno Setup
@@ -191,5 +195,26 @@ También existen `--install-all` y `--uninstall-all`.
 - *Transmisión*: Twitch, YouTube, Facebook, Kick o cualquier servidor RTMP/SRT; codificación por hardware (NVIDIA, Intel, AMD) o x264, CBR/VBR, intervalo de fotogramas clave, preajuste y perfil; resolución base y de salida, FPS y filtro de escalado; reconexión automática y grabación simultánea. Usa el complemento *Motor de video FFmpeg* (unos 90 MB), que se instala desde Complementos o la primera vez que transmites; si ya tienes ffmpeg en el PATH, lo usa.
 - *Atajos globales* configurables (también con la ventana minimizada): grabar, pausar, transmitir, silenciar, pulsar para hablar, transición, cambiar de escena y captura.
 - *Estadísticas*: FPS, tiempo de render, fotogramas perdidos, tasa de bits y tamaño de la grabación.
+
+**CoffeeUI/UX** — diseño de interfaces y prototipos para **móvil, escritorio y web**:
+
+- *Lienzo infinito* con páginas, marcos con tamaños de dispositivo (iPhone, Android, tabletas, ventanas de escritorio y anchos web), zoom y guías inteligentes al mover.
+- *Herramientas*: marco, rectángulo, elipse, línea, flecha, polígono, estrella, pluma, lápiz, texto e imágenes (también pegadas o arrastradas).
+- *Propiedades*: posición, tamaño, rotación, esquinas, rellenos sólidos y degradados, bordes, sombras (exterior e interior), desenfoque, opacidad y tipografía completa.
+- *Capas* en árbol con renombrar, ocultar, bloquear y reordenar arrastrando; agrupar, envolver en marcos y alinear o repartir.
+- *Diseño automático* (filas y columnas con espacio, relleno y alineación) y tamaños fijo, ajustar al contenido o rellenar.
+- *Componentes e instancias* que se actualizan con el original, con textos propios por instancia.
+- *Kits de interfaz*: barras de estado, de navegación y de pestañas, botones, campos, tarjetas, listas, diálogos, barras de título y menús de escritorio, tablas, cabeceras, secciones, precios, formularios y pies de página web.
+- *Prototipo*: enlaces entre pantallas con transiciones (disolver, deslizar, empujar) y modo presentación navegable.
+- *Exportación* a PNG, JPG (con escala), SVG, PDF y código HTML/CSS (el diseño automático se convierte en Flexbox); panel *Código* con el CSS de cada capa.
+
+**CoffeeDiagram** — modelado UML y diagramas:
+
+- *Doce tipos de diagrama* en un mismo modelo: clases, objetos, paquetes, componentes, despliegue, casos de uso, secuencia, actividad (con carriles), estados, entidad-relación (pata de gallo y Chen), diagramas de flujo y mapas mentales.
+- *Clases completas*: atributos y operaciones con visibilidad, tipos, parámetros, estáticos y abstractos; interfaces y enumeraciones; edición directa en el diagrama («- precio: double»).
+- *Relaciones UML*: asociación, dirección, agregación, composición, herencia, realización, dependencia, «include» y «extend», con multiplicidades y roles; mensajes síncronos, asíncronos, de respuesta y de creación que se ordenan arrastrándolos; fragmentos alt/loop/opt.
+- *Entidad-relación*: tablas con PK, FK, NOT NULL y UNIQUE, y cardinalidades 1, 0..1, 1..* y 0..*.
+- *Generación de código* Java, C#, TypeScript y Python (herencia, interfaces y asociaciones), SQL `CREATE TABLE` con claves foráneas, Mermaid y PlantUML; importación de scripts SQL (por ejemplo, los que exporta CoffeeDataBase).
+- Organización automática, alinear y repartir, cuadrícula, copiar y pegar, y exportación a PNG, SVG y PDF (todos los diagramas en un PDF).
 
 En CoffeeDoc, CoffeeCalc y CoffeeView: autoguardado, *Guardar como*, deshacer y rehacer, impresión y PDF, buscador de menús (`Alt+/`) y documentos fijados en el Launcher.

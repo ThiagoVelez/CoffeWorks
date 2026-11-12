@@ -1,4 +1,5 @@
-// Plantillas de CoffeePDF, CoffeePage, CoffeeDataBase, CoffeeEdit y CoffeeLive.
+// Plantillas de CoffeePDF, CoffeePage, CoffeeDataBase, CoffeeEdit, CoffeeLive,
+// CoffeeUI/UX y CoffeeDiagram.
 // Cada función genera el contenido del archivo nativo que abre la aplicación.
 
 const uid = (prefix: string) => `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -584,6 +585,308 @@ const LIVE_COLLECTIONS: Record<string, () => string> = {
 };
 
 // ---------------------------------------------------------------------------
+// CoffeeUI/UX: diseños (.cux). La app completa los valores que falten.
+// ---------------------------------------------------------------------------
+
+type UxNode = Record<string, unknown> & { id: string; type: string; children?: string[] };
+
+class UxBuilder {
+  nodes: Record<string, UxNode> = {};
+  add(type: string, props: Record<string, unknown>, children: UxNode[] = []): UxNode {
+    const n: UxNode = { id: uid(type.slice(0, 3)), type, name: type, x: 0, y: 0, w: 100, h: 100, ...props };
+    if (children.length || ["frame", "group", "component"].includes(type)) n.children = children.map((c) => c.id);
+    this.nodes[n.id] = n;
+    return n;
+  }
+  solid = (color: string, opacity = 1) => ({ type: "solid", color, color2: "#ffffff", angle: 90, opacity });
+  text(text: string, x: number, y: number, size = 16, weight = 400, color = "#1e1e1e", extra: Record<string, unknown> = {}) {
+    return this.add("text", { name: text.slice(0, 30), text, x, y, w: 300, h: size * 1.3, fill: this.solid(color), font: { size, weight, autoSize: "width" }, ...extra });
+  }
+  rect(x: number, y: number, w: number, h: number, color: string, radius = 0, extra: Record<string, unknown> = {}) {
+    return this.add("rect", { name: "Rectángulo", x, y, w, h, fill: this.solid(color), radius, ...extra });
+  }
+  button(label: string, x: number, y: number, w: number, color = "#0d99ff", textColor = "#ffffff", extra: Record<string, unknown> = {}) {
+    const t = this.text(label, 0, 0, 16, 600, textColor);
+    return this.add(
+      "frame",
+      {
+        name: `Botón ${label}`,
+        x,
+        y,
+        w,
+        h: 52,
+        fill: this.solid(color),
+        radius: 14,
+        clip: false,
+        layout: { mode: "row", gap: 8, padding: { top: 15, right: 20, bottom: 15, left: 20 }, justify: "center", align: "center" },
+        sizing: { w: "fixed", h: "hug" },
+        ...extra,
+      },
+      [t]
+    );
+  }
+  input(label: string, placeholder: string, x: number, y: number, w: number) {
+    return this.add("group", { name: `Campo ${label}`, x, y, w, h: 76, fill: null }, [
+      this.text(label, 0, 0, 13, 600, "#444444"),
+      this.rect(0, 24, w, 50, "#ffffff", 12, { name: "Entrada", stroke: { color: "#d0d0d0", width: 1, opacity: 1, dash: false } }),
+      this.text(placeholder, 16, 39, 15, 400, "#9e9e9e"),
+    ]);
+  }
+  frame(name: string, x: number, y: number, w: number, h: number, device: string, children: UxNode[], extra: Record<string, unknown> = {}) {
+    return this.add("frame", { name, x, y, w, h, device, fill: this.solid("#ffffff"), clip: true, layout: { mode: "none", gap: 12, padding: { top: 16, right: 16, bottom: 16, left: 16 }, justify: "start", align: "start" }, ...extra }, children);
+  }
+  doc(platform: string, roots: UxNode[], start?: string) {
+    const page = { id: uid("pg"), name: "Página 1", background: "#f5f5f5", nodes: this.nodes, children: roots.map((r) => r.id), startFrame: start };
+    return JSON.stringify({ format: "coffeeuiux", version: 1, platform, pages: [page], currentPage: page.id, colorStyles: [{ id: uid("cs"), name: "Primario", color: "#0d99ff" }, { id: uid("cs"), name: "Texto", color: "#1e1e1e" }] });
+  }
+}
+
+function uxLoginApp(): string {
+  const b = new UxBuilder();
+  const status = (y = 14) => [b.text("9:41", 24, y, 15, 600), b.text("▂▄▆ ▮", 330, y + 2, 12, 600)];
+  const home = b.frame("Inicio", 473, 0, 393, 852, "iphone-15", [
+    ...status(),
+    b.text("Hola, Ana 👋", 24, 70, 28, 800),
+    b.text("Tus pedidos de hoy", 24, 112, 15, 400, "#6b6b6b"),
+    ...[0, 1, 2].flatMap((i) => [
+      b.rect(24, 160 + i * 96, 345, 80, "#f5f7fa", 16, { name: `Pedido ${i + 1}` }),
+      b.rect(40, 176 + i * 96, 48, 48, ["#ffe0b2", "#d6ecff", "#e1f3e7"][i], 12, { name: "Miniatura" }),
+      b.text(["Café de origen", "Taza de cerámica", "Molino manual"][i], 104, 180 + i * 96, 16, 600),
+      b.text(["En camino", "Preparando", "Entregado"][i], 104, 204 + i * 96, 13, 400, "#6b6b6b"),
+    ]),
+    b.rect(0, 768, 393, 84, "#ffffff", 0, { name: "Barra de pestañas", stroke: { color: "#ececec", width: 1, opacity: 1, dash: false } }),
+    b.text("⌂  Inicio", 40, 792, 13, 700, "#0d99ff"),
+    b.text("⌕  Buscar", 160, 792, 13, 500, "#6b6b6b"),
+    b.text("☺  Perfil", 284, 792, 13, 500, "#6b6b6b"),
+  ]);
+  const btn = b.button("Iniciar sesión", 24, 520, 345);
+  btn.link = { target: home.id, transition: "slide-left", duration: 300 };
+  const login = b.frame("Inicio de sesión", 0, 0, 393, 852, "iphone-15", [
+    ...status(),
+    b.rect(24, 110, 64, 64, "#0d99ff", 18, { name: "Logo" }),
+    b.text("Bienvenido de nuevo", 24, 200, 28, 800),
+    b.text("Entra con tu correo para continuar", 24, 242, 15, 400, "#6b6b6b"),
+    b.input("Correo electrónico", "nombre@correo.com", 24, 300, 345),
+    b.input("Contraseña", "••••••••", 24, 396, 345),
+    b.text("¿Olvidaste tu contraseña?", 24, 484, 14, 600, "#0d99ff"),
+    btn,
+    b.text("¿No tienes cuenta? Regístrate", 92, 600, 14, 500, "#444444"),
+  ]);
+  return b.doc("mobile", [login, home], login.id);
+}
+
+function uxLanding(): string {
+  const b = new UxBuilder();
+  const cards = [0, 1, 2].map((i) =>
+    b.add("group", { name: `Característica ${i + 1}`, x: 120 + i * 416, y: 640, w: 384, h: 220, fill: null }, [
+      b.rect(0, 0, 384, 220, "#ffffff", 20, { name: "Tarjeta", stroke: { color: "#ececec", width: 1, opacity: 1, dash: false } }),
+      b.rect(32, 32, 48, 48, "#e6f4ff", 12, { name: "Icono" }),
+      b.text(["Rápido", "Seguro", "En equipo"][i], 32, 104, 22, 700),
+      b.text(["Carga en milisegundos y funciona sin conexión.", "Tus datos se quedan en tu equipo, cifrados.", "Comenta y comparte con todo tu equipo."][i], 32, 144, 16, 400, "#6b6b6b", { w: 320, font: { size: 16, autoSize: "height" } }),
+    ])
+  );
+  const web = b.frame("Página principal", 0, 0, 1440, 1024, "web-1440", [
+    b.rect(0, 0, 1440, 80, "#ffffff", 0, { name: "Navegación", stroke: { color: "#eeeeee", width: 1, opacity: 1, dash: false } }),
+    b.rect(120, 26, 28, 28, "#0d99ff", 8, { name: "Logo" }),
+    b.text("Marca", 160, 28, 20, 800),
+    ...["Producto", "Precios", "Blog", "Contacto"].map((l, i) => b.text(l, 760 + i * 110, 30, 15, 500, "#333333")),
+    b.button("Empezar", 1200, 14, 120, "#0d99ff", "#ffffff", { radius: 999 }),
+    b.text("NUEVO · Versión 2.0", 640, 200, 14, 700, "#0d99ff"),
+    b.text("Diseña, prueba y lanza más rápido", 280, 240, 60, 800, "#111111"),
+    b.text("Una plataforma para crear productos digitales con tu equipo.", 450, 330, 20, 400, "#6b6b6b"),
+    b.button("Comenzar gratis", 520, 400, 200, "#0d99ff", "#ffffff", { radius: 999 }),
+    b.button("Ver demostración", 740, 400, 200, "#ffffff", "#0d99ff", { radius: 999, stroke: { color: "#0d99ff", width: 1.5, opacity: 1, dash: false } }),
+    ...cards,
+    b.rect(0, 924, 1440, 100, "#111827", 0, { name: "Pie de página" }),
+    b.text("© 2026 Marca. Todos los derechos reservados.", 120, 962, 14, 400, "#a0a0a0"),
+  ]);
+  return b.doc("web", [web], web.id);
+}
+
+function uxDashboard(): string {
+  const b = new UxBuilder();
+  const stat = (i: number, label: string, value: string, color: string) =>
+    b.add("group", { name: `Indicador ${label}`, x: 280 + i * 245, y: 120, w: 225, h: 110, fill: null }, [
+      b.rect(0, 0, 225, 110, "#ffffff", 14, { name: "Tarjeta", stroke: { color: "#ececec", width: 1, opacity: 1, dash: false } }),
+      b.text(label, 20, 20, 13, 600, "#6b6b6b"),
+      b.text(value, 20, 48, 30, 800, color),
+    ]);
+  const rows = ["Informe anual · Listo · 12/03/2026", "Presupuesto · En revisión · 18/03/2026", "Contrato · Pendiente · 21/03/2026", "Nómina de marzo · Listo · 28/03/2026"];
+  const win = b.frame("Panel de administración", 0, 0, 1280, 800, "desktop-app", [
+    b.rect(0, 0, 1280, 36, "#f3f3f3", 0, { name: "Barra de título" }),
+    b.text("Mi aplicación", 16, 9, 13, 600),
+    b.text("—   ☐   ✕", 1180, 9, 13, 400, "#444444"),
+    b.rect(0, 36, 240, 764, "#fafafa", 0, { name: "Barra lateral", stroke: { color: "#e6e6e6", width: 1, opacity: 1, dash: false } }),
+    b.rect(12, 60, 216, 38, "#e6f4ff", 8, { name: "Elemento activo" }),
+    ...["⌂  Inicio", "▤  Documentos", "☺  Clientes", "⚙  Ajustes"].map((l, i) => b.text(l, 28, 70 + i * 48, 14, i ? 400 : 700, i ? "#333333" : "#0d99ff")),
+    b.text("Resumen", 280, 64, 26, 800),
+    stat(0, "Ventas del mes", "$48.200", "#1e1e1e"),
+    stat(1, "Pedidos", "1.284", "#1e1e1e"),
+    stat(2, "Clientes nuevos", "312", "#1aa260"),
+    stat(3, "Devoluciones", "1,8%", "#d93025"),
+    b.rect(280, 260, 960, 460, "#ffffff", 14, { name: "Tabla", stroke: { color: "#ececec", width: 1, opacity: 1, dash: false } }),
+    b.text("Documentos recientes", 304, 284, 17, 700),
+    ...rows.flatMap((r, i) => [b.rect(300, 330 + i * 56, 920, 48, i % 2 ? "#ffffff" : "#fafafa", 8, { name: `Fila ${i + 1}` }), b.text(r, 320, 344 + i * 56, 14, 400, "#333333")]),
+  ]);
+  return b.doc("desktop", [win], win.id);
+}
+
+// ---------------------------------------------------------------------------
+// CoffeeDiagram: modelos (.cdg)
+// ---------------------------------------------------------------------------
+
+type DgNode = Record<string, unknown> & { id: string };
+
+class DgBuilder {
+  nodes: Record<string, DgNode> = {};
+  edges: Record<string, Record<string, unknown>> = {};
+  order: string[] = [];
+  node(type: string, name: string, x: number, y: number, extra: Record<string, unknown> = {}): DgNode {
+    const n: DgNode = { id: uid("n"), type, name, x, y, ...extra };
+    this.nodes[n.id] = n;
+    if (["system", "swimlane", "package", "fragment"].includes(type)) this.order.unshift(n.id);
+    else this.order.push(n.id);
+    return n;
+  }
+  cls(name: string, x: number, y: number, attrs: string[], ops: string[] = [], extra: Record<string, unknown> = {}) {
+    const attributes = attrs.map((a) => {
+      const [vis, rest] = [a[0], a.slice(1).trim()];
+      const [nm, type] = rest.split(":").map((t) => t.trim());
+      return { id: uid("m"), visibility: vis, name: nm, type: type || "" };
+    });
+    const operations = ops.map((o) => {
+      const m = o.match(/^([+\-#~])\s*(\w+)\(([^)]*)\)\s*(?::\s*(.+))?$/)!;
+      return { id: uid("m"), visibility: m[1], name: m[2], params: m[3], type: m[4] || "" };
+    });
+    return this.node("class", name, x, y, { attributes, operations, autoSize: true, ...extra });
+  }
+  table(name: string, x: number, y: number, cols: [string, string, string?][]) {
+    return this.node("entity", name, x, y, {
+      autoSize: true,
+      attributes: cols.map(([n, t, flags = ""]) => ({ id: uid("m"), name: n, type: t, pk: flags.includes("PK"), fk: flags.includes("FK"), nullable: !flags.includes("NN") && !flags.includes("PK"), unique: flags.includes("UQ") })),
+    });
+  }
+  edge(kind: string, a: DgNode, b: DgNode, extra: Record<string, unknown> = {}) {
+    const id = uid("e");
+    this.edges[id] = { id, kind, source: a.id, target: b.id, routing: kind === "flow" || kind === "erRelation" ? "orthogonal" : "straight", ...extra };
+  }
+  diagram(name: string, kind: string) {
+    const d = { id: uid("d"), name, kind, nodes: this.nodes, edges: this.edges, order: this.order };
+    this.nodes = {};
+    this.edges = {};
+    this.order = [];
+    return d;
+  }
+}
+
+const cdg = (diagrams: Record<string, unknown>[]) => JSON.stringify({ format: "coffeediagram", version: 1, diagrams, current: diagrams[0].id });
+
+function dgProyectoUml(): string {
+  const b = new DgBuilder();
+  // Casos de uso
+  const sys = b.node("system", "Tienda en línea", 220, 40, { w: 380, h: 470 });
+  const cliente = b.node("actor", "Cliente", 60, 160);
+  const admin = b.node("actor", "Administrador", 690, 300);
+  const pasarela = b.node("actor", "Pasarela de pago", 690, 110);
+  const uc = (n: string, y: number) => b.node("usecase", n, 300, y, { autoSize: true });
+  const buscar = uc("Buscar productos", 90);
+  const comprar = uc("Realizar compra", 180);
+  const pagar = uc("Pagar pedido", 270);
+  const cupon = uc("Aplicar cupón", 360);
+  const gestionar = uc("Gestionar catálogo", 440);
+  void sys;
+  b.edge("link", cliente, buscar);
+  b.edge("link", cliente, comprar);
+  b.edge("include", comprar, pagar, { label: "«include»" });
+  b.edge("extend", cupon, comprar, { label: "«extend»" });
+  b.edge("link", pagar, pasarela);
+  b.edge("link", admin, gestionar);
+  const casos = b.diagram("Casos de uso", "usecase");
+  // Clases
+  const persona = b.cls("Persona", 300, 30, ["- id: int", "- nombre: String", "- correo: String"], ["+ getNombre(): String"], { isAbstract: true });
+  const cl = b.cls("Cliente", 120, 260, ["- direccion: String"], ["+ realizarPedido(carrito: Carrito): Pedido"]);
+  const ad = b.cls("Administrador", 480, 260, ["- nivel: int"], ["+ publicarProducto(p: Producto): void"]);
+  const pedido = b.cls("Pedido", 120, 480, ["- fecha: Date", "- estado: EstadoPedido", "- total: double"], ["+ calcularTotal(): double", "+ confirmar(): void"]);
+  const linea = b.cls("LineaPedido", 480, 480, ["- cantidad: int", "- precioUnitario: double"], ["+ subtotal(): double"]);
+  const producto = b.cls("Producto", 820, 480, ["- nombre: String", "- precio: double", "- existencias: int"]);
+  const estado = b.node("enum", "EstadoPedido", 120, 720, { literals: ["PENDIENTE", "PAGADO", "ENVIADO", "ENTREGADO"], stereotype: "enumeration", autoSize: true });
+  const pagable = b.node("interface", "Pagable", 820, 260, { stereotype: "interface", operations: [{ id: uid("m"), visibility: "+", name: "pagar", params: "importe: double", type: "boolean", isAbstract: true }], autoSize: true });
+  b.edge("generalization", cl, persona);
+  b.edge("generalization", ad, persona);
+  b.edge("association", cl, pedido, { sourceLabel: "1", targetLabel: "0..*", label: "realiza" });
+  b.edge("composition", pedido, linea, { sourceLabel: "1", targetLabel: "1..*" });
+  b.edge("association", linea, producto, { sourceLabel: "0..*", targetLabel: "1" });
+  b.edge("realization", pedido, pagable);
+  b.edge("dependency", pedido, estado);
+  const clases = b.diagram("Modelo de clases", "class");
+  // Secuencia
+  const L = (type: string, name: string, x: number) => b.node(type, name, x, 40, { h: 430 });
+  const u = L("actorLifeline", "Cliente", 40);
+  const web = L("lifeline", ":Tienda", 260);
+  const srv = L("lifeline", ":ServicioPedidos", 480);
+  const pay = L("lifeline", ":Pasarela", 720);
+  const msgs: [DgNode, DgNode, string, string][] = [
+    [u, web, "message", "confirmarCompra()"],
+    [web, srv, "message", "crearPedido(carrito)"],
+    [srv, pay, "message", "cobrar(total)"],
+    [pay, srv, "reply", "autorizado"],
+    [srv, web, "reply", "pedido #1024"],
+    [web, u, "reply", "mostrar recibo"],
+  ];
+  msgs.forEach(([a, c, k, l], i) => b.edge(k, a, c, { y: 170 + i * 48, label: l }));
+  b.node("fragment", "", 450, 250, { w: 420, h: 110, operator: "alt", text: "[saldo suficiente]" });
+  const secuencia = b.diagram("Confirmar compra (secuencia)", "sequence");
+  // Actividad
+  const ini = b.node("initial", "", 186, 30);
+  const a1 = b.node("action", "Elegir productos", 120, 100, { autoSize: true });
+  const a2 = b.node("action", "Revisar carrito", 120, 190, { autoSize: true });
+  const dec = b.node("decision", "", 172, 280);
+  const a3 = b.node("action", "Pagar con tarjeta", 30, 380, { autoSize: true });
+  const a4 = b.node("action", "Iniciar sesión", 260, 380, { autoSize: true });
+  const fin = b.node("final", "", 184, 490);
+  b.edge("flow", ini, a1);
+  b.edge("flow", a1, a2);
+  b.edge("flow", a2, dec);
+  b.edge("flow", dec, a3, { label: "[sesión iniciada]" });
+  b.edge("flow", dec, a4, { label: "[sin sesión]" });
+  b.edge("flow", a4, a2);
+  b.edge("flow", a3, fin);
+  const actividad = b.diagram("Proceso de compra (actividad)", "activity");
+  return cdg([casos, clases, secuencia, actividad]);
+}
+
+function dgModeloEr(): string {
+  const b = new DgBuilder();
+  const clientes = b.table("clientes", 40, 40, [["id", "INTEGER", "PK"], ["nombre", "VARCHAR(100)", "NN"], ["correo", "VARCHAR(255)", "UQ"], ["ciudad", "VARCHAR(80)"]]);
+  const pedidos = b.table("pedidos", 380, 40, [["id", "INTEGER", "PK"], ["cliente_id", "INTEGER", "FK NN"], ["fecha", "DATE", "NN"], ["estado", "VARCHAR(20)"]]);
+  const detalle = b.table("detalle_pedido", 380, 300, [["id", "INTEGER", "PK"], ["pedido_id", "INTEGER", "FK NN"], ["producto_id", "INTEGER", "FK NN"], ["cantidad", "INTEGER", "NN"], ["precio_unitario", "DECIMAL(10,2)", "NN"]]);
+  const productos = b.table("productos", 740, 300, [["id", "INTEGER", "PK"], ["nombre", "VARCHAR(120)", "NN"], ["categoria_id", "INTEGER", "FK"], ["precio", "DECIMAL(10,2)", "NN"]]);
+  const categorias = b.table("categorias", 740, 40, [["id", "INTEGER", "PK"], ["nombre", "VARCHAR(80)", "NN UQ"]]);
+  b.edge("erRelation", clientes, pedidos, { sourceCard: "1", targetCard: "0..*", label: "realiza" });
+  b.edge("erRelation", pedidos, detalle, { sourceCard: "1", targetCard: "1..*", label: "contiene" });
+  b.edge("erRelation", productos, detalle, { sourceCard: "1", targetCard: "0..*" });
+  b.edge("erRelation", categorias, productos, { sourceCard: "0..1", targetCard: "0..*", label: "agrupa" });
+  return cdg([b.diagram("Modelo de la tienda", "er")]);
+}
+
+function dgFlujo(): string {
+  const b = new DgBuilder();
+  const s = b.node("terminator", "Inicio", 140, 20);
+  const leer = b.node("io", "Leer número n", 135, 100);
+  const dec = b.node("decision", "¿n es par?", 155, 200, { w: 140, h: 90 });
+  const par = b.node("process", "Mostrar «par»", 20, 330);
+  const impar = b.node("process", "Mostrar «impar»", 280, 330);
+  const fin = b.node("terminator", "Fin", 150, 450, { name: "Fin" });
+  b.edge("flow", s, leer);
+  b.edge("flow", leer, dec);
+  b.edge("flow", dec, par, { label: "Sí" });
+  b.edge("flow", dec, impar, { label: "No" });
+  b.edge("flow", par, fin);
+  b.edge("flow", impar, fin);
+  return cdg([b.diagram("Par o impar", "flowchart")]);
+}
+
+// ---------------------------------------------------------------------------
 
 const PDF_TEMPLATES: Record<string, () => string> = {
   "pdf-solicitud": pdfSolicitud,
@@ -597,6 +900,18 @@ const PAGE_TEMPLATES: Record<string, () => string> = {
   "page-planificador": pagePlanificador,
 };
 
+const UX_TEMPLATES: Record<string, () => string> = {
+  "ux-login-movil": uxLoginApp,
+  "ux-landing-web": uxLanding,
+  "ux-panel-escritorio": uxDashboard,
+};
+
+const DG_TEMPLATES: Record<string, () => string> = {
+  "dg-proyecto-uml": dgProyectoUml,
+  "dg-modelo-er": dgModeloEr,
+  "dg-diagrama-flujo": dgFlujo,
+};
+
 /** Contenido de las plantillas de CoffeePDF, CoffeePage, CoffeeDataBase, CoffeeEdit y CoffeeLive. */
 export function buildExtraTemplate(templateId: string, appId: string, title: string): ExtraTemplate | null {
   if (appId === "coffeepdf" && PDF_TEMPLATES[templateId]) return { extension: "pdf", prefix: "pdf", contents: PDF_TEMPLATES[templateId]() };
@@ -607,6 +922,8 @@ export function buildExtraTemplate(templateId: string, appId: string, title: str
   }
   if (appId === "coffeeedit" && EDIT_PROJECTS[templateId]) return { extension: "ccm", prefix: "ccm", contents: EDIT_PROJECTS[templateId]() };
   if (appId === "coffeelive" && LIVE_COLLECTIONS[templateId]) return { extension: "clv", prefix: "clv", contents: LIVE_COLLECTIONS[templateId]() };
+  if (appId === "coffeeuiux" && UX_TEMPLATES[templateId]) return { extension: "cux", prefix: "cux", contents: UX_TEMPLATES[templateId]() };
+  if (appId === "coffeediagram" && DG_TEMPLATES[templateId]) return { extension: "cdg", prefix: "cdg", contents: DG_TEMPLATES[templateId]() };
   return null;
 }
 
@@ -617,4 +934,6 @@ export const EXTRA_TEMPLATE_IDS = {
   coffeedatabase: Object.keys(DB_SCRIPTS),
   coffeeedit: Object.keys(EDIT_PROJECTS),
   coffeelive: Object.keys(LIVE_COLLECTIONS),
+  coffeeuiux: Object.keys(UX_TEMPLATES),
+  coffeediagram: Object.keys(DG_TEMPLATES),
 };

@@ -19,6 +19,8 @@ import {
   Scissors,
   Radio,
   Database,
+  PenTool,
+  Workflow,
 } from "lucide-react";
 import { isTauri, tauriBridge } from "../services/tauriBridge";
 import type { AddonInfo, SuiteApp } from "../types";
@@ -46,6 +48,22 @@ const FORMAT_SUPPORT = [
     native: ".clv (colección de escenas)",
     opens: "Pantalla, cámara, imágenes, videos y audio como fuentes",
     exports: "Grabaciones MP4/WebM, capturas PNG y transmisión RTMP/SRT (con el complemento FFmpeg)",
+  },
+  {
+    app: "CoffeeUI/UX",
+    icon: PenTool,
+    color: "text-[#b38600]",
+    native: ".cux",
+    opens: "Diseños de CoffeeUI/UX; imágenes (PNG, JPG, SVG) para insertar",
+    exports: "PNG, JPG, SVG, PDF y código HTML/CSS",
+  },
+  {
+    app: "CoffeeDiagram",
+    icon: Workflow,
+    color: "text-[#1e3a5f]",
+    native: ".cdg",
+    opens: "Modelos de CoffeeDiagram; importa scripts SQL (CREATE TABLE)",
+    exports: "PNG, SVG, PDF; código Java, C#, TypeScript, Python, SQL, Mermaid y PlantUML",
   },
 ];
 

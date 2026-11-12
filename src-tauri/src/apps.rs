@@ -20,6 +20,9 @@ pub struct CatalogApp {
     /// Identificadores antiguos que siguen apareciendo en documentos guardados.
     pub aliases: &'static [&'static str],
     pub name: &'static str,
+    /// Nombre de archivo (ejecutable, carpeta y acceso directo): el nombre
+    /// visible puede llevar caracteres no válidos, como «CoffeeUI/UX».
+    pub stem: &'static str,
     pub subtitle: &'static str,
     pub description: &'static str,
     pub version: &'static str,
@@ -42,6 +45,7 @@ pub const CATALOG: &[CatalogApp] = &[
         id: "coffeedoc",
         aliases: &[],
         name: "CoffeeDoc",
+        stem: "CoffeeDoc",
         subtitle: "Procesador de textos con formato enriquecido",
         description: "Documentos con estilos, tablas, imágenes y esquema automático. Abre y guarda Word (.docx), Markdown, HTML y PDF.",
         version: "v1.4",
@@ -57,6 +61,7 @@ pub const CATALOG: &[CatalogApp] = &[
         id: "coffeecalc",
         aliases: &["coffeesheet"],
         name: "CoffeeCalc",
+        stem: "CoffeeCalc",
         subtitle: "Hoja de cálculo con fórmulas y gráficos",
         description: "Libros con varias hojas, más de 80 funciones, formato de celdas, filtros y gráficos. Compatible con Excel (.xlsx) y CSV.",
         version: "v1.0",
@@ -72,6 +77,7 @@ pub const CATALOG: &[CatalogApp] = &[
         id: "coffeeview",
         aliases: &["coffeeslides"],
         name: "CoffeeView",
+        stem: "CoffeeView",
         subtitle: "Presentaciones y diapositivas",
         description: "Diseñador de diapositivas con temas, formas, imágenes, transiciones, notas del orador y exportación a PowerPoint (.pptx) y PDF.",
         version: "v1.0",
@@ -87,6 +93,7 @@ pub const CATALOG: &[CatalogApp] = &[
         id: "coffeepdf",
         aliases: &[],
         name: "CoffeePDF",
+        stem: "CoffeePDF",
         subtitle: "Editor de documentos PDF",
         description: "Abre, anota y edita PDF: texto, resaltado, formas, firmas e imágenes, formularios, y organiza, gira, une o extrae páginas.",
         version: "v1.0",
@@ -102,6 +109,7 @@ pub const CATALOG: &[CatalogApp] = &[
         id: "coffeepage",
         aliases: &[],
         name: "CoffeePage",
+        stem: "CoffeePage",
         subtitle: "Cuaderno digital de notas",
         description: "Notas en secciones y páginas: escribe en cualquier parte, dibuja a mano, pega imágenes, marca tareas y busca en todo el cuaderno.",
         version: "v1.0",
@@ -117,6 +125,7 @@ pub const CATALOG: &[CatalogApp] = &[
         id: "coffeedatabase",
         aliases: &[],
         name: "CoffeeDataBase",
+        stem: "CoffeeDataBase",
         subtitle: "Bases de datos de escritorio",
         description: "Tablas, formularios, consultas SQL y visuales, relaciones con diagrama y asistente. Importa Excel, CSV y archivos .accdb/.mdb.",
         version: "v1.0",
@@ -133,6 +142,7 @@ pub const CATALOG: &[CatalogApp] = &[
         // Proyectos de CoffeeCams (2.5), que se dividió en CoffeeEdit y CoffeeLive
         aliases: &["coffeecams"],
         name: "CoffeeEdit",
+        stem: "CoffeeEdit",
         subtitle: "Editor de video",
         description: "Edita videos con varias pistas, cortes, velocidad, filtros, textos animados y transiciones, y exporta a MP4. Abre las grabaciones de CoffeeLive.",
         version: "v1.0",
@@ -148,6 +158,7 @@ pub const CATALOG: &[CatalogApp] = &[
         id: "coffeelive",
         aliases: &[],
         name: "CoffeeLive",
+        stem: "CoffeeLive",
         subtitle: "Grabación de pantalla y transmisión en directo",
         description: "Escenas con pantalla, cámara, imágenes y textos; filtros, croma, transiciones, mezclador y atajos globales. Graba en MP4 o transmite a Twitch, YouTube y más.",
         version: "v1.0",
@@ -156,6 +167,38 @@ pub const CATALOG: &[CatalogApp] = &[
         icon_url: "/icons/CoffeeLive.ico",
         category: "Multimedia",
         file_type: ("clv", "Colección de escenas de CoffeeLive"),
+        extra_extensions: &[],
+        claim_default: true,
+    },
+    CatalogApp {
+        id: "coffeeuiux",
+        aliases: &[],
+        name: "CoffeeUI/UX",
+        stem: "CoffeeUIUX",
+        subtitle: "Diseño de interfaces y prototipos",
+        description: "Diseña interfaces para móvil, escritorio y web: marcos con tamaños de dispositivo, formas, textos, componentes, diseño automático, prototipos navegables y exportación a PNG, SVG, PDF y HTML/CSS.",
+        version: "v1.0",
+        color_badge: "design",
+        icon_name: "pen-tool",
+        icon_url: "/icons/CoffeeUIUX.ico",
+        category: "Desarrollador",
+        file_type: ("cux", "Diseño de CoffeeUI/UX"),
+        extra_extensions: &[],
+        claim_default: true,
+    },
+    CatalogApp {
+        id: "coffeediagram",
+        aliases: &[],
+        name: "CoffeeDiagram",
+        stem: "CoffeeDiagram",
+        subtitle: "Modelado UML y diagramas",
+        description: "Diagramas UML de clases, casos de uso, secuencia, actividad, estados, componentes y despliegue; modelos entidad-relación y diagramas de flujo. Genera código y SQL y exporta a PNG, SVG y PDF.",
+        version: "v1.0",
+        color_badge: "diagram",
+        icon_name: "workflow",
+        icon_url: "/icons/CoffeeDiagram.ico",
+        category: "Desarrollador",
+        file_type: ("cdg", "Modelo de CoffeeDiagram"),
         extra_extensions: &[],
         claim_default: true,
     },
@@ -205,7 +248,7 @@ pub fn app_for_document(app_id: &str, file_name: &str) -> Option<&'static Catalo
 }
 
 fn binary_name(app: &CatalogApp) -> String {
-    format!("{}{}", app.name, std::env::consts::EXE_SUFFIX)
+    format!("{}{}", app.stem, std::env::consts::EXE_SUFFIX)
 }
 
 fn launcher_dir() -> PathBuf {
@@ -230,7 +273,7 @@ fn package_path(app: &CatalogApp) -> Option<PathBuf> {
 }
 
 fn install_dir(app: &CatalogApp) -> PathBuf {
-    coffee_core::apps_dir().join(app.name)
+    coffee_core::apps_dir().join(app.stem)
 }
 
 pub fn installed_exe(app: &CatalogApp) -> PathBuf {
@@ -357,9 +400,9 @@ pub fn install(id: &str) -> Result<SuiteApp, String> {
 
     // La integración con el sistema es opcional: si falla, la aplicación sigue
     // instalada y se puede abrir desde el Launcher.
-    platform::create_shortcut(app.name, &target, app.subtitle);
+    platform::create_shortcut(app.stem, &target, app.subtitle);
     platform::register_file_type(
-        app.name,
+        app.stem,
         app.file_type.0,
         app.file_type.1,
         &target,
@@ -469,8 +512,8 @@ pub fn uninstall(id: &str) -> Result<SuiteApp, String> {
             .map_err(|e| format!("No se pudieron borrar los archivos de {}: {e}", app.name))?;
     }
 
-    platform::remove_shortcut(app.name);
-    platform::unregister_file_type(app.name, app.file_type.0);
+    platform::remove_shortcut(app.stem);
+    platform::unregister_file_type(app.stem, app.file_type.0);
 
     Ok(describe(app))
 }
