@@ -1,6 +1,6 @@
 """Genera los iconos de la categoría Desarrollador:
 CoffeeUI/UX (fondo amarillo, pluma vectorial con curva y nodos) y
-CoffeeDiagram (azul marino, tres clases UML conectadas)."""
+CoffeeUML (verde viridian, tres clases UML conectadas)."""
 
 import math
 import shutil
@@ -82,9 +82,9 @@ d.ellipse(box(cx - 7, cy + 10, cx + 7, cy + 24), fill=YELLOW)
 d.rectangle(box(cx - 20, cy + 50, cx + 20, cy + 64), fill=INK)
 save(img, "CoffeeUIUX", "CoffeeUIUX")
 
-# --- CoffeeDiagram: tres clases UML conectadas --------------------------------
-NAVY = (30, 58, 95, 255)
-CYAN = (77, 208, 225, 255)
+# --- CoffeeUML: tres clases UML conectadas (fondo verde viridian) --------------------------------
+NAVY = (64, 130, 109, 255)  # viridian #40826D
+CYAN = (199, 247, 226, 255)
 WHITE = (250, 250, 250, 255)
 PALE = (200, 230, 240, 255)
 img, d = canvas(NAVY)
@@ -109,4 +109,4 @@ d.line([p(116, 104), p(140, 104), p(128, 84), p(116, 104)], fill=CYAN, width=4 *
 uml_class(90, 40, 166, 84)
 uml_class(36, 150, 116, 212)
 uml_class(140, 150, 220, 212)
-save(img, "CoffeeDiagram", "CoffeeDiagram")
+save(img, "CoffeeUML", "CoffeeUML")

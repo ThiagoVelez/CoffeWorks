@@ -50,7 +50,7 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
     if (activeFilter === "notes") return app === "coffeepage" || lower.endsWith(".cpg");
     if (activeFilter === "videos") return ["coffeecams", "coffeeedit", "coffeelive"].includes(app) || lower.endsWith(".ccm") || lower.endsWith(".clv");
     if (activeFilter === "databases") return app === "coffeedatabase" || /\.(cdb|db|sqlite3?)$/.test(lower);
-    if (activeFilter === "designs") return app === "coffeeuiux" || app === "coffeediagram" || /\.(cux|cdg)$/.test(lower);
+    if (activeFilter === "designs") return app === "coffeeuiux" || app === "coffeeuml" || /\.(cux|cuml)$/.test(lower);
     return true;
   });
 
@@ -133,12 +133,12 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
         border: "border-[#ffe08a]",
       };
     }
-    if (lowerName.endsWith(".cdg") || appId === "coffeediagram") {
+    if (lowerName.endsWith(".cuml") || appId === "coffeeuml") {
       return {
-        iconUrl: "/icons/CoffeeDiagram.ico",
-        alt: "CoffeeDiagram / Modelo",
-        bg: "bg-[#e7eef7]",
-        border: "border-[#c3d3e6]",
+        iconUrl: "/icons/CoffeeUML.ico",
+        alt: "CoffeeUML / Modelo",
+        bg: "bg-[#e3f1ec]",
+        border: "border-[#bfdccf]",
       };
     }
     if (/\.(cdb|db|sqlite3?)$/.test(lowerName) || appId === "coffeedatabase") {

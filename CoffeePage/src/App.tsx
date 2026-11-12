@@ -35,6 +35,7 @@ import { ExportModal, type ExportOption } from "./components/ExportModal";
 import { DialogHost, askConfirm, askText, showMessage, toast } from "./components/Dialogs";
 import { NotebookNav } from "./components/NotebookNav";
 import { PageCanvas } from "./components/PageCanvas";
+import { SpellIndicator, SpellStyles, useSpellCheck } from "./spell/useSpellCheck";
 import { Ribbon, type TagKind } from "./components/Ribbon";
 import {
   APP_ID,
@@ -211,6 +212,8 @@ export const App: React.FC = () => {
   const loaded = notebook !== null;
   const section = notebook?.sections.find((s) => s.id === sectionId) || notebook?.sections[0] || null;
   const page = section?.pages.find((p) => p.id === pageId) || section?.pages[0] || null;
+  // Corrector ortográfico de la página abierta
+  const spell = useSpellCheck({ mode: "dom", root: () => scrollRef.current, watch: page?.id });
 
   const refreshRecents = useCallback(async () => setRecents(await listRecent(APP_ID)), []);
 
@@ -1319,8 +1322,11 @@ export const App: React.FC = () => {
               {page.blocks.length === 1 ? "elemento" : "elementos"}
               {page.strokes.length > 0 ? ` · ${page.strokes.length} trazos` : ""}
             </span>
-            <span className="truncate max-w-[50%]" title={location || undefined}>
+            <span className="flex items-center gap-3 min-w-0">
+            <SpellIndicator spell={spell} tone="dark" className="font-sans shrink-0" />
+            <span className="truncate" title={location || undefined}>
               {location && !location.startsWith("web:") ? location : isTauri ? "Sin guardar en disco" : "Guardado en el navegador"}
+            </span>
             </span>
           </footer>
         </>
@@ -1353,6 +1359,8 @@ export const App: React.FC = () => {
         />
       )}
 
+      {spell.menu}
+      <SpellStyles />
       <DialogHost />
     </div>
   );

@@ -29,7 +29,7 @@ export const CreateDocModal: React.FC<CreateDocModalProps> = ({
     { id: "coffeeedit", name: "CoffeeEdit", ext: ".ccm", icon: Scissors, color: "text-[#26a680]", bg: "bg-[#e3f6ef]" },
     { id: "coffeelive", name: "CoffeeLive", ext: ".clv", icon: Radio, color: "text-[#ef6c00]", bg: "bg-[#fff1e3]" },
     { id: "coffeeuiux", name: "CoffeeUI/UX", ext: ".cux", icon: PenTool, color: "text-[#b38600]", bg: "bg-[#fff6d6]" },
-    { id: "coffeediagram", name: "CoffeeDiagram", ext: ".cdg", icon: Workflow, color: "text-[#1e3a5f]", bg: "bg-[#e7eef7]" },
+    { id: "coffeeuml", name: "CoffeeUML", ext: ".cuml", icon: Workflow, color: "text-[#2e6b58]", bg: "bg-[#e3f1ec]" },
   ];
 
 

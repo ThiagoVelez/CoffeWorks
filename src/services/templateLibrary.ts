@@ -1,5 +1,5 @@
 // Plantillas de CoffeePDF, CoffeePage, CoffeeDataBase, CoffeeEdit, CoffeeLive,
-// CoffeeUI/UX y CoffeeDiagram.
+// CoffeeUI/UX y CoffeeUML.
 // Cada función genera el contenido del archivo nativo que abre la aplicación.
 
 const uid = (prefix: string) => `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -732,7 +732,7 @@ function uxDashboard(): string {
 }
 
 // ---------------------------------------------------------------------------
-// CoffeeDiagram: modelos (.cdg)
+// CoffeeUML: modelos (.cuml)
 // ---------------------------------------------------------------------------
 
 type DgNode = Record<string, unknown> & { id: string };
@@ -779,7 +779,7 @@ class DgBuilder {
   }
 }
 
-const cdg = (diagrams: Record<string, unknown>[]) => JSON.stringify({ format: "coffeediagram", version: 1, diagrams, current: diagrams[0].id });
+const cuml = (diagrams: Record<string, unknown>[]) => JSON.stringify({ format: "coffeeuml", version: 1, diagrams, current: diagrams[0].id });
 
 function dgProyectoUml(): string {
   const b = new DgBuilder();
@@ -852,7 +852,7 @@ function dgProyectoUml(): string {
   b.edge("flow", a4, a2);
   b.edge("flow", a3, fin);
   const actividad = b.diagram("Proceso de compra (actividad)", "activity");
-  return cdg([casos, clases, secuencia, actividad]);
+  return cuml([casos, clases, secuencia, actividad]);
 }
 
 function dgModeloEr(): string {
@@ -866,7 +866,7 @@ function dgModeloEr(): string {
   b.edge("erRelation", pedidos, detalle, { sourceCard: "1", targetCard: "1..*", label: "contiene" });
   b.edge("erRelation", productos, detalle, { sourceCard: "1", targetCard: "0..*" });
   b.edge("erRelation", categorias, productos, { sourceCard: "0..1", targetCard: "0..*", label: "agrupa" });
-  return cdg([b.diagram("Modelo de la tienda", "er")]);
+  return cuml([b.diagram("Modelo de la tienda", "er")]);
 }
 
 function dgFlujo(): string {
@@ -883,7 +883,7 @@ function dgFlujo(): string {
   b.edge("flow", dec, impar, { label: "No" });
   b.edge("flow", par, fin);
   b.edge("flow", impar, fin);
-  return cdg([b.diagram("Par o impar", "flowchart")]);
+  return cuml([b.diagram("Par o impar", "flowchart")]);
 }
 
 // ---------------------------------------------------------------------------
@@ -923,7 +923,7 @@ export function buildExtraTemplate(templateId: string, appId: string, title: str
   if (appId === "coffeeedit" && EDIT_PROJECTS[templateId]) return { extension: "ccm", prefix: "ccm", contents: EDIT_PROJECTS[templateId]() };
   if (appId === "coffeelive" && LIVE_COLLECTIONS[templateId]) return { extension: "clv", prefix: "clv", contents: LIVE_COLLECTIONS[templateId]() };
   if (appId === "coffeeuiux" && UX_TEMPLATES[templateId]) return { extension: "cux", prefix: "cux", contents: UX_TEMPLATES[templateId]() };
-  if (appId === "coffeediagram" && DG_TEMPLATES[templateId]) return { extension: "cdg", prefix: "cdg", contents: DG_TEMPLATES[templateId]() };
+  if (appId === "coffeeuml" && DG_TEMPLATES[templateId]) return { extension: "cuml", prefix: "cuml", contents: DG_TEMPLATES[templateId]() };
   return null;
 }
 
@@ -935,5 +935,5 @@ export const EXTRA_TEMPLATE_IDS = {
   coffeeedit: Object.keys(EDIT_PROJECTS),
   coffeelive: Object.keys(LIVE_COLLECTIONS),
   coffeeuiux: Object.keys(UX_TEMPLATES),
-  coffeediagram: Object.keys(DG_TEMPLATES),
+  coffeeuml: Object.keys(DG_TEMPLATES),
 };

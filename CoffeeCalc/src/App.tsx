@@ -31,6 +31,7 @@ import { GoogleSheetsToolbar, type BorderPreset } from "./components/GoogleSheet
 import { FormulaBar } from "./components/FormulaBar";
 import { SpreadsheetGrid, type CellPosition, type MoveDirection } from "./components/SpreadsheetGrid";
 import { SheetTabsBar } from "./components/SheetTabsBar";
+import { SpellIndicator, SpellStyles, useSpellCheck } from "./spell/useSpellCheck";
 import { ExportModal, type ExportOption } from "./components/ExportModal";
 import { StartScreen } from "./components/StartScreen";
 import { CommandSearch } from "./components/CommandSearch";
@@ -218,6 +219,37 @@ export const App: React.FC = () => {
   const title = workbook?.metadata.title ?? "";
   const readOnly = Boolean(sheet?.isProtected);
   const activeKey = cellKey(activeCell.col, activeCell.row);
+
+  // Corrector ortográfico: textos escritos en las celdas de todas las hojas
+  const spell = useSpellCheck({
+    mode: "model",
+    segments: sheets.flatMap((s) =>
+      Object.entries(s.data)
+        .filter(([, c]) => typeof c.raw === "string" && c.raw && !c.raw.startsWith("=") && typeof c.computed === "string")
+        .map(([key, c]) => ({ key: `${s.id}!${key}`, text: c.raw, label: `${s.name}!${key}` }))
+    ),
+    onReveal: (err) => {
+      const [sheetId, key] = err.key.split("!");
+      const pos = parseCellKey(key);
+      if (!pos) return;
+      if (editing) commitEdit("none");
+      setWorkbook((prev) => (prev ? { ...prev, activeSheetId: sheetId } : prev));
+      setActiveCell({ col: pos.col, row: pos.row });
+      setSelection({ r1: pos.row, c1: pos.col, r2: pos.row, c2: pos.col });
+    },
+    onReplace: (err, replacement) => {
+      const current = workbookRef.current;
+      if (!current) return;
+      const [sheetId, key] = err.key.split("!");
+      applySheets(
+        current.sheets.map((s) => {
+          if (s.id !== sheetId || !s.data[key]) return s;
+          const raw = s.data[key].raw;
+          return { ...s, data: { ...s.data, [key]: writeCell(s.data[key], raw.slice(0, err.start) + replacement + raw.slice(err.end)) } };
+        })
+      );
+    },
+  });
   const activeData = sheet?.data[activeKey];
 
   const refreshRecents = useCallback(async () => {
@@ -1799,7 +1831,10 @@ export const App: React.FC = () => {
             onResizeColumn={handleResizeColumn}
             onAutoFitColumn={handleAutoFitColumn}
             onResizeRow={handleResizeRow}
-            onContextMenu={(x, y) => setContextMenu({ x, y })}
+            onContextMenu={(x, y) => {
+              // Si la celda tiene una falta, primero las sugerencias (como en Word)
+              if (!spell.openMenu(`${sheet.id}!${activeKey}`, x, y)) setContextMenu({ x, y });
+            }}
             onOpenFilter={(col, anchor) => setFilterMenu({ col, x: anchor.left, y: anchor.bottom + 4 })}
             onOpenLink={(url) => void openExternal(url)}
             onUpdateChart={(id, changes) =>
@@ -1844,6 +1879,7 @@ export const App: React.FC = () => {
             stats={stats}
             zoom={zoom}
             onZoomChange={setZoom}
+            spellSlot={<SpellIndicator spell={spell} />}
           />
 
           <PrintSheet sheet={sheet} title={title || DEFAULT_TITLE} showGridlines={showGridlines} />
@@ -1911,6 +1947,8 @@ export const App: React.FC = () => {
         />
       )}
 
+      {spell.menu}
+      <SpellStyles />
       <DialogHost />
     </div>
   );

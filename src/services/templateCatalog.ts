@@ -14,7 +14,7 @@ export const APP_STYLE: Record<string, { name: string; color: string; bg: string
   coffeeedit: { name: "CoffeeEdit", color: "#26a680", bg: "#e3f6ef" },
   coffeelive: { name: "CoffeeLive", color: "#ef6c00", bg: "#fff1e5" },
   coffeeuiux: { name: "CoffeeUI/UX", color: "#b38600", bg: "#fff6d6" },
-  coffeediagram: { name: "CoffeeDiagram", color: "#1e3a5f", bg: "#e7eef7" },
+  coffeeuml: { name: "CoffeeUML", color: "#2e6b58", bg: "#e3f1ec" },
 };
 
 const item = (appId: TemplateItem["appId"], data: Omit<TemplateItem, "appId" | "appName" | "port" | "badgeBg" | "badgeText" | "accentBorder">): TemplateItem => ({
@@ -334,22 +334,22 @@ ${table(["Concepto", "Valor"], [["Personal", ""], ["Equipos y licencias", ""], [
     features: ["Ventana de 1280×800", "Indicadores con colores", "Tabla con filas alternas"],
   }),
 
-  // --- CoffeeDiagram ---
-  item("coffeediagram", {
+  // --- CoffeeUML ---
+  item("coffeeuml", {
     id: "dg-proyecto-uml",
     title: "Proyecto de Software (UML completo)",
     category: "Ingeniería de software",
     description: "Modelo de una tienda en línea con cuatro diagramas: casos de uso, clases (herencia, composición, interfaz y enumeración), secuencia de compra y actividad.",
     features: ["4 diagramas UML enlazados en un modelo", "Genera Java, C#, TypeScript o Python", "Exportable a PDF"],
   }),
-  item("coffeediagram", {
+  item("coffeeuml", {
     id: "dg-modelo-er",
     title: "Modelo Entidad-Relación de una Tienda",
     category: "Bases de datos",
     description: "Cinco tablas con claves principales y foráneas y cardinalidades en notación pata de gallo. Genera el SQL para crearlas en CoffeeDataBase.",
     features: ["PK, FK, NOT NULL y UNIQUE", "Cardinalidades 1, 0..1, 1..* y 0..*", "Genera SQL CREATE TABLE"],
   }),
-  item("coffeediagram", {
+  item("coffeeuml", {
     id: "dg-diagrama-flujo",
     title: "Diagrama de Flujo de un Algoritmo",
     category: "Programación",

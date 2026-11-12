@@ -79,6 +79,7 @@ jobs:
           Assert ($code -eq 0) "el instalador termina sin errores"
           Assert (Test-Path "$dir\CoffeeWorks.exe") "el Launcher queda instalado"
           Assert (Test-Path "$dir\packages\CoffeeDoc.exe") "los paquetes de las apps quedan disponibles"
+          Assert (Test-Path "$dir\packages\dictionaries\es.dic") "se instalan los diccionarios ortográficos"
 
           $apps = "$env:LOCALAPPDATA\CoffeeWorks\Apps"
           $menu = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\CoffeeWorks"
@@ -99,7 +100,7 @@ jobs:
           Assert (Test-Path "$apps\CoffeeEdit\CoffeeEdit.exe") "CoffeeEdit queda instalado"
           Assert (Test-Path "$apps\CoffeeLive\CoffeeLive.exe") "CoffeeLive queda instalado"
           Assert (Test-Path "$apps\CoffeeUIUX\CoffeeUIUX.exe") "CoffeeUI/UX queda instalado"
-          Assert (Test-Path "$apps\CoffeeDiagram\CoffeeDiagram.exe") "CoffeeDiagram queda instalado"
+          Assert (Test-Path "$apps\CoffeeUML\CoffeeUML.exe") "CoffeeUML queda instalado"
           Assert (Test-Path "$menu\CoffeeUIUX.lnk") "se crea el acceso directo de CoffeeUI/UX"
           $cpg = (Get-ItemProperty "HKCU:\Software\Classes\.cpg" -ErrorAction SilentlyContinue).'(default)'
           Assert ($cpg -eq "CoffeeWorks.CoffeePage.cpg") "se asocia el tipo de archivo .cpg"
@@ -111,8 +112,8 @@ jobs:
           Assert ($cdb -eq "CoffeeWorks.CoffeeDataBase.cdb") "se asocia el tipo de archivo .cdb"
           $cux = (Get-ItemProperty "HKCU:\Software\Classes\.cux" -ErrorAction SilentlyContinue).'(default)'
           Assert ($cux -eq "CoffeeWorks.CoffeeUIUX.cux") "se asocia el tipo de archivo .cux"
-          $cdg = (Get-ItemProperty "HKCU:\Software\Classes\.cdg" -ErrorAction SilentlyContinue).'(default)'
-          Assert ($cdg -eq "CoffeeWorks.CoffeeDiagram.cdg") "se asocia el tipo de archivo .cdg"
+          $cuml = (Get-ItemProperty "HKCU:\Software\Classes\.cuml" -ErrorAction SilentlyContinue).'(default)'
+          Assert ($cuml -eq "CoffeeWorks.CoffeeUML.cuml") "se asocia el tipo de archivo .cuml"
           $pdfDefault = (Get-ItemProperty "HKCU:\Software\Classes\.pdf" -ErrorAction SilentlyContinue).'(default)'
           Assert ($pdfDefault -ne "CoffeeWorks.CoffeePDF.pdf") "CoffeePDF no reemplaza el lector de PDF predeterminado"
           Assert ((Get-ItemProperty "HKCU:\Software\Classes\.pdf\OpenWithProgids" -ErrorAction SilentlyContinue).'CoffeeWorks.CoffeePDF.pdf' -ne $null) "CoffeePDF aparece en Abrir con"
@@ -120,7 +121,7 @@ jobs:
           # Las ventanas deben arrancar y seguir abiertas
           New-Item -ItemType Directory -Force screenshots | Out-Null
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-          foreach ($exe in @("$dir\CoffeeWorks.exe", "$apps\CoffeeDoc\CoffeeDoc.exe", "$apps\CoffeeCalc\CoffeeCalc.exe", "$apps\CoffeeView\CoffeeView.exe", "$apps\CoffeePDF\CoffeePDF.exe", "$apps\CoffeePage\CoffeePage.exe", "$apps\CoffeeDataBase\CoffeeDataBase.exe", "$apps\CoffeeEdit\CoffeeEdit.exe", "$apps\CoffeeLive\CoffeeLive.exe", "$apps\CoffeeUIUX\CoffeeUIUX.exe", "$apps\CoffeeDiagram\CoffeeDiagram.exe")) {
+          foreach ($exe in @("$dir\CoffeeWorks.exe", "$apps\CoffeeDoc\CoffeeDoc.exe", "$apps\CoffeeCalc\CoffeeCalc.exe", "$apps\CoffeeView\CoffeeView.exe", "$apps\CoffeePDF\CoffeePDF.exe", "$apps\CoffeePage\CoffeePage.exe", "$apps\CoffeeDataBase\CoffeeDataBase.exe", "$apps\CoffeeEdit\CoffeeEdit.exe", "$apps\CoffeeLive\CoffeeLive.exe", "$apps\CoffeeUIUX\CoffeeUIUX.exe", "$apps\CoffeeUML\CoffeeUML.exe")) {
             $name = [IO.Path]::GetFileNameWithoutExtension($exe)
             $process = Start-Process $exe -PassThru
             Start-Sleep -Seconds 12
@@ -180,6 +181,7 @@ jobs:
           # Un paquete nuevo se copia sobre la app instalada
           Add-Content -Path "$dir\packages\CoffeeDoc.exe" -Value "actualizado" -Encoding ascii
           Assert ((Run "$dir\CoffeeWorks.exe" @("--refresh-apps")) -eq 0) "poner al día las apps instaladas"
+          Assert (Test-Path "$env:LOCALAPPDATA\CoffeeWorks\Dictionaries\en.aff") "los diccionarios quedan en la carpeta común"
           Assert ((Get-Item "$apps\CoffeeDoc\CoffeeDoc.exe").Length -eq (Get-Item "$dir\packages\CoffeeDoc.exe").Length) "CoffeeDoc recibe el paquete nuevo"
 
           $uninstaller = (Get-ChildItem "$dir\unins*.exe" | Select-Object -First 1).FullName

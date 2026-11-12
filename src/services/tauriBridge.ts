@@ -12,7 +12,7 @@ const INSTALLED_KEY = "coffeeworks_installed_apps";
 const FOCUS_KEY = "coffeeworks_focus_mode";
 
 /** Puertos de los servidores de desarrollo de cada aplicación. */
-const DEV_PORTS: Record<string, number> = { coffeedoc: 1421, coffeecalc: 1422, coffeeview: 1423, coffeepdf: 1424, coffeepage: 1425, coffeeedit: 1426, coffeelive: 1427, coffeedatabase: 1428, coffeeuiux: 1429, coffeediagram: 1430 };
+const DEV_PORTS: Record<string, number> = { coffeedoc: 1421, coffeecalc: 1422, coffeeview: 1423, coffeepdf: 1424, coffeepage: 1425, coffeeedit: 1426, coffeelive: 1427, coffeedatabase: 1428, coffeeuiux: 1429, coffeeuml: 1430 };
 
 const ALIASES: Record<string, string> = { coffeesheet: "coffeecalc", coffeeslides: "coffeeview", coffeecams: "coffeeedit" };
 
@@ -35,7 +35,7 @@ export function appForDocument(doc: Pick<RecentDocument, "app_id" | "name">): st
   if (extension === "clv") return "coffeelive";
   if (["cdb", "db", "sqlite", "sqlite3"].includes(extension)) return "coffeedatabase";
   if (extension === "cux") return "coffeeuiux";
-  if (extension === "cdg") return "coffeediagram";
+  if (extension === "cuml") return "coffeeuml";
   return "coffeedoc";
 }
 
@@ -221,8 +221,8 @@ const WEB_CATALOG: SuiteApp[] = [
     category: "Desarrollador",
   },
   {
-    id: "coffeediagram",
-    name: "CoffeeDiagram",
+    id: "coffeeuml",
+    name: "CoffeeUML",
     subtitle: "Modelado UML y diagramas",
     description:
       "Diagramas UML de clases, casos de uso, secuencia, actividad, estados, componentes y despliegue; modelos entidad-relación y diagramas de flujo. Genera código y SQL y exporta a PNG, SVG y PDF.",
@@ -233,7 +233,7 @@ const WEB_CATALOG: SuiteApp[] = [
     status: "",
     color_badge: "diagram",
     icon_name: "workflow",
-    icon_url: "/icons/CoffeeDiagram.ico",
+    icon_url: "/icons/CoffeeUML.ico",
     category: "Desarrollador",
   },
 

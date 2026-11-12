@@ -552,6 +552,7 @@ export const PageView: React.FC<PageViewProps> = ({
                   cursor: interactive ? "move" : tool === "text" ? "text" : undefined,
                   pointerEvents: interactive || tool === "text" ? "auto" : "none",
                 }}
+                data-spell-key={annotation.id}
               >
                 {annotation.text}
               </div>
@@ -648,7 +649,8 @@ const TextEditor: React.FC<{
     <textarea
       ref={ref}
       value={annotation.text}
-      spellCheck
+      spellCheck={false}
+      data-spell-key={annotation.id}
       placeholder="Escribe aquí"
       onChange={(e) => onChange({ ...annotation, text: e.target.value })}
       onBlur={onFinish}

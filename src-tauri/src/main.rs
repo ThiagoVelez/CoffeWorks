@@ -337,6 +337,7 @@ fn run_cli(args: &[String]) -> Option<i32> {
             }
             "--refresh-apps" => {
                 handled = true;
+                coffee_core::spell::sync_dictionaries(&apps::packages_dir().join("dictionaries"));
                 for name in apps::refresh_installed() {
                     println!("Actualizada {name}");
                 }
@@ -375,6 +376,8 @@ fn main() {
     updater::cleanup_after_update();
     std::thread::spawn(|| {
         apps::refresh_installed();
+        // Diccionarios del corrector ortográfico para todas las apps
+        coffee_core::spell::sync_dictionaries(&apps::packages_dir().join("dictionaries"));
     });
 
     tauri::Builder::default()

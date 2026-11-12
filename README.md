@@ -13,7 +13,7 @@ Suite ofimática de escritorio para Windows, de código abierto y sin conexión.
 | **CoffeeEdit** *(Multimedia)* | Editor de video | `.ccm` | Video (MP4, WebM, MOV, MKV), audio e imágenes | Video MP4/WebM |
 | **CoffeeLive** *(Multimedia)* | Grabación y transmisión en directo | `.clv` | Pantalla, cámara, imágenes y videos como fuentes | Grabaciones MP4/WebM, transmisión RTMP/SRT |
 | **CoffeeUI/UX** *(Desarrollador)* | Diseño de interfaces y prototipos | `.cux` | Diseños; imágenes para insertar | PNG, JPG, SVG, PDF, HTML/CSS |
-| **CoffeeDiagram** *(Desarrollador)* | Modelado UML y diagramas | `.cdg` | Modelos; scripts SQL (`CREATE TABLE`) | PNG, SVG, PDF, Java, C#, TypeScript, Python, SQL, Mermaid, PlantUML |
+| **CoffeeUML** *(Desarrollador)* | Modelado UML y diagramas | `.cuml` | Modelos; scripts SQL (`CREATE TABLE`) | PNG, SVG, PDF, Java, C#, TypeScript, Python, SQL, Mermaid, PlantUML |
 
 Cada aplicación es un ejecutable independiente construido con **Tauri 2** (Rust + WebView2) y **React + TypeScript**.
 
@@ -145,11 +145,13 @@ CoffeeWorks/
 ├── CoffeeEdit/              Editor de video (src/ + src-tauri/)
 ├── CoffeeLive/              Grabación y transmisión en directo (src/ + src-tauri/)
 ├── CoffeeUIUX/              Diseño de interfaces y prototipos (src/ + src-tauri/)
-├── CoffeeDiagram/           Modelado UML y diagramas (src/ + src-tauri/)
-├── crates/coffee-core/      Código Rust compartido: bóveda, recientes, archivos, diálogos y complementos
+├── CoffeeUML/               Modelado UML y diagramas (src/ + src-tauri/)
+├── crates/coffee-core/      Código Rust compartido: bóveda, recientes, archivos, diálogos, complementos y diccionarios
+├── shared/spell/            Corrector ortográfico compartido (se copia a cada app con scripts/sync-shared.mjs)
+├── dictionaries/            Diccionarios Hunspell de español e inglés
 ├── addons/coffee-accdb/     Complemento de compatibilidad con Access (Java + GraalVM)
 ├── installer/CoffeeWorks.iss  Script de Inno Setup
-├── scripts/                build.mjs, build-windows.ps1, dev.mjs y version.mjs
+├── scripts/                build.mjs, build-windows.ps1, dev.mjs, version.mjs y sync-shared.mjs
 └── .github/workflows/      Compilación y prueba del instalador y de los complementos
 ```
 
@@ -171,7 +173,10 @@ También existen `--install-all` y `--uninstall-all`.
 
 ## Qué incluye cada aplicación
 
-**CoffeeDoc** — estilos de párrafo, fuentes y tamaños en puntos, colores y resaltado, listas, tablas editables, imágenes, enlaces, comentarios, pestañas de documento, esquema automático, buscar y reemplazar, copiar formato, corrector ortográfico del sistema, configuración de página (tamaño, orientación, márgenes, columnas, color y marca de agua) y modo de solo lectura.
+**Corrector ortográfico** (CoffeeDoc, CoffeeView, CoffeePDF, CoffeeCalc, CoffeePage y CoffeeDataBase) — en la barra inferior de cada app hay un indicador con el número de faltas; al hacer clic salta a la siguiente falta y la resalta. Las palabras mal escritas se subrayan en rojo y el clic derecho sobre ellas muestra las sugerencias, *Omitir todo*, *Agregar al diccionario* y *Siguiente falta*, como en Word. El menú del indicador permite elegir español, inglés o ambos, desactivar la revisión y editar el diccionario personal. Los diccionarios Hunspell (español con licencia MPL 1.1, inglés con licencia MIT/BSD; ver `dictionaries/`) los instala el instalador una vez en `%LOCALAPPDATA%\CoffeeWorks\Dictionaries` y los comparten todas las apps, igual que el diccionario personal (`%APPDATA%\CoffeeWorks\diccionario-usuario.txt`). La revisión corre en segundo plano (Web Worker), así que no frena la escritura. En CoffeeView revisa las diapositivas y las notas; en CoffeeCalc, las celdas de texto de todas las hojas; en CoffeePDF, los textos que agregas; en CoffeePage, la página abierta; y en CoffeeDataBase, los campos de texto de la hoja de datos visible.
+
+
+**CoffeeDoc** — estilos de párrafo, fuentes y tamaños en puntos, colores y resaltado, listas, tablas editables, imágenes, enlaces, comentarios, pestañas de documento, esquema automático, buscar y reemplazar, copiar formato, corrector ortográfico, configuración de página (tamaño, orientación, márgenes, columnas, color y marca de agua) y modo de solo lectura.
 
 **CoffeeCalc** — más de 90 funciones en español e inglés (`SUMA`, `SI`, `BUSCARV`, `CONTAR.SI`, `PAGO`…), referencias absolutas y entre hojas, formatos numéricos, moneda y fecha, bordes, celdas combinadas, formato condicional, filtros por columna, ordenar, quitar duplicados, texto en columnas, paneles inmovilizados, tirador de relleno, gráficos de columnas, líneas, áreas y circulares, comentarios y enlaces.
 
@@ -208,7 +213,7 @@ También existen `--install-all` y `--uninstall-all`.
 - *Prototipo*: enlaces entre pantallas con transiciones (disolver, deslizar, empujar) y modo presentación navegable.
 - *Exportación* a PNG, JPG (con escala), SVG, PDF y código HTML/CSS (el diseño automático se convierte en Flexbox); panel *Código* con el CSS de cada capa.
 
-**CoffeeDiagram** — modelado UML y diagramas:
+**CoffeeUML** (icono verde viridian) — modelado UML y diagramas:
 
 - *Doce tipos de diagrama* en un mismo modelo: clases, objetos, paquetes, componentes, despliegue, casos de uso, secuencia, actividad (con carriles), estados, entidad-relación (pata de gallo y Chen), diagramas de flujo y mapas mentales.
 - *Clases completas*: atributos y operaciones con visibilidad, tipos, parámetros, estáticos y abstractos; interfaces y enumeraciones; edición directa en el diagrama («- precio: double»).

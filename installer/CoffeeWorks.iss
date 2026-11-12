@@ -2,7 +2,7 @@
 ;
 ; Instala el Launcher (CoffeeWorks.exe) y deja los paquetes de CoffeeDoc,
 ; CoffeeCalc, CoffeeView, CoffeePDF, CoffeePage, CoffeeDataBase, CoffeeEdit,
-; CoffeeLive, CoffeeUI/UX y CoffeeDiagram en la carpeta "packages". Las aplicaciones se instalan
+; CoffeeLive, CoffeeUI/UX y CoffeeUML en la carpeta "packages". Las aplicaciones se instalan
 ; y desinstalan después desde la Tienda de Apps del propio Launcher.
 ;
 ; Antes de compilar este script hay que generar los ejecutables con

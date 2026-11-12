@@ -1,13 +1,14 @@
 import React from "react";
 import { ZoomIn, ZoomOut } from "lucide-react";
 import type { DocumentStats } from "../types";
+import { SpellIndicator, type SpellState } from "../spell/useSpellCheck";
 
 interface StatusBarProps {
   stats: DocumentStats;
   zoom: number;
   onZoomChange: (newZoom: number) => void;
   onOpenWordCount: () => void;
-  spellcheck: boolean;
+  spell: SpellState;
   readOnly: boolean;
 }
 
@@ -16,7 +17,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   zoom,
   onZoomChange,
   onOpenWordCount,
-  spellcheck,
+  spell,
   readOnly,
 }) => {
   const clampZoom = (value: number) => Math.max(50, Math.min(200, value));
@@ -41,9 +42,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
 
       <div className="flex items-center gap-3">
         {readOnly && <span className="font-sans font-semibold">Solo lectura</span>}
-        <span className="font-sans font-semibold">
-          Español{spellcheck ? " · corrector activo" : ""}
-        </span>
+        <SpellIndicator spell={spell} tone="dark" className="font-sans" />
         <div className="flex items-center gap-1">
           <button
             type="button"

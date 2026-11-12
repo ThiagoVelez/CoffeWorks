@@ -16,7 +16,7 @@
 //      installer/build/packages/CoffeeEdit(.exe)
 //      installer/build/packages/CoffeeLive(.exe)
 //      installer/build/packages/CoffeeUIUX(.exe)
-//      installer/build/packages/CoffeeDiagram(.exe)
+//      installer/build/packages/CoffeeUML(.exe)
 
 import { execSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, rmSync, statSync } from "node:fs";
@@ -34,7 +34,7 @@ const run = (command, cwd = root) => {
   execSync(command, { cwd, stdio: "inherit" });
 };
 
-const frontends = [".", "CoffeeDoc", "CoffeeCalc", "CoffeeView", "CoffeePDF", "CoffeePage", "CoffeeDataBase", "CoffeeEdit", "CoffeeLive", "CoffeeUIUX", "CoffeeDiagram"];
+const frontends = [".", "CoffeeDoc", "CoffeeCalc", "CoffeeView", "CoffeePDF", "CoffeePage", "CoffeeDataBase", "CoffeeEdit", "CoffeeLive", "CoffeeUIUX", "CoffeeUML"];
 
 if (!skipFrontend) {
   for (const dir of frontends) {
@@ -63,7 +63,12 @@ const stage = (name, destination) => {
 
 console.log(`\nEjecutables en ${path.relative(root, outDir)}:`);
 stage("CoffeeWorks", "");
-for (const app of ["CoffeeDoc", "CoffeeCalc", "CoffeeView", "CoffeePDF", "CoffeePage", "CoffeeDataBase", "CoffeeEdit", "CoffeeLive", "CoffeeUIUX", "CoffeeDiagram"]) stage(app, "packages");
+for (const app of ["CoffeeDoc", "CoffeeCalc", "CoffeeView", "CoffeePDF", "CoffeePage", "CoffeeDataBase", "CoffeeEdit", "CoffeeLive", "CoffeeUIUX", "CoffeeUML"]) stage(app, "packages");
+
+// Diccionarios del corrector ortográfico (los copia el Launcher a la carpeta común)
+mkdirSync(path.join(outDir, "packages", "dictionaries"), { recursive: true });
+for (const file of ["es.aff", "es.dic", "en.aff", "en.dic", "LICENSE-es.txt", "LICENSE-en.txt"]) copyFileSync(path.join(root, "dictionaries", file), path.join(outDir, "packages", "dictionaries", file));
+console.log("  packages/dictionaries        es, en");
 
 // Las compilaciones con MinGW necesitan el cargador de WebView2 junto a cada ejecutable
 const loader = path.join(releaseDir, "WebView2Loader.dll");

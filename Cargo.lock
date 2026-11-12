@@ -377,16 +377,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "coffeediagram"
-version = "2.7.0"
-dependencies = [
- "coffee-core",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
-]
-
-[[package]]
 name = "coffeedoc"
 version = "2.7.0"
 dependencies = [
@@ -443,6 +433,16 @@ dependencies = [
 
 [[package]]
 name = "coffeeuiux"
+version = "2.7.0"
+dependencies = [
+ "coffee-core",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+]
+
+[[package]]
+name = "coffeeuml"
 version = "2.7.0"
 dependencies = [
  "coffee-core",

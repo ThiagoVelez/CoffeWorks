@@ -58,11 +58,11 @@ const FORMAT_SUPPORT = [
     exports: "PNG, JPG, SVG, PDF y código HTML/CSS",
   },
   {
-    app: "CoffeeDiagram",
+    app: "CoffeeUML",
     icon: Workflow,
-    color: "text-[#1e3a5f]",
-    native: ".cdg",
-    opens: "Modelos de CoffeeDiagram; importa scripts SQL (CREATE TABLE)",
+    color: "text-[#2e6b58]",
+    native: ".cuml",
+    opens: "Modelos de CoffeeUML; importa scripts SQL (CREATE TABLE)",
     exports: "PNG, SVG, PDF; código Java, C#, TypeScript, Python, SQL, Mermaid y PlantUML",
   },
 ];

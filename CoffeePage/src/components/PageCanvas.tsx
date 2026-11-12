@@ -142,7 +142,7 @@ const TextView: React.FC<TextViewProps> = ({
         data-editor={block.id}
         contentEditable={interactive}
         suppressContentEditableWarning
-        spellCheck
+        spellCheck={false}
         className={`cp-editor min-h-[24px] px-2 py-1 outline-none text-[15px] leading-[1.45] text-[#1f1f1f] select-text rounded-b ${
           active ? "ring-1" : "group-hover:ring-1 ring-[#e1d5ea]"
         }`}
