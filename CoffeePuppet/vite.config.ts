@@ -25,7 +25,12 @@ function mediapipeWasm(): Plugin {
       });
     },
     generateBundle() {
-      for (const name of readdirSync(WASM_DIR)) this.emitFile({ type: "asset", fileName: `mediapipe/${name}`, source: readFileSync(resolve(WASM_DIR, name)) });
+      // La versión sin SIMD (procesadores muy antiguos) no se incluye: es el
+      // complemento «Compatibilidad para equipos antiguos».
+      for (const name of readdirSync(WASM_DIR)) {
+        if (name.includes("nosimd")) continue;
+        this.emitFile({ type: "asset", fileName: `mediapipe/${name}`, source: readFileSync(resolve(WASM_DIR, name)) });
+      }
     },
   };
 }

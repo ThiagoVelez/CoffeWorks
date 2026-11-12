@@ -7,6 +7,7 @@ name: Complementos
 #   con los idiomas español e inglés, en una sola carpeta.
 # - coffee-raw: revelado RAW (LibRaw dcraw_emu) para CoffeeLens y CoffeePhoto.
 # - coffee-potrace: calco vectorial (Potrace) para CoffeeVector y CoffeePaint.
+# - coffee-puppetcompat: motor de seguimiento facial sin SIMD para CoffeePuppet.
 # En las pull requests solo se compila y se prueba. En main (o a mano) se
 # publica en la versión «addons», de donde lo descarga el Launcher.
 
@@ -285,3 +286,49 @@ jobs:
           prerelease: false
           make_latest: false
           files: coffee-potrace-win64.zip
+
+  puppetcompat:
+    name: Compatibilidad de CoffeePuppet (MediaPipe sin SIMD)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Empaquetar el motor sin SIMD
+        run: |
+          # Misma versión que usa CoffeePuppet
+          VERSION=$(node -p "require('./CoffeePuppet/package.json').dependencies['@mediapipe/tasks-vision'].replace(/^[^0-9]*/, '')")
+          echo "Versión: $VERSION"
+          npm pack "@mediapipe/tasks-vision@$VERSION" --silent
+          mkdir -p pkg dist
+          tar -xzf mediapipe-tasks-vision-*.tgz -C pkg
+          cp pkg/package/wasm/vision_wasm_nosimd_internal.js pkg/package/wasm/vision_wasm_nosimd_internal.wasm dist/
+          cp addons/coffee-puppetcompat/README.md dist/LEEME.md
+          (cd dist && zip -q -9 ../coffee-puppetcompat.zip *)
+          ls -la coffee-puppetcompat.zip
+
+      - name: Probar el paquete
+        run: |
+          unzip -l coffee-puppetcompat.zip
+          unzip -l coffee-puppetcompat.zip | grep -q vision_wasm_nosimd_internal.wasm
+          unzip -l coffee-puppetcompat.zip | grep -q vision_wasm_nosimd_internal.js
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coffee-puppetcompat
+          path: coffee-puppetcompat.zip
+
+      - name: Publicar en la versión «addons»
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: addons
+          name: Complementos de CoffeeWorks
+          body: Complementos opcionales que el Launcher descarga desde «Complementos». No hace falta descargarlos a mano.
+          prerelease: false
+          make_latest: false
+          files: coffee-puppetcompat.zip

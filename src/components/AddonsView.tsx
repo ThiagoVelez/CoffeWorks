@@ -28,6 +28,7 @@ import {
   Image as ImageIcon,
   PenLine,
   Brush,
+  Smile,
 } from "lucide-react";
 import { isTauri, tauriBridge } from "../services/tauriBridge";
 import type { AddonInfo, SuiteApp } from "../types";
@@ -86,6 +87,7 @@ const ADDON_LOOK: Record<string, { bg: string; fg: string; icon: React.FC<{ size
   aigen: { bg: "#fde4dc", fg: "#e8452c", icon: Sparkles },
   raw: { bg: "#ffead5", fg: "#d9480f", icon: Aperture },
   potrace: { bg: "#fff0db", fg: "#e8590c", icon: Spline },
+  puppetcompat: { bg: "#ffe0ec", fg: "#d6336c", icon: Smile },
 };
 
 const formatBytes = (bytes: number) =>

@@ -195,3 +195,9 @@ pub async fn core_remove_temp(path: String) -> bool {
     let ours = p.file_name().is_some_and(|n| n.to_string_lossy().starts_with("coffeeworks-"));
     in_temp && ours && std::fs::remove_file(p).is_ok()
 }
+
+/// Carpeta de un complemento instalado (para leer sus archivos de datos).
+#[tauri::command]
+pub async fn core_addon_dir(id: String) -> Option<String> {
+    crate::addons::addon_executable(&id).and_then(|p| p.parent().map(crate::display_path))
+}

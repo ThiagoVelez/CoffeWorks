@@ -146,6 +146,22 @@ const WEB_ADDONS: AddonInfo[] = [
     can_install: false,
     manual_hint: "Los complementos se instalan en la aplicación de escritorio de CoffeeWorks.",
   },
+  {
+    id: "puppetcompat",
+    name: "Compatibilidad para equipos antiguos",
+    summary: "Seguimiento facial de CoffeePuppet en procesadores sin instrucciones SIMD",
+    description:
+      "CoffeePuppet sigue tu cara con un motor optimizado para los procesadores actuales. Este complemento añade la versión compatible con equipos muy antiguos, cuyo procesador no tiene instrucciones SIMD. Solo hace falta si CoffeePuppet te lo pide.",
+    apps: ["coffeepuppet"],
+    version: "0.10.21",
+    download_size: "4 MB",
+    publisher: "Google (MediaPipe)",
+    license: "Apache 2.0",
+    installed: false,
+    installed_bytes: 0,
+    can_install: false,
+    manual_hint: "Los complementos se instalan en la aplicación de escritorio de CoffeeWorks.",
+  },
 ];
 
 // Catálogo usado en el navegador; en escritorio lo proporciona el backend

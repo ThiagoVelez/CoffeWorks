@@ -124,6 +124,21 @@ pub const ADDONS: &[CatalogAddon] = &[
         downloads: &["https://github.com/ThiagoVelez/CoffeWorks/releases/download/addons/coffee-potrace-win64.zip"],
         manual_hint: "Instala Potrace con el gestor de paquetes del sistema (por ejemplo: sudo apt install potrace).",
     },
+    CatalogAddon {
+        id: "puppetcompat",
+        name: "Compatibilidad para equipos antiguos",
+        summary: "Seguimiento facial de CoffeePuppet en procesadores sin instrucciones SIMD",
+        description: "CoffeePuppet sigue tu cara con un motor optimizado para los procesadores actuales. Este complemento añade la versión compatible con equipos muy antiguos, cuyo procesador no tiene instrucciones SIMD. Solo hace falta si CoffeePuppet te lo pide.",
+        apps: &["coffeepuppet"],
+        version: "0.10.21",
+        download_size: "4 MB",
+        publisher: "Google (MediaPipe)",
+        license: "Apache 2.0",
+        // Complemento de datos: el «ejecutable» es el archivo que se comprueba
+        executable: "vision_wasm_nosimd_internal.wasm",
+        downloads: &["https://github.com/ThiagoVelez/CoffeWorks/releases/download/addons/coffee-puppetcompat.zip"],
+        manual_hint: "Este complemento se instala desde el Launcher de CoffeeWorks.",
+    },
 ];
 
 /// Archivo que marca como activado un complemento de servicio.
@@ -138,8 +153,15 @@ pub fn find_addon(id: &str) -> Option<&'static CatalogAddon> {
     ADDONS.iter().find(|a| a.id == id)
 }
 
+/// Los complementos de datos indican un archivo con extensión, que se usa tal cual.
+fn is_data_file(base: &str) -> bool {
+    base.contains('.')
+}
+
 fn exe_name(base: &str) -> String {
-    if cfg!(windows) {
+    if is_data_file(base) {
+        base.to_string()
+    } else if cfg!(windows) {
         format!("{base}.exe")
     } else {
         base.to_string()
@@ -158,7 +180,7 @@ pub fn addon_executable(id: &str) -> Option<PathBuf> {
         return Some(path);
     }
     // Fuera de Windows se usa el programa instalado con el gestor de paquetes.
-    if cfg!(windows) {
+    if cfg!(windows) || is_data_file(addon.executable) {
         return None;
     }
     std::env::var_os("PATH").and_then(|paths| {
