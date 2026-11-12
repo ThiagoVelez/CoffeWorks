@@ -294,6 +294,7 @@ async fn close_window(window: WebviewWindow) {
 /// * `--uninstall <id>`        desinstala una aplicación
 /// * `--install-all`           instala todas las aplicaciones disponibles
 /// * `--uninstall-all`         desinstala todas las aplicaciones
+/// * `--install-addon <id>`    instala un complemento (descarga incluida)
 /// * `--refresh-apps`          copia los paquetes nuevos sobre las apps instaladas
 fn run_cli(args: &[String]) -> Option<i32> {
     let mut handled = false;
@@ -333,6 +334,18 @@ fn run_cli(args: &[String]) -> Option<i32> {
                 handled = true;
                 for app in CATALOG {
                     report("Instalación de", apps::install(app.id));
+                }
+            }
+            "--install-addon" => {
+                handled = true;
+                index += 1;
+                let id = args.get(index).cloned().unwrap_or_default();
+                match coffee_core::addons::install_addon(&id) {
+                    Ok(info) => println!("Complemento {}: {}", info.name, if info.installed { "instalado" } else { "no instalado" }),
+                    Err(error) => {
+                        eprintln!("Complemento {id}: {error}");
+                        failed = true;
+                    }
                 }
             }
             "--refresh-apps" => {

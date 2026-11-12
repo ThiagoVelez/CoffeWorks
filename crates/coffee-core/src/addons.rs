@@ -399,7 +399,7 @@ pub fn install_addon(id: &str) -> Result<AddonInfo, String> {
              if (Test-Path {unpack}) {{ Remove-Item {unpack} -Recurse -Force }}; \
              Expand-Archive -Path {zip} -DestinationPath {unpack} -Force; \
              $exe = Get-ChildItem {unpack} -Recurse -Filter {exe} | Select-Object -First 1; \
-             if (-not $exe) {{ throw 'El paquete no contiene {exe}' }}; \
+             if (-not $exe) {{ throw ('El paquete no contiene ' + {exe}) }}; \
              Get-ChildItem $exe.DirectoryName -File | Copy-Item -Destination {target} -Force",
             url = ps_quote(url),
             zip = ps_quote(&zip.to_string_lossy()),
