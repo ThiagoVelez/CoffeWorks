@@ -8,6 +8,7 @@ import { CommandPalette } from "./components/CommandPalette";
 import { CreateDocModal } from "./components/CreateDocModal";
 import { TemplatesView } from "./components/TemplatesView";
 import { AddonsView } from "./components/AddonsView";
+import { GamesView } from "./components/GamesView";
 import { UpdateBanner, UpdateSettings, useUpdates } from "./components/Updates";
 import { APP_STAGE, APP_VERSION } from "./version";
 import { isTauri, tauriBridge } from "./services/tauriBridge";
@@ -259,6 +260,8 @@ export const App: React.FC = () => {
               />
             </>
           )}
+
+          {currentTab === "games" && <GamesView />}
 
           {currentTab === "templates" && <TemplatesView onNotify={showNotification} />}
 

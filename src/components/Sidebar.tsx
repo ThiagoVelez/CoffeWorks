@@ -12,9 +12,10 @@ import {
   Clapperboard,
   Code2,
   Palette,
+  Gamepad2,
 } from "lucide-react";
 
-export type NavTab = "launcher" | "templates" | "addons" | "settings";
+export type NavTab = "launcher" | "games" | "templates" | "addons" | "settings";
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -43,6 +44,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [isAppsOpen, setIsAppsOpen] = useState<boolean>(true);
 
   const staticNavItems: Array<{ id: NavTab; label: string; icon: React.FC<{ size?: number; className?: string }> }> = [
+    { id: "games", label: "Games", icon: Gamepad2 },
     { id: "templates", label: "Plantillas", icon: LayoutTemplate },
     { id: "addons", label: "Complementos", icon: Puzzle },
     { id: "settings", label: "Ajustes", icon: Settings },
