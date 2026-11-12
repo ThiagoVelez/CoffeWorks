@@ -2,6 +2,7 @@
 // CoffeeUI/UX y CoffeeUML.
 // Cada función genera el contenido del archivo nativo que abre la aplicación.
 
+import { PAINT_TEMPLATES, PHOTO_TEMPLATES, VECTOR_TEMPLATES } from "./artTemplates";
 const uid = (prefix: string) => `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
 export interface ExtraTemplate {
@@ -924,6 +925,9 @@ export function buildExtraTemplate(templateId: string, appId: string, title: str
   if (appId === "coffeelive" && LIVE_COLLECTIONS[templateId]) return { extension: "clv", prefix: "clv", contents: LIVE_COLLECTIONS[templateId]() };
   if (appId === "coffeeuiux" && UX_TEMPLATES[templateId]) return { extension: "cux", prefix: "cux", contents: UX_TEMPLATES[templateId]() };
   if (appId === "coffeeuml" && DG_TEMPLATES[templateId]) return { extension: "cuml", prefix: "cuml", contents: DG_TEMPLATES[templateId]() };
+  if (appId === "coffeephoto" && PHOTO_TEMPLATES[templateId]) return { extension: "cph", prefix: "cph", contents: PHOTO_TEMPLATES[templateId]() };
+  if (appId === "coffeevector" && VECTOR_TEMPLATES[templateId]) return { extension: "cvc", prefix: "cvc", contents: VECTOR_TEMPLATES[templateId]() };
+  if (appId === "coffeepaint" && PAINT_TEMPLATES[templateId]) return { extension: "cpt", prefix: "cpt", contents: PAINT_TEMPLATES[templateId]() };
   return null;
 }
 
@@ -936,4 +940,7 @@ export const EXTRA_TEMPLATE_IDS = {
   coffeelive: Object.keys(LIVE_COLLECTIONS),
   coffeeuiux: Object.keys(UX_TEMPLATES),
   coffeeuml: Object.keys(DG_TEMPLATES),
+  coffeephoto: Object.keys(PHOTO_TEMPLATES),
+  coffeevector: Object.keys(VECTOR_TEMPLATES),
+  coffeepaint: Object.keys(PAINT_TEMPLATES),
 };

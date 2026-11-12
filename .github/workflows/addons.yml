@@ -5,6 +5,8 @@ name: Complementos
 #   ejecutable nativo con GraalVM, para que no haga falta instalar Java.
 # - coffee-pdfcheck: revisión del PDF original en CoffeePDF. Tesseract OCR
 #   con los idiomas español e inglés, en una sola carpeta.
+# - coffee-raw: revelado RAW (LibRaw dcraw_emu) para CoffeeLens y CoffeePhoto.
+# - coffee-potrace: calco vectorial (Potrace) para CoffeeVector y CoffeePaint.
 # En las pull requests solo se compila y se prueba. En main (o a mano) se
 # publica en la versión «addons», de donde lo descarga el Launcher.
 
@@ -156,3 +158,130 @@ jobs:
           prerelease: false
           make_latest: false
           files: addons/coffee-pdfcheck/coffee-pdfcheck-win64.zip
+
+  raw:
+    name: Revelado RAW (LibRaw)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Conseguir dcraw_emu
+        shell: pwsh
+        timeout-minutes: 12
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          $dir = "$env:RUNNER_TEMP\libraw"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          $exe = $null
+          # 1) Compilación oficial de LibRaw para Windows
+          foreach ($v in '0.21.3', '0.21.2', '0.21.1') {
+            try {
+              Invoke-WebRequest -Uri "https://www.libraw.org/data/LibRaw-$v-Win64.zip" -OutFile "$dir\libraw.zip"
+              Expand-Archive "$dir\libraw.zip" -DestinationPath "$dir\official" -Force
+              $exe = Get-ChildItem "$dir\official" -Recurse -Filter dcraw_emu.exe | Select-Object -First 1
+              if ($exe) { Write-Host "LibRaw $v oficial"; break }
+            } catch { Write-Host "LibRaw $v no disponible: $_" }
+          }
+          # 2) conda-forge
+          if (-not $exe) {
+            & "$env:CONDA\Scripts\conda.exe" create -y -q -p "$dir\env" -c conda-forge --override-channels libraw
+            $exe = Get-ChildItem "$dir\env" -Recurse -Filter dcraw_emu.exe | Select-Object -First 1
+          }
+          if (-not $exe) { throw "No se encontró dcraw_emu.exe" }
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item $exe.FullName dist/
+          Get-ChildItem $exe.DirectoryName -Filter *.dll | Copy-Item -Destination dist/
+          # En conda, las DLL de las dependencias están en Library\bin
+          if (Test-Path "$dir\env\Library\bin") { Get-ChildItem "$dir\env\Library\bin" -Filter *.dll | Copy-Item -Destination dist/ }
+          if (Test-Path "$dir\env") { Get-ChildItem "$dir\env" -Filter *.dll | Copy-Item -Destination dist/ -ErrorAction SilentlyContinue }
+          Copy-Item addons/coffee-raw/README.md dist/LEEME.md
+          Compress-Archive -Path dist/* -DestinationPath coffee-raw-win64.zip -Force
+          Get-Item coffee-raw-win64.zip | Select-Object Name, Length
+
+      - name: Probar el paquete
+        shell: pwsh
+        timeout-minutes: 3
+        run: |
+          Expand-Archive coffee-raw-win64.zip -DestinationPath "$env:RUNNER_TEMP\rawtest" -Force
+          $out = (& "$env:RUNNER_TEMP\rawtest\dcraw_emu.exe" 2>&1 | Out-String)
+          Write-Host $out
+          if ($out -notmatch 'LibRaw|dcraw|Usage|usage') { throw "dcraw_emu no arranca (¿faltan DLL?)" }
+          # Sin argumentos muestra la ayuda y sale con código 1: arrancar es lo que se comprueba
+          exit 0
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coffee-raw-win64
+          path: coffee-raw-win64.zip
+
+      - name: Publicar en la versión «addons»
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: addons
+          name: Complementos de CoffeeWorks
+          body: Complementos opcionales que el Launcher descarga desde «Complementos». No hace falta descargarlos a mano.
+          prerelease: false
+          make_latest: false
+          files: coffee-raw-win64.zip
+
+  potrace:
+    name: Calco vectorial (Potrace)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Conseguir Potrace
+        shell: pwsh
+        timeout-minutes: 12
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          $dir = "$env:RUNNER_TEMP\potrace"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          $exe = $null
+          try {
+            Invoke-WebRequest -Uri "https://potrace.sourceforge.net/download/1.16/potrace-1.16.win64.zip" -OutFile "$dir\potrace.zip"
+            Expand-Archive "$dir\potrace.zip" -DestinationPath "$dir\official" -Force
+            $exe = Get-ChildItem "$dir\official" -Recurse -Filter potrace.exe | Select-Object -First 1
+          } catch { Write-Host "Descarga oficial fallida: $_" }
+          if (-not $exe) {
+            & "$env:CONDA\Scripts\conda.exe" create -y -q -p "$dir\env" -c conda-forge --override-channels potrace
+            $exe = Get-ChildItem "$dir\env" -Recurse -Filter potrace.exe | Select-Object -First 1
+          }
+          if (-not $exe) { throw "No se encontró potrace.exe" }
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item $exe.FullName dist/
+          Get-ChildItem $exe.DirectoryName -Filter *.dll | Copy-Item -Destination dist/
+          if (Test-Path "$dir\env\Library\bin") { Get-ChildItem "$dir\env\Library\bin" -Filter *.dll | Copy-Item -Destination dist/ }
+          Copy-Item addons/coffee-potrace/README.md dist/LEEME.md
+          Compress-Archive -Path dist/* -DestinationPath coffee-potrace-win64.zip -Force
+          Get-Item coffee-potrace-win64.zip | Select-Object Name, Length
+
+      - name: Probar el paquete
+        shell: pwsh
+        timeout-minutes: 3
+        run: |
+          Expand-Archive coffee-potrace-win64.zip -DestinationPath "$env:RUNNER_TEMP\potest" -Force
+          & "$env:RUNNER_TEMP\potest\potrace.exe" -s --flat -o "$env:RUNNER_TEMP\out.svg" addons/coffee-potrace/test/muestra.bmp
+          if ($LASTEXITCODE -ne 0) { throw "Potrace terminó con error" }
+          $svg = Get-Content "$env:RUNNER_TEMP\out.svg" -Raw
+          if ($svg -notmatch '<path') { throw "El SVG no contiene trazados" }
+          Write-Host "Calco correcto"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coffee-potrace-win64
+          path: coffee-potrace-win64.zip
+
+      - name: Publicar en la versión «addons»
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: addons
+          name: Complementos de CoffeeWorks
+          body: Complementos opcionales que el Launcher descarga desde «Complementos». No hace falta descargarlos a mano.
+          prerelease: false
+          make_latest: false
+          files: coffee-potrace-win64.zip

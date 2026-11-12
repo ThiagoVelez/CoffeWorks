@@ -16,10 +16,19 @@ members = [
   "CoffeeDataBase/src-tauri",
   "CoffeeUIUX/src-tauri",
   "CoffeeUML/src-tauri",
+  "CoffeePhoto/src-tauri",
+  "CoffeeVector/src-tauri",
+  "CoffeePaint/src-tauri",
+  "CoffeeLens/src-tauri",
+  "CoffeeMotion/src-tauri",
+  "CoffeeSound/src-tauri",
+  "CoffeeEncoder/src-tauri",
+  "CoffeeAnimate/src-tauri",
+  "CoffeePuppet/src-tauri",
 ]
 
 [workspace.package]
-version = "2.7.0"
+version = "2.8.0"
 authors = ["CoffeeWorks OpenSource Team"]
 edition = "2021"
 

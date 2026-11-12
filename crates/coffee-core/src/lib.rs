@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod addons;
 pub mod commands;
+pub mod jobs;
 pub mod spell;
 
 /// Nombre de la carpeta de la suite dentro de los directorios del sistema.
@@ -358,6 +359,7 @@ macro_rules! editor_handler {
             $crate::commands::core_set_pinned,
             $crate::commands::core_list_recent,
             $crate::commands::core_pick_open,
+            $crate::commands::core_pick_open_many,
             $crate::commands::core_pick_save,
             $crate::commands::core_open_external,
             $crate::commands::core_window_minimize,
@@ -373,7 +375,15 @@ macro_rules! editor_handler {
             $crate::commands::core_spell_dictionary,
             $crate::commands::core_spell_user_words,
             $crate::commands::core_spell_add_word,
-            $crate::commands::core_spell_remove_word
+            $crate::commands::core_spell_remove_word,
+            $crate::jobs::core_job_start,
+            $crate::jobs::core_job_cancel,
+            $crate::jobs::core_media_probe,
+            $crate::jobs::core_pick_paths,
+            $crate::jobs::core_pick_folder,
+            $crate::jobs::core_videos_dir,
+            $crate::jobs::core_temp_path,
+            $crate::jobs::core_remove_temp
             $(, $extra)*
         ]
     };

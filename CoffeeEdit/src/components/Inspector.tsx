@@ -5,6 +5,8 @@ import React from "react";
 import { RotateCcw, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Trash2, Copy, Scissors } from "lucide-react";
 import type { Clip, MediaClip, MediaItem, ProjectSettings, TextAnimation, TextClip } from "../types";
 import { DEFAULT_ADJUST, DEFAULT_TRANSFORM, FILTER_PRESETS, formatTime, maxDuration } from "../services/project";
+import { DEFAULT_GRADE, LOOKS, TRANSITIONS } from "../services/color";
+import type { ColorGrade } from "../types";
 
 interface InspectorProps {
   clip: Clip | null;
@@ -109,7 +111,7 @@ export const Inspector: React.FC<InspectorProps> = ({ clip, media, settings, onC
           Selecciona un clip en la línea de tiempo para cambiar su velocidad, volumen, filtros, posición o texto.
           <br />
           <br />
-          <b className="text-[#b9d3ca]">Atajos:</b> Espacio reproducir · S dividir · Supr eliminar · Ctrl+D duplicar · ←/→ fotograma a fotograma.
+          <b className="text-[#b9d3ca]">Atajos:</b> Espacio reproducir · S dividir · Supr eliminar (Mayús+Supr cierra el hueco) · Ctrl+D duplicar · M marcador, [ y ] para saltar · ←/→ fotograma a fotograma.
         </div>
       </div>
     );
@@ -316,9 +318,67 @@ export const Inspector: React.FC<InspectorProps> = ({ clip, media, settings, onC
             <Slider label="Tono" value={m.adjust.hue} min={-180} max={180} step={1} format={(v) => `${v}°`} onChange={(v) => set({ adjust: { ...m.adjust, hue: v } }, "hue")} />
             <Slider label="Desenfoque" value={m.adjust.blur} min={0} max={20} step={0.5} format={(v) => `${v} px`} onChange={(v) => set({ adjust: { ...m.adjust, blur: v } }, "blur")} />
           </Section>
+          <LumetriSection grade={m.color || DEFAULT_GRADE} onChange={(g, key) => set({ color: g } as Partial<Clip>, key)} />
         </>
       )}
       {fades}
+      {!isAudio && (
+        <Section title="Transición de entrada">
+          <select
+            value={m.transition?.kind || ""}
+            onChange={(e) => set({ transition: e.target.value ? { kind: e.target.value as NonNullable<MediaClip["transition"]>["kind"], duration: m.transition?.duration || 1 } : null } as Partial<Clip>)}
+            className="w-full h-8 rounded-md bg-[#0f2a22] border border-[#1f4a3d] px-2 text-[12px]"
+            data-transition
+          >
+            <option value="">Sin transición</option>
+            {TRANSITIONS.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+          {m.transition && (
+            <Slider label="Duración" value={m.transition.duration} min={0.2} max={Math.min(5, clip.duration)} step={0.1} format={(v) => `${v.toFixed(1)} s`} onChange={(v) => set({ transition: { ...m.transition!, duration: v } } as Partial<Clip>, "trdur")} />
+          )}
+          <span className="text-[10px] text-[#7d9a90]">La disolución cruzada mezcla con el clip anterior de la misma pista.</span>
+        </Section>
+      )}
     </div>
+  );
+};
+
+/** Corrección de color tipo Lumetri. */
+const LumetriSection: React.FC<{ grade: ColorGrade; onChange: (g: ColorGrade, key: string) => void }> = ({ grade: g, onChange }) => {
+  const s = (k: keyof ColorGrade, v: number) => onChange({ ...g, [k]: v }, `lum-${k}`);
+  const fmt = (v: number) => `${v > 0 ? "+" : ""}${Math.round(v)}`;
+  return (
+    <Section
+      title="Color (Lumetri)"
+      action={
+        <button type="button" title="Restablecer el color" className="text-[#8fb5a8] hover:text-white" onClick={() => onChange({ ...DEFAULT_GRADE }, "lum-reset")}>
+          <RotateCcw size={13} />
+        </button>
+      }
+    >
+      <div className="text-[10px] uppercase tracking-wide text-[#7d9a90]">Corrección básica</div>
+      <Slider label="Exposición" value={g.exposure} min={-2} max={2} step={0.05} format={(v) => `${v > 0 ? "+" : ""}${v.toFixed(2)}`} onChange={(v) => s("exposure", v)} />
+      <Slider label="Temperatura" value={g.temperature} min={-100} max={100} step={1} format={fmt} onChange={(v) => s("temperature", v)} />
+      <Slider label="Matiz" value={g.tint} min={-100} max={100} step={1} format={fmt} onChange={(v) => s("tint", v)} />
+      <Slider label="Iluminaciones" value={g.highlights} min={-100} max={100} step={1} format={fmt} onChange={(v) => s("highlights", v)} />
+      <Slider label="Sombras" value={g.shadows} min={-100} max={100} step={1} format={fmt} onChange={(v) => s("shadows", v)} />
+      <Slider label="Blancos" value={g.whites} min={-100} max={100} step={1} format={fmt} onChange={(v) => s("whites", v)} />
+      <Slider label="Negros" value={g.blacks} min={-100} max={100} step={1} format={fmt} onChange={(v) => s("blacks", v)} />
+      <Slider label="Intensidad" value={g.vibrance} min={-100} max={100} step={1} format={fmt} onChange={(v) => s("vibrance", v)} />
+      <div className="text-[10px] uppercase tracking-wide text-[#7d9a90] mt-1">Creativo</div>
+      <div className="grid grid-cols-2 gap-1" data-looks>
+        {LOOKS.map((l) => (
+          <button key={l.id} type="button" onClick={() => onChange({ ...g, look: l.id }, "lum-look")} className={`h-7 rounded text-[11px] border ${g.look === l.id ? "bg-[#26a680] border-[#26a680] text-white" : "border-[#1f4a3d] text-[#b9d3ca] hover:bg-[#143b30]"}`} data-look={l.name}>
+            {l.name}
+          </button>
+        ))}
+      </div>
+      {g.look !== "none" && <Slider label="Intensidad del look" value={g.lookIntensity} min={0} max={100} step={1} format={(v) => `${Math.round(v)} %`} onChange={(v) => s("lookIntensity", v)} />}
+      <Slider label="Viñeta" value={g.vignette} min={0} max={100} step={1} format={(v) => `${Math.round(v)}`} onChange={(v) => s("vignette", v)} />
+    </Section>
   );
 };

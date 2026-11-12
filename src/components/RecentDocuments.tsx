@@ -51,6 +51,7 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
     if (activeFilter === "videos") return ["coffeecams", "coffeeedit", "coffeelive"].includes(app) || lower.endsWith(".ccm") || lower.endsWith(".clv");
     if (activeFilter === "databases") return app === "coffeedatabase" || /\.(cdb|db|sqlite3?)$/.test(lower);
     if (activeFilter === "designs") return app === "coffeeuiux" || app === "coffeeuml" || /\.(cux|cuml)$/.test(lower);
+    if (activeFilter === "art") return ["coffeephoto", "coffeevector", "coffeepaint", "coffeelens", "coffeemotion", "coffeesound", "coffeeencoder", "coffeeanimate", "coffeepuppet"].includes(app) || /\.(cph|cvc|cpt|clc|cmo|csn|cen|can|cpup)$/.test(lower);
     return true;
   });
 
@@ -133,6 +134,33 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
         border: "border-[#ffe08a]",
       };
     }
+    if (lowerName.endsWith(".cph") || appId === "coffeephoto") {
+      return { iconUrl: "/icons/CoffeePhoto.ico", alt: "CoffeePhoto / Imagen", bg: "bg-[#fde4dc]", border: "border-[#e8452c]/30" };
+    }
+    if (lowerName.endsWith(".cvc") || appId === "coffeevector") {
+      return { iconUrl: "/icons/CoffeeVector.ico", alt: "CoffeeVector / Ilustración", bg: "bg-[#fff0db]", border: "border-[#e8590c]/30" };
+    }
+    if (lowerName.endsWith(".cpt") || appId === "coffeepaint") {
+      return { iconUrl: "/icons/CoffeePaint.ico", alt: "CoffeePaint / Pintura", bg: "bg-[#ffe3ec]", border: "border-[#e64980]/30" };
+    }
+    if (lowerName.endsWith(".clc") || appId === "coffeelens") {
+      return { iconUrl: "/icons/CoffeeLens.ico", alt: "CoffeeLens / Catálogo", bg: "bg-[#ffead5]", border: "border-[#d9480f]/30" };
+    }
+    if (lowerName.endsWith(".cmo") || appId === "coffeemotion") {
+      return { iconUrl: "/icons/CoffeeMotion.ico", alt: "CoffeeMotion", bg: "bg-[#fbe6f4]", border: "border-[#b4469c]/30" };
+    }
+    if (lowerName.endsWith(".csn") || appId === "coffeesound") {
+      return { iconUrl: "/icons/CoffeeSound.ico", alt: "CoffeeSound", bg: "bg-[#fff3d6]", border: "border-[#e67700]/30" };
+    }
+    if (lowerName.endsWith(".cen") || appId === "coffeeencoder") {
+      return { iconUrl: "/icons/CoffeeEncoder.ico", alt: "CoffeeEncoder", bg: "bg-[#fbe4ea]", border: "border-[#a8324a]/30" };
+    }
+    if (lowerName.endsWith(".can") || appId === "coffeeanimate") {
+      return { iconUrl: "/icons/CoffeeAnimate.ico", alt: "CoffeeAnimate", bg: "bg-[#ffe3e3]", border: "border-[#e8433f]/30" };
+    }
+    if (lowerName.endsWith(".cpup") || appId === "coffeepuppet") {
+      return { iconUrl: "/icons/CoffeePuppet.ico", alt: "CoffeePuppet", bg: "bg-[#ffe0ec]", border: "border-[#d6336c]/30" };
+    }
     if (lowerName.endsWith(".cuml") || appId === "coffeeuml") {
       return {
         iconUrl: "/icons/CoffeeUML.ico",
@@ -191,6 +219,7 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
               { id: "videos", label: "Videos" },
               { id: "databases", label: "Bases de datos" },
               { id: "designs", label: "Diseño y diagramas" },
+              { id: "art", label: "Ilustración" },
               { id: "pinned", label: "Fijados" },
             ] as Array<{ id: DocumentFilter; label: string }>
           ).map((filter) => {

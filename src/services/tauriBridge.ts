@@ -12,7 +12,7 @@ const INSTALLED_KEY = "coffeeworks_installed_apps";
 const FOCUS_KEY = "coffeeworks_focus_mode";
 
 /** Puertos de los servidores de desarrollo de cada aplicación. */
-const DEV_PORTS: Record<string, number> = { coffeedoc: 1421, coffeecalc: 1422, coffeeview: 1423, coffeepdf: 1424, coffeepage: 1425, coffeeedit: 1426, coffeelive: 1427, coffeedatabase: 1428, coffeeuiux: 1429, coffeeuml: 1430 };
+const DEV_PORTS: Record<string, number> = { coffeedoc: 1421, coffeecalc: 1422, coffeeview: 1423, coffeepdf: 1424, coffeepage: 1425, coffeeedit: 1426, coffeelive: 1427, coffeedatabase: 1428, coffeeuiux: 1429, coffeeuml: 1430, coffeephoto: 1431, coffeevector: 1432, coffeepaint: 1433, coffeelens: 1434, coffeemotion: 1435, coffeesound: 1436, coffeeencoder: 1437, coffeeanimate: 1438, coffeepuppet: 1439 };
 
 const ALIASES: Record<string, string> = { coffeesheet: "coffeecalc", coffeeslides: "coffeeview", coffeecams: "coffeeedit" };
 
@@ -36,6 +36,15 @@ export function appForDocument(doc: Pick<RecentDocument, "app_id" | "name">): st
   if (["cdb", "db", "sqlite", "sqlite3"].includes(extension)) return "coffeedatabase";
   if (extension === "cux") return "coffeeuiux";
   if (extension === "cuml") return "coffeeuml";
+  if (extension === "cph") return "coffeephoto";
+  if (extension === "cvc") return "coffeevector";
+  if (extension === "cpt") return "coffeepaint";
+  if (extension === "clc") return "coffeelens";
+  if (extension === "cmo") return "coffeemotion";
+  if (extension === "csn") return "coffeesound";
+  if (extension === "cen") return "coffeeencoder";
+  if (extension === "can") return "coffeeanimate";
+  if (extension === "cpup") return "coffeepuppet";
   return "coffeedoc";
 }
 
@@ -60,10 +69,10 @@ const WEB_ADDONS: AddonInfo[] = [
   {
     id: "ffmpeg",
     name: "Motor de video FFmpeg",
-    summary: "Transmisión en directo y codificación por hardware en CoffeeLive",
+    summary: "Codificación de video y audio: transmisión, cola de exportación y formatos MP4, MOV, MP3, FLAC...",
     description:
-      "Codifica el video para Twitch, YouTube, Facebook o cualquier servidor RTMP/SRT, con aceleración NVIDIA NVENC, Intel Quick Sync o AMD AMF si el equipo la tiene. Solo hace falta para transmitir: grabar funciona sin él.",
-    apps: ["coffeelive"],
+      "Codifica el video para Twitch, YouTube, Facebook o cualquier servidor RTMP/SRT, con aceleración NVIDIA NVENC, Intel Quick Sync o AMD AMF si el equipo la tiene. También es el motor de CoffeeEncoder (convertir a H.264, HEVC, ProRes, GIF...), de la exportación a MP4 de CoffeeEdit, CoffeeMotion y CoffeeAnimate, y de la exportación a MP3, OGG y FLAC de CoffeeSound.",
+    apps: ["coffeelive", "coffeeencoder", "coffeeedit", "coffeemotion", "coffeeanimate", "coffeesound"],
     version: "7.x",
     download_size: "90 MB",
     publisher: "Proyecto FFmpeg",
@@ -84,6 +93,54 @@ const WEB_ADDONS: AddonInfo[] = [
     download_size: "36 MB",
     publisher: "Proyecto Tesseract OCR",
     license: "Apache 2.0",
+    installed: false,
+    installed_bytes: 0,
+    can_install: false,
+    manual_hint: "Los complementos se instalan en la aplicación de escritorio de CoffeeWorks.",
+  },
+  {
+    id: "aigen",
+    name: "IA generativa",
+    summary: "Relleno generativo y generar imágenes a partir de una descripción en CoffeePhoto",
+    description:
+      "Rellena una selección con lo que describas (quitar o añadir objetos, ampliar el fondo) y genera imágenes nuevas como capas. Usa un servicio compatible con la API de imágenes de OpenAI con tu propia clave, que solo se guarda en este equipo. Sin el complemento, CoffeePhoto ya incluye «Relleno según el contenido», que no necesita internet.",
+    apps: ["coffeephoto"],
+    version: "1.0",
+    download_size: "Sin descarga",
+    publisher: "CoffeeWorks",
+    license: "Servicio externo (requiere clave de API)",
+    installed: false,
+    installed_bytes: 0,
+    can_install: false,
+    manual_hint: "Los complementos se instalan en la aplicación de escritorio de CoffeeWorks.",
+  },
+  {
+    id: "raw",
+    name: "Revelado RAW",
+    summary: "Abre fotos RAW de cámara (CR2, CR3, NEF, ARW, DNG, RAF, ORF, RW2) en CoffeeLens y CoffeePhoto",
+    description:
+      "Decodifica los archivos RAW de casi todas las cámaras con LibRaw, con balance de blancos de la cámara y espacio de color sRGB, para revelarlos en CoffeeLens o retocarlos en CoffeePhoto.",
+    apps: ["coffeelens", "coffeephoto"],
+    version: "0.21",
+    download_size: "4 MB",
+    publisher: "Proyecto LibRaw",
+    license: "LGPL 2.1 / CDDL",
+    installed: false,
+    installed_bytes: 0,
+    can_install: false,
+    manual_hint: "Los complementos se instalan en la aplicación de escritorio de CoffeeWorks.",
+  },
+  {
+    id: "potrace",
+    name: "Calco vectorial",
+    summary: "Convierte imágenes y dibujos en trazados vectoriales en CoffeeVector y CoffeePaint",
+    description:
+      "Calca una imagen de mapa de bits (un logotipo escaneado, una foto o un dibujo de CoffeePaint) y la convierte en trazados vectoriales editables, en blanco y negro o por colores. Usa Potrace.",
+    apps: ["coffeevector", "coffeepaint"],
+    version: "1.16",
+    download_size: "1 MB",
+    publisher: "Peter Selinger (Potrace)",
+    license: "GPL",
     installed: false,
     installed_bytes: 0,
     can_install: false,
@@ -251,6 +308,150 @@ const WEB_CATALOG: SuiteApp[] = [
     icon_name: "workflow",
     icon_url: "/icons/CoffeeUML.ico",
     category: "Desarrollador",
+  },
+  {
+    id: "coffeephoto",
+    name: "CoffeePhoto",
+    subtitle: "Edición de imágenes y retoque fotográfico",
+    description:
+      "Edición avanzada de imágenes: capas, máscaras, selecciones, pinceles, ajustes de color, filtros, texto y relleno según el contenido. Abre PNG, JPG y WebP y exporta a PNG, JPG, WebP y PDF.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "art",
+    icon_name: "image",
+    icon_url: "/icons/CoffeePhoto.ico",
+    category: "Ilustración",
+  },
+  {
+    id: "coffeevector",
+    name: "CoffeeVector",
+    subtitle: "Gráficos vectoriales e ilustración",
+    description:
+      "Gráficos vectoriales, logotipos e ilustraciones escalables: pluma Bézier, formas, buscatrazos, degradados, texto y mesas de trabajo. Abre y exporta SVG, y exporta a PNG y PDF.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "art",
+    icon_name: "pen-line",
+    icon_url: "/icons/CoffeeVector.ico",
+    category: "Ilustración",
+  },
+  {
+    id: "coffeepaint",
+    name: "CoffeePaint",
+    subtitle: "Pintura y dibujo digital",
+    description:
+      "Pintura y dibujo digital con presión del lápiz: pinceles de lápiz, tinta, acuarela, óleo, aerógrafo y marcador; capas, simetría, mezcla de colores y lienzos táctiles. Exporta a PNG, JPG, capas en ZIP y, con el complemento, a SVG vectorizado.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "art",
+    icon_name: "brush",
+    icon_url: "/icons/CoffeePaint.ico",
+    category: "Ilustración",
+  },
+  {
+    id: "coffeelens",
+    name: "CoffeeLens",
+    subtitle: "Revelado y organización de fotografías",
+    description:
+      "Organiza y revela fotografías: catálogo con estrellas, colores y colecciones; ajustes de luz, color, curvas, HSL, nitidez y viñeta no destructivos; ajustes preestablecidos y exportación por lotes.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "art",
+    icon_name: "aperture",
+    icon_url: "/icons/CoffeeLens.ico",
+    category: "Ilustración",
+  },
+  {
+    id: "coffeemotion",
+    name: "CoffeeMotion",
+    subtitle: "Gráficos en movimiento y efectos visuales",
+    description:
+      "Composiciones con capas de forma, texto, imagen y video animadas con fotogramas clave y curvas de suavizado; efectos, máscaras, plantillas de títulos y exportación a video WebM o MP4.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "art",
+    icon_name: "wand-sparkles",
+    icon_url: "/icons/CoffeeMotion.ico",
+    category: "Ilustración",
+  },
+  {
+    id: "coffeesound",
+    name: "CoffeeSound",
+    subtitle: "Edición, mezcla y restauración de audio",
+    description:
+      "Edita formas de onda (cortar, copiar, silencio, fundidos), mezcla varias pistas con volumen y panorama, aplica efectos (ecualizador, compresor, reverberación, eco, reducción de ruido, normalizar) y graba desde el micrófono. Exporta WAV y, con FFmpeg, MP3.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "art",
+    icon_name: "audio-waveform",
+    icon_url: "/icons/CoffeeSound.ico",
+    category: "Ilustración",
+  },
+  {
+    id: "coffeeencoder",
+    name: "CoffeeEncoder",
+    subtitle: "Conversión de video y audio",
+    description:
+      "Cola de conversión de video y audio con ajustes preestablecidos (YouTube, redes sociales, móvil, web, solo audio, GIF): cambia formato, resolución, calidad y recorte, y procesa varios archivos seguidos con FFmpeg.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "art",
+    icon_name: "refresh-cw",
+    icon_url: "/icons/CoffeeEncoder.ico",
+    category: "Ilustración",
+  },
+  {
+    id: "coffeeanimate",
+    name: "CoffeeAnimate",
+    subtitle: "Animación 2D interactiva",
+    description:
+      "Animación cuadro a cuadro e interpolada con línea de tiempo, capas, fotogramas clave, papel cebolla, símbolos y botones interactivos; exporta a HTML5, GIF, video y secuencia PNG.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "art",
+    icon_name: "film",
+    icon_url: "/icons/CoffeeAnimate.ico",
+    category: "Ilustración",
+  },
+  {
+    id: "coffeepuppet",
+    name: "CoffeePuppet",
+    subtitle: "Animación de personajes en tiempo real",
+    description:
+      "Personajes 2D que imitan tu cara por la cámara (cabeza, ojos, cejas, boca y parpadeo) y se mueven con el teclado; graba la actuación con voz y exporta video.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "art",
+    icon_name: "smile",
+    icon_url: "/icons/CoffeePuppet.ico",
+    category: "Ilustración",
   },
 
 ];

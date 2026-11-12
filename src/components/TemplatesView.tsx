@@ -6,7 +6,7 @@ import { APP_STYLE, MORE_TEMPLATES } from "../services/templateCatalog";
 
 export interface TemplateItem {
   id: string;
-  appId: "coffeedoc" | "coffeecalc" | "coffeeview" | "coffeepdf" | "coffeepage" | "coffeedatabase" | "coffeeedit" | "coffeelive" | "coffeeuiux" | "coffeeuml";
+  appId: "coffeedoc" | "coffeecalc" | "coffeeview" | "coffeepdf" | "coffeepage" | "coffeedatabase" | "coffeeedit" | "coffeelive" | "coffeeuiux" | "coffeeuml" | "coffeephoto" | "coffeevector" | "coffeepaint";
   appName: string;
   title: string;
   category: string;

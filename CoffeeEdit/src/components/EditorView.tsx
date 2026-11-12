@@ -50,6 +50,9 @@ export interface EditorHandle {
   togglePlay: () => void;
   split: () => void;
   deleteSelected: () => void;
+  rippleDelete: () => void;
+  toggleMarker: () => void;
+  jumpMarker: (dir: 1 | -1) => void;
   duplicateSelected: () => void;
   openExport: () => void;
   addText: (preset?: string) => void;
@@ -257,6 +260,38 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(function Edi
     setSelectedId(null);
   };
 
+  /** Elimina el clip y cierra el hueco (los clips siguientes de la pista se acercan). */
+  const rippleDelete = () => {
+    if (!selectedId) return;
+    const current = projectRef.current;
+    const clip = current.clips.find((c) => c.id === selectedId);
+    if (!clip) return;
+    const end = clipEnd(clip);
+    commitClips(current.clips.filter((c) => c.id !== clip.id).map((c) => (c.trackId === clip.trackId && c.start >= end - 1e-3 ? { ...c, start: Math.max(0, c.start - clip.duration) } : c)));
+    setSelectedId(null);
+    toast("Clip eliminado y hueco cerrado", "info");
+  };
+
+  const toggleMarker = () => {
+    const current = projectRef.current;
+    const t = Math.round((engineRef.current?.time ?? time) * fps) / fps;
+    const markers = current.markers || [];
+    const near = markers.find((m) => Math.abs(m - t) < 0.5 / fps);
+    onChange({ ...current, markers: near !== undefined ? markers.filter((m) => m !== near) : [...markers, t].sort((a, b) => a - b) });
+  };
+
+  const jumpMarker = (dir: 1 | -1) => {
+    const engine = engineRef.current;
+    if (!engine) return;
+    const markers = projectRef.current.markers || [];
+    const t = engine.time;
+    const target = dir > 0 ? markers.find((m) => m > t + 1e-3) : [...markers].reverse().find((m) => m < t - 1e-3);
+    if (target !== undefined) {
+      engine.pause();
+      engine.seek(target);
+    }
+  };
+
   const duplicateSelected = () => {
     const clip = projectRef.current.clips.find((c) => c.id === selectedId);
     if (!clip) return;
@@ -342,6 +377,9 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(function Edi
     togglePlay: () => engineRef.current?.toggle(),
     split,
     deleteSelected,
+    rippleDelete,
+    toggleMarker,
+    jumpMarker,
     duplicateSelected,
     openExport: () => setExportOpen(true),
     addText,
@@ -369,8 +407,15 @@ export const EditorView = forwardRef<EditorHandle, EditorViewProps>(function Edi
     } else if (e.key === "Delete" || e.key === "Backspace") {
       if (selectedId) {
         e.preventDefault();
-        deleteSelected();
+        if (e.shiftKey) rippleDelete();
+        else deleteSelected();
       }
+    } else if (!ctrl && e.key.toLowerCase() === "m") {
+      e.preventDefault();
+      toggleMarker();
+    } else if (e.key === "[" || e.key === "]") {
+      e.preventDefault();
+      jumpMarker(e.key === "]" ? 1 : -1);
     } else if (ctrl && e.key.toLowerCase() === "d") {
       e.preventDefault();
       duplicateSelected();

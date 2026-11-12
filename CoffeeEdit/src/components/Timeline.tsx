@@ -295,6 +295,11 @@ export const Timeline: React.FC<TimelineProps> = ({
                 setScrubbing(true);
               }}
             >
+              {(project.markers || []).map((m) => (
+                <div key={`m${m}`} className="absolute top-0 h-full pointer-events-none" style={{ left: m * pxPerSec - 5 }} data-marker={m.toFixed(2)}>
+                  <div className="w-[10px] h-[10px] bg-[#fcc419]" style={{ clipPath: "polygon(0 0,100% 0,100% 60%,50% 100%,0 60%)" }} />
+                </div>
+              ))}
               {ticks.map((t) => (
                 <div key={t} className="absolute top-0 h-full border-l border-[#33423d]" style={{ left: t * pxPerSec }}>
                   <span className="absolute left-1 top-1 text-[10px] font-mono text-[#8fb5a8]">{formatTime(t)}</span>

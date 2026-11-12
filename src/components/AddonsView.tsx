@@ -22,6 +22,12 @@ import {
   PenTool,
   Workflow,
   ScanText,
+  Sparkles,
+  Aperture,
+  Spline,
+  Image as ImageIcon,
+  PenLine,
+  Brush,
 } from "lucide-react";
 import { isTauri, tauriBridge } from "../services/tauriBridge";
 import type { AddonInfo, SuiteApp } from "../types";
@@ -66,6 +72,10 @@ const FORMAT_SUPPORT = [
     opens: "Modelos de CoffeeUML; importa scripts SQL (CREATE TABLE)",
     exports: "PNG, SVG, PDF; código Java, C#, TypeScript, Python, SQL, Mermaid y PlantUML",
   },
+  { app: "CoffeePhoto", icon: ImageIcon, color: "text-[#e8452c]", native: ".cph", opens: "PNG, JPG, WebP, BMP, GIF; RAW de cámara (con complemento)", exports: "PNG, JPG, WebP, PDF y capas como PNG (ZIP)" },
+  { app: "CoffeeVector", icon: PenLine, color: "text-[#e8590c]", native: ".cvc", opens: "SVG (trazados, formas, texto, degradados), PNG y JPG para colocar o calcar (con complemento)", exports: "SVG, PDF vectorial, PNG y JPG por mesa de trabajo" },
+  { app: "CoffeePaint", icon: Brush, color: "text-[#e64980]", native: ".cpt", opens: "PNG, JPG y WebP (como capa de referencia)", exports: "PNG (con o sin papel), JPG, capas en ZIP y SVG vectorizado (con complemento)" },
+  { app: "CoffeeLens", icon: Aperture, color: "text-[#d9480f]", native: ".clc (catálogo)", opens: "JPG, PNG, WebP, TIFF y RAW de cámara (con complemento)", exports: "JPG, PNG y WebP por lotes, con cambio de tamaño" },
 ];
 
 /** Icono y color de cada complemento. */
@@ -73,6 +83,9 @@ const ADDON_LOOK: Record<string, { bg: string; fg: string; icon: React.FC<{ size
   accdb: { bg: "#fbe9eb", fg: "#9b111e", icon: Database },
   ffmpeg: { bg: "#fff1e5", fg: "#ef6c00", icon: Radio },
   pdfcheck: { bg: "#fdecea", fg: "#c62828", icon: ScanText },
+  aigen: { bg: "#fde4dc", fg: "#e8452c", icon: Sparkles },
+  raw: { bg: "#ffead5", fg: "#d9480f", icon: Aperture },
+  potrace: { bg: "#fff0db", fg: "#e8590c", icon: Spline },
 };
 
 const formatBytes = (bytes: number) =>

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, FileText, Table, Presentation, FilePen, NotebookPen, Database, Scissors, Radio, Plus, PenTool, Workflow } from "lucide-react";
+import { X, FileText, Table, Presentation, FilePen, NotebookPen, Database, Scissors, Radio, Plus, PenTool, Workflow, Image as ImageIcon, PenLine, Brush, Aperture, WandSparkles, AudioWaveform, RefreshCw, Film, Smile } from "lucide-react";
 
 interface CreateDocModalProps {
   isOpen: boolean;
@@ -30,6 +30,15 @@ export const CreateDocModal: React.FC<CreateDocModalProps> = ({
     { id: "coffeelive", name: "CoffeeLive", ext: ".clv", icon: Radio, color: "text-[#ef6c00]", bg: "bg-[#fff1e3]" },
     { id: "coffeeuiux", name: "CoffeeUI/UX", ext: ".cux", icon: PenTool, color: "text-[#b38600]", bg: "bg-[#fff6d6]" },
     { id: "coffeeuml", name: "CoffeeUML", ext: ".cuml", icon: Workflow, color: "text-[#2e6b58]", bg: "bg-[#e3f1ec]" },
+    { id: "coffeephoto", name: "CoffeePhoto", ext: ".cph", icon: ImageIcon, color: "text-[#e8452c]", bg: "bg-[#fde4dc]" },
+    { id: "coffeevector", name: "CoffeeVector", ext: ".cvc", icon: PenLine, color: "text-[#e8590c]", bg: "bg-[#fff0db]" },
+    { id: "coffeepaint", name: "CoffeePaint", ext: ".cpt", icon: Brush, color: "text-[#e64980]", bg: "bg-[#ffe3ec]" },
+    { id: "coffeemotion", name: "CoffeeMotion", ext: ".cmo", icon: WandSparkles, color: "text-[#b4469c]", bg: "bg-[#fbe6f4]" },
+    { id: "coffeesound", name: "CoffeeSound", ext: ".csn", icon: AudioWaveform, color: "text-[#e67700]", bg: "bg-[#fff3d6]" },
+    { id: "coffeeencoder", name: "CoffeeEncoder", ext: ".cen", icon: RefreshCw, color: "text-[#a8324a]", bg: "bg-[#fbe4ea]" },
+    { id: "coffeeanimate", name: "CoffeeAnimate", ext: ".can", icon: Film, color: "text-[#e8433f]", bg: "bg-[#ffe3e3]" },
+    { id: "coffeepuppet", name: "CoffeePuppet", ext: ".cpup", icon: Smile, color: "text-[#d6336c]", bg: "bg-[#ffe0ec]" },
+    { id: "coffeelens", name: "CoffeeLens", ext: ".clc", icon: Aperture, color: "text-[#d9480f]", bg: "bg-[#ffead5]" },
   ];
 
 

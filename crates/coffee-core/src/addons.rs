@@ -27,7 +27,8 @@ pub struct CatalogAddon {
     pub download_size: &'static str,
     pub publisher: &'static str,
     pub license: &'static str,
-    /// Ejecutable principal (sin `.exe`).
+    /// Ejecutable principal (sin `.exe`). Vacío en los complementos de
+    /// servicio (no se descarga nada: solo se activa).
     pub executable: &'static str,
     /// Descargas (.zip) que se prueban en orden.
     pub downloads: &'static [&'static str],
@@ -53,9 +54,9 @@ pub const ADDONS: &[CatalogAddon] = &[
     CatalogAddon {
         id: "ffmpeg",
         name: "Motor de video FFmpeg",
-        summary: "Transmisión en directo y codificación por hardware en CoffeeLive",
-        description: "Codifica el video para Twitch, YouTube, Facebook o cualquier servidor RTMP/SRT, con aceleración NVIDIA NVENC, Intel Quick Sync o AMD AMF si el equipo la tiene. Solo hace falta para transmitir: grabar funciona sin él.",
-        apps: &["coffeelive"],
+        summary: "Codificación de video y audio: transmisión, cola de exportación y formatos MP4, MOV, MP3, FLAC...",
+        description: "Codifica el video para Twitch, YouTube, Facebook o cualquier servidor RTMP/SRT, con aceleración NVIDIA NVENC, Intel Quick Sync o AMD AMF si el equipo la tiene. También es el motor de CoffeeEncoder (convertir a H.264, HEVC, ProRes, GIF...), de la exportación a MP4 de CoffeeEdit, CoffeeMotion y CoffeeAnimate, y de la exportación a MP3, OGG y FLAC de CoffeeSound.",
+        apps: &["coffeelive", "coffeeencoder", "coffeeedit", "coffeemotion", "coffeeanimate", "coffeesound"],
         version: "7.x",
         download_size: "90 MB",
         publisher: "Proyecto FFmpeg",
@@ -81,7 +82,52 @@ pub const ADDONS: &[CatalogAddon] = &[
         downloads: &["https://github.com/ThiagoVelez/CoffeWorks/releases/download/addons/coffee-pdfcheck-win64.zip"],
         manual_hint: "Instala Tesseract con el gestor de paquetes del sistema (por ejemplo: sudo apt install tesseract-ocr tesseract-ocr-spa).",
     },
+    CatalogAddon {
+        id: "aigen",
+        name: "IA generativa",
+        summary: "Relleno generativo y generar imágenes a partir de una descripción en CoffeePhoto",
+        description: "Rellena una selección con lo que describas (quitar o añadir objetos, ampliar el fondo) y genera imágenes nuevas como capas. Usa un servicio compatible con la API de imágenes de OpenAI con tu propia clave, que solo se guarda en este equipo. Sin el complemento, CoffeePhoto ya incluye «Relleno según el contenido», que no necesita internet.",
+        apps: &["coffeephoto"],
+        version: "1.0",
+        download_size: "Sin descarga",
+        publisher: "CoffeeWorks",
+        license: "Servicio externo (requiere clave de API)",
+        executable: "",
+        downloads: &[],
+        manual_hint: "",
+    },
+    CatalogAddon {
+        id: "raw",
+        name: "Revelado RAW",
+        summary: "Abre fotos RAW de cámara (CR2, CR3, NEF, ARW, DNG, RAF, ORF, RW2) en CoffeeLens y CoffeePhoto",
+        description: "Decodifica los archivos RAW de casi todas las cámaras con LibRaw, con balance de blancos de la cámara y espacio de color sRGB, para revelarlos en CoffeeLens o retocarlos en CoffeePhoto.",
+        apps: &["coffeelens", "coffeephoto"],
+        version: "0.21",
+        download_size: "4 MB",
+        publisher: "Proyecto LibRaw",
+        license: "LGPL 2.1 / CDDL",
+        executable: "dcraw_emu",
+        downloads: &["https://github.com/ThiagoVelez/CoffeWorks/releases/download/addons/coffee-raw-win64.zip"],
+        manual_hint: "Instala LibRaw con el gestor de paquetes del sistema (por ejemplo: sudo apt install libraw-bin).",
+    },
+    CatalogAddon {
+        id: "potrace",
+        name: "Calco vectorial",
+        summary: "Convierte imágenes y dibujos en trazados vectoriales en CoffeeVector y CoffeePaint",
+        description: "Calca una imagen de mapa de bits (un logotipo escaneado, una foto o un dibujo de CoffeePaint) y la convierte en trazados vectoriales editables, en blanco y negro o por colores. Usa Potrace.",
+        apps: &["coffeevector", "coffeepaint"],
+        version: "1.16",
+        download_size: "1 MB",
+        publisher: "Peter Selinger (Potrace)",
+        license: "GPL",
+        executable: "potrace",
+        downloads: &["https://github.com/ThiagoVelez/CoffeWorks/releases/download/addons/coffee-potrace-win64.zip"],
+        manual_hint: "Instala Potrace con el gestor de paquetes del sistema (por ejemplo: sudo apt install potrace).",
+    },
 ];
+
+/// Archivo que marca como activado un complemento de servicio.
+const SERVICE_MARKER: &str = "activado.txt";
 
 /// Carpeta común de los complementos.
 pub fn addons_dir() -> PathBuf {
@@ -103,6 +149,10 @@ fn exe_name(base: &str) -> String {
 /// Ruta del ejecutable del complemento si está instalado.
 pub fn addon_executable(id: &str) -> Option<PathBuf> {
     let addon = find_addon(id)?;
+    if addon.executable.is_empty() {
+        let marker = addons_dir().join(addon.id).join(SERVICE_MARKER);
+        return marker.is_file().then_some(marker);
+    }
     let path = addons_dir().join(addon.id).join(exe_name(addon.executable));
     if path.is_file() {
         return Some(path);
@@ -170,7 +220,7 @@ pub fn addon_info(addon: &CatalogAddon) -> AddonInfo {
         license: addon.license.into(),
         installed,
         installed_bytes: if installed { dir_size(&addons_dir().join(addon.id)) } else { 0 },
-        can_install: cfg!(windows),
+        can_install: cfg!(windows) || addon.executable.is_empty(),
         manual_hint: addon.manual_hint.into(),
     }
 }
@@ -231,6 +281,14 @@ pub fn download_file(url: &str, target: &Path) -> Result<(), String> {
 /// Descarga e instala un complemento. Prueba cada descarga en orden.
 pub fn install_addon(id: &str) -> Result<AddonInfo, String> {
     let addon = find_addon(id).ok_or_else(|| format!("Complemento desconocido: {id}"))?;
+    if addon.executable.is_empty() {
+        // Complemento de servicio: solo se activa
+        let dir = addons_dir().join(addon.id);
+        fs::create_dir_all(&dir).map_err(|e| format!("No se pudo activar «{}»: {e}", addon.name))?;
+        fs::write(dir.join(SERVICE_MARKER), addon.description)
+            .map_err(|e| format!("No se pudo activar «{}»: {e}", addon.name))?;
+        return Ok(addon_info(addon));
+    }
     if !cfg!(windows) {
         return Err(addon.manual_hint.to_string());
     }
@@ -311,7 +369,17 @@ pub fn run_addon_with(id: &str, args: &[String], input: Option<&[u8]>, extension
         fs::write(&input_path, data).map_err(|e| format!("No se pudo preparar el archivo temporal: {e}"))?;
     }
     let path_text = input_path.to_string_lossy().to_string();
-    let args: Vec<String> = args.iter().map(|a| a.replace("{input}", &path_text)).collect();
+    // `{output}`: el programa escribe un archivo y se devuelve su contenido en base64
+    let output_path = std::env::temp_dir().join(format!("coffeeworks-{}-{}-out", addon.id, crate::now_millis()));
+    let wants_output = args.iter().any(|a| a.contains("{output}"));
+    // `{stdout-base64}`: no se pasa al programa; su salida estándar se devuelve en base64
+    let stdout_binary = args.iter().any(|a| a == "{stdout-base64}");
+    let out_text = output_path.to_string_lossy().to_string();
+    let args: Vec<String> = args
+        .iter()
+        .filter(|a| *a != "{stdout-base64}")
+        .map(|a| a.replace("{input}", &path_text).replace("{output}", &out_text))
+        .collect();
     let mut command = Command::new(&exe);
     // Los datos que acompañan al programa (p. ej., los idiomas del OCR) van a su lado.
     if let Some(dir) = exe.parent() {
@@ -328,9 +396,18 @@ pub fn run_addon_with(id: &str, args: &[String], input: Option<&[u8]>, extension
         .map_err(|e| format!("No se pudo ejecutar «{}»: {e}", addon.name));
     let _ = fs::remove_file(&input_path);
     let output = output?;
-    if output.status.success() {
+    if output.status.success() && wants_output {
+        use base64::Engine as _;
+        let bytes = fs::read(&output_path).map_err(|_| format!("«{}» no generó ningún resultado.", addon.name))?;
+        let _ = fs::remove_file(&output_path);
+        Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
+    } else if output.status.success() && stdout_binary {
+        use base64::Engine as _;
+        Ok(base64::engine::general_purpose::STANDARD.encode(&output.stdout))
+    } else if output.status.success() {
         Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
     } else {
+        let _ = fs::remove_file(&output_path);
         let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
         Err(if err.is_empty() { format!("«{}» terminó con un error.", addon.name) } else { err })
     }
