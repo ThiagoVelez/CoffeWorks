@@ -223,7 +223,8 @@ for (const app of Object.keys(THEMED_APPS)) {
   if (!existsSync(join(root, app, "src"))) continue;
   const out = join(root, app, "src", "theme.generated.css");
   const css = generate(app);
-  const old = existsSync(out) ? readFileSync(out, "utf8") : "";
+  // En Windows git puede dejar los archivos con CRLF
+  const old = existsSync(out) ? readFileSync(out, "utf8").replace(/\r\n/g, "\n") : "";
   if (old === css) continue;
   if (check) {
     console.error(`Tema desactualizado: ${out}`);
