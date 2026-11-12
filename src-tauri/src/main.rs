@@ -299,6 +299,7 @@ async fn close_window(window: WebviewWindow) {
 fn run_cli(args: &[String]) -> Option<i32> {
     let mut handled = false;
     let mut failed = false;
+    let mut addon_failed = false;
     let mut index = 0;
 
     let mut report = |label: &str, result: Result<SuiteApp, String>| match result {
@@ -344,7 +345,7 @@ fn run_cli(args: &[String]) -> Option<i32> {
                     Ok(info) => println!("Complemento {}: {}", info.name, if info.installed { "instalado" } else { "no instalado" }),
                     Err(error) => {
                         eprintln!("Complemento {id}: {error}");
-                        failed = true;
+                        addon_failed = true;
                     }
                 }
             }
@@ -371,7 +372,7 @@ fn run_cli(args: &[String]) -> Option<i32> {
         index += 1;
     }
 
-    handled.then_some(if failed { 1 } else { 0 })
+    handled.then_some(if failed || addon_failed { 1 } else { 0 })
 }
 
 fn main() {
