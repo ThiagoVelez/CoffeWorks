@@ -3,6 +3,8 @@ name: Complementos
 # Compila los complementos opcionales de la suite (Launcher › Complementos).
 # - coffee-accdb: compatibilidad con Access. Jackcess compilado a un
 #   ejecutable nativo con GraalVM, para que no haga falta instalar Java.
+# - coffee-pdfcheck: revisión del PDF original en CoffeePDF. Tesseract OCR
+#   con los idiomas español e inglés, en una sola carpeta.
 # En las pull requests solo se compila y se prueba. En main (o a mano) se
 # publica en la versión «addons», de donde lo descarga el Launcher.
 
@@ -82,3 +84,77 @@ jobs:
           prerelease: false
           make_latest: false
           files: addons/coffee-accdb/coffee-accdb-win64.zip
+
+  pdfcheck:
+    name: Revisión del PDF original (Tesseract)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      TESSERACT_SETUP: https://github.com/UB-Mannheim/tesseract/releases/download/v5.4.0.20240606/tesseract-ocr-w64-setup-5.4.0.20240606.exe
+      TESSDATA: https://github.com/tesseract-ocr/tessdata_fast/raw/main
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Tesseract
+        shell: pwsh
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          $dir = "$env:RUNNER_TEMP\tesseract"
+          try {
+            Invoke-WebRequest -Uri $env:TESSERACT_SETUP -OutFile "$env:RUNNER_TEMP\tess-setup.exe"
+            Start-Process -Wait -FilePath "$env:RUNNER_TEMP\tess-setup.exe" -ArgumentList "/S /D=$dir"
+          } catch {
+            Write-Host "Descarga directa fallida ($_); se usa Chocolatey"
+          }
+          if (-not (Test-Path "$dir\tesseract.exe")) {
+            choco install tesseract -y --no-progress
+            $dir = "C:\Program Files\Tesseract-OCR"
+          }
+          if (-not (Test-Path "$dir\tesseract.exe")) { throw "No se pudo instalar Tesseract" }
+          "TESS_DIR=$dir" | Out-File -FilePath $env:GITHUB_ENV -Append
+          & "$dir\tesseract.exe" --version
+
+      - name: Empaquetar
+        working-directory: addons/coffee-pdfcheck
+        shell: pwsh
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item "$env:TESS_DIR\tesseract.exe" dist/
+          Get-ChildItem "$env:TESS_DIR" -Filter *.dll | Copy-Item -Destination dist/
+          foreach ($lang in 'spa', 'eng') {
+            Invoke-WebRequest -Uri "$env:TESSDATA/$lang.traineddata" -OutFile "dist/$lang.traineddata"
+          }
+          Copy-Item README.md dist/LEEME.md
+          Invoke-WebRequest -Uri https://raw.githubusercontent.com/tesseract-ocr/tesseract/main/LICENSE -OutFile dist/LICENSE-tesseract.txt
+          Compress-Archive -Path dist/* -DestinationPath coffee-pdfcheck-win64.zip -Force
+          Get-Item coffee-pdfcheck-win64.zip | Select-Object Name, Length
+
+      - name: Probar el paquete
+        working-directory: addons/coffee-pdfcheck
+        shell: pwsh
+        run: |
+          # Igual que CoffeeWorks: carpeta limpia, idiomas al lado del ejecutable
+          Expand-Archive coffee-pdfcheck-win64.zip -DestinationPath "$env:RUNNER_TEMP\pdfcheck" -Force
+          $env:TESSDATA_PREFIX = "$env:RUNNER_TEMP\pdfcheck"
+          $out = & "$env:RUNNER_TEMP\pdfcheck\tesseract.exe" test/muestra.png stdout -l spa+eng --psm 3 tsv
+          if ($LASTEXITCODE -ne 0) { throw "Tesseract terminó con error" }
+          $text = ($out | Out-String)
+          if ($text -notmatch 'programasion' -or $text -notmatch 'equipo') { throw "El OCR no reconoció el texto de prueba" }
+          Write-Host "OCR correcto"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coffee-pdfcheck-win64
+          path: addons/coffee-pdfcheck/coffee-pdfcheck-win64.zip
+
+      - name: Publicar en la versión «addons»
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: addons
+          name: Complementos de CoffeeWorks
+          body: Complementos opcionales que el Launcher descarga desde «Complementos». No hace falta descargarlos a mano.
+          prerelease: false
+          make_latest: false
+          files: addons/coffee-pdfcheck/coffee-pdfcheck-win64.zip

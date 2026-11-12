@@ -73,6 +73,22 @@ const WEB_ADDONS: AddonInfo[] = [
     can_install: false,
     manual_hint: "Los complementos se instalan en la aplicación de escritorio de CoffeeWorks.",
   },
+  {
+    id: "pdfcheck",
+    name: "Revisión del PDF original",
+    summary: "Revisa la ortografía del texto que ya trae el PDF, también si está escaneado",
+    description:
+      "CoffeePDF revisa por defecto solo los textos que agregas. Con este complemento también revisa el texto original del documento: lo subraya en rojo, lo cuenta en el indicador de faltas y lo corrige con clic derecho (tapa la palabra y escribe la corrección encima). En las páginas escaneadas reconoce el texto con OCR (Tesseract) en español e inglés.",
+    apps: ["coffeepdf"],
+    version: "5.4",
+    download_size: "45 MB",
+    publisher: "Proyecto Tesseract OCR",
+    license: "Apache 2.0",
+    installed: false,
+    installed_bytes: 0,
+    can_install: false,
+    manual_hint: "Los complementos se instalan en la aplicación de escritorio de CoffeeWorks.",
+  },
 ];
 
 // Catálogo usado en el navegador; en escritorio lo proporciona el backend

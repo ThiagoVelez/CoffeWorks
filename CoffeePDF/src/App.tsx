@@ -30,6 +30,7 @@ import { SuiteHeader, type MenuDefinition, type SaveStatus } from "./components/
 import { PdfToolbar } from "./components/PdfToolbar";
 import { PageView } from "./components/PageView";
 import { SpellIndicator, SpellStyles, useSpellCheck } from "./spell/useSpellCheck";
+import { OriginalCheck, useOriginalText } from "./components/OriginalCheck";
 import { Thumbnails } from "./components/Thumbnails";
 import { SidePanel, type PanelTab } from "./components/SidePanel";
 import { SignatureModal } from "./components/SignatureModal";
@@ -294,11 +295,25 @@ export const App: React.FC = () => {
     [updatePages]
   );
 
-  // Corrector ortográfico de los textos añadidos al PDF
+  // Texto original del PDF (complemento «Revisión del PDF original»)
+  const original = useOriginalText(sources, pages, loaded);
+
+  // Corrector ortográfico de los textos añadidos y, con el complemento, del original
   const spell = useSpellCheck({
     mode: "model",
-    segments: pages.flatMap((p, i) => p.annotations.flatMap((a) => (a.type === "text" ? [{ key: a.id, text: a.text, label: `Página ${i + 1}` }] : []))),
+    segments: [
+      ...pages.flatMap((p, i) => p.annotations.flatMap((a) => (a.type === "text" ? [{ key: a.id, text: a.text, label: `Página ${i + 1}` }] : []))),
+      ...original.segments,
+    ],
     onReveal: (err) => {
+      if (err.key.startsWith("orig:")) {
+        const pageId = original.pageOf(err.key);
+        if (!pageId) return;
+        setCurrentPageId(pageId);
+        setSelection(null);
+        document.querySelector(`[data-spell-key="${CSS.escape(err.key)}"]`)?.scrollIntoView({ block: "center" });
+        return;
+      }
       const page = pages.find((p) => p.annotations.some((a) => a.id === err.key));
       if (!page) return;
       setCurrentPageId(page.id);
@@ -306,6 +321,11 @@ export const App: React.FC = () => {
       pageElements.current.get(page.id)?.scrollIntoView({ block: "start" });
     },
     onReplace: (err, replacement) => {
+      if (err.key.startsWith("orig:")) {
+        const fix = original.correction(err.key, err.start, err.end, replacement);
+        if (fix) handleChangeAnnotations(fix.pageId, (list) => [...list, ...fix.annotations]);
+        return;
+      }
       const page = pages.find((p) => p.annotations.some((a) => a.id === err.key));
       if (page)
         handleChangeAnnotations(page.id, (list) =>
@@ -1358,6 +1378,7 @@ export const App: React.FC = () => {
                       if (tool === "text" || tool === "replace") setTool("select");
                     }}
                     registerElement={registerElement}
+                    original={original.layers.get(page.id)}
                   />
                 ))}
               </div>
@@ -1402,6 +1423,7 @@ export const App: React.FC = () => {
               {pages.reduce((sum, p) => sum + p.annotations.length, 0)} anotaciones
             </span>
             <span className="flex items-center gap-3 min-w-0">
+              <OriginalCheck state={original} />
               <SpellIndicator spell={spell} tone="dark" className="font-sans shrink-0" />
               <span className="truncate" title={location || undefined}>
                 {location && !location.startsWith("web:") ? location : "Sin guardar en disco"}

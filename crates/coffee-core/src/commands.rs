@@ -311,6 +311,16 @@ pub async fn core_addon_run(id: String, args: Vec<String>, input: Option<String>
     blocking(move || crate::addons::run_addon(&id, &args, input.as_deref())).await
 }
 
+/// Ejecuta un complemento con un archivo binario (en base64) como entrada.
+#[tauri::command]
+pub async fn core_addon_run_file(id: String, args: Vec<String>, data: String, extension: String) -> Result<String, String> {
+    use base64::Engine as _;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(data.as_bytes())
+        .map_err(|e| format!("Datos no válidos: {e}"))?;
+    blocking(move || crate::addons::run_addon_with(&id, &args, Some(&bytes), &extension)).await
+}
+
 // ---------------------------------------------------------------------------
 // Corrector ortográfico
 // ---------------------------------------------------------------------------

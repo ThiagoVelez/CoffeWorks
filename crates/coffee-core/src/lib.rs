@@ -369,6 +369,7 @@ macro_rules! editor_handler {
             $crate::commands::core_addon_status,
             $crate::commands::core_addon_install,
             $crate::commands::core_addon_run,
+            $crate::commands::core_addon_run_file,
             $crate::commands::core_spell_dictionary,
             $crate::commands::core_spell_user_words,
             $crate::commands::core_spell_add_word,
