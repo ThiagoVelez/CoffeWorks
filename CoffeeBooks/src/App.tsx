@@ -57,7 +57,6 @@ export const App: React.FC = () => {
     if (!ws) return;
     if (!pageId || !ws.pages.some((p) => p.id === pageId)) setPageId(childrenOf(ws, null)[0]?.id || ws.pages[0]?.id || null);
   }, [ws, pageId]);
-  useEffect(() => setPageId(null), [sd.docId]);
 
   const page = ws?.pages.find((p) => p.id === pageId) || null;
 

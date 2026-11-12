@@ -6,7 +6,7 @@ import { APP_STYLE, MORE_TEMPLATES } from "../services/templateCatalog";
 
 export interface TemplateItem {
   id: string;
-  appId: "coffeedoc" | "coffeecalc" | "coffeeview" | "coffeepdf" | "coffeepage" | "coffeedatabase" | "coffeeedit" | "coffeelive" | "coffeeuiux" | "coffeeuml" | "coffeephoto" | "coffeevector" | "coffeepaint";
+  appId: "coffeedoc" | "coffeecalc" | "coffeeview" | "coffeepdf" | "coffeepage" | "coffeebooks" | "coffeedatabase" | "coffeeedit" | "coffeelive" | "coffeeuiux" | "coffeeuml" | "coffeephoto" | "coffeevector" | "coffeepaint";
   appName: string;
   title: string;
   category: string;
@@ -306,6 +306,7 @@ const APP_ICONS: Record<string, string> = {
   coffeeview: "/icons/CoffeeSlides.ico",
   coffeepdf: "/icons/CoffeePDF.ico",
   coffeepage: "/icons/CoffeePage.ico",
+  coffeebooks: "/icons/CoffeeBooks.ico",
   coffeedatabase: "/icons/CoffeeDataBase.ico",
   coffeeedit: "/icons/CoffeeEdit.ico",
   coffeelive: "/icons/CoffeeLive.ico",

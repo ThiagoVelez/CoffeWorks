@@ -41,7 +41,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   documentCount,
   onOpenVault,
 }) => {
-  const [isAppsOpen, setIsAppsOpen] = useState<boolean>(true);
+  // Cerrado al abrir el Launcher; se despliega al hacer clic
+  const [isAppsOpen, setIsAppsOpen] = useState<boolean>(false);
 
   const staticNavItems: Array<{ id: NavTab; label: string; icon: React.FC<{ size?: number; className?: string }> }> = [
     { id: "games", label: "Games", icon: Gamepad2 },
