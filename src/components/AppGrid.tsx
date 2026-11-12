@@ -24,6 +24,11 @@ import {
   PenLine,
   Brush,
   Aperture,
+  WandSparkles,
+  AudioWaveform,
+  RefreshCw,
+  Film,
+  Smile,
 } from "lucide-react";
 import type { SuiteApp } from "../types";
 
@@ -123,6 +128,16 @@ export const AppGrid: React.FC<AppGridProps> = ({
         return Brush;
       case "aperture":
         return Aperture;
+      case "wand-sparkles":
+        return WandSparkles;
+      case "audio-waveform":
+        return AudioWaveform;
+      case "refresh-cw":
+        return RefreshCw;
+      case "film":
+        return Film;
+      case "smile":
+        return Smile;
       default:
         return FileText;
     }

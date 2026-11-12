@@ -357,6 +357,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "coffeeanimate"
+version = "2.8.0"
+dependencies = [
+ "coffee-core",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+]
+
+[[package]]
 name = "coffeecalc"
 version = "2.8.0"
 dependencies = [
@@ -399,6 +409,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "coffeeencoder"
+version = "2.8.0"
+dependencies = [
+ "coffee-core",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+]
+
+[[package]]
 name = "coffeelens"
 version = "2.8.0"
 dependencies = [
@@ -419,6 +439,16 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-dialog",
  "tauri-plugin-global-shortcut",
+]
+
+[[package]]
+name = "coffeemotion"
+version = "2.8.0"
+dependencies = [
+ "coffee-core",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
 ]
 
 [[package]]
@@ -453,6 +483,26 @@ dependencies = [
 
 [[package]]
 name = "coffeephoto"
+version = "2.8.0"
+dependencies = [
+ "coffee-core",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+]
+
+[[package]]
+name = "coffeepuppet"
+version = "2.8.0"
+dependencies = [
+ "coffee-core",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+]
+
+[[package]]
+name = "coffeesound"
 version = "2.8.0"
 dependencies = [
  "coffee-core",

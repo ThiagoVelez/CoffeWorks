@@ -1,6 +1,6 @@
 # CoffeeWorks
 
-Suite ofimática de escritorio para Windows, de código abierto y sin conexión. Se compone de un **Launcher** que instala y gestiona las aplicaciones y de catorce aplicaciones, en cuatro categorías (**Office**, **Multimedia**, **Desarrollador** e **Ilustración**):
+Suite ofimática de escritorio para Windows, de código abierto y sin conexión. Se compone de un **Launcher** que instala y gestiona las aplicaciones y de diecinueve aplicaciones, en cuatro categorías (**Office**, **Multimedia**, **Desarrollador** e **Ilustración**):
 
 | Aplicación | Qué es | Formato propio | Abre | Exporta |
 | :--- | :--- | :--- | :--- | :--- |
@@ -18,6 +18,11 @@ Suite ofimática de escritorio para Windows, de código abierto y sin conexión.
 | **CoffeeVector** *(Ilustración)* | Gráficos vectoriales e ilustración | `.cvc` | SVG; PNG/JPG para colocar o calcar | SVG, PDF vectorial, PNG, JPG |
 | **CoffeePaint** *(Ilustración)* | Pintura y dibujo digital | `.cpt` | PNG, JPG, WebP | PNG, JPG, capas en ZIP, SVG vectorizado (con complemento) |
 | **CoffeeLens** *(Ilustración)* | Revelado y organización de fotos | `.clc` (catálogo) | JPG, PNG, WebP, TIFF; RAW (con complemento) | JPG, PNG, WebP por lotes |
+| **CoffeeMotion** *(Ilustración)* | Gráficos en movimiento y efectos visuales | `.cmo` | Imágenes, video y audio | WebM, GIF, secuencia PNG; MP4 y MOV (con FFmpeg) |
+| **CoffeeSound** *(Ilustración)* | Edición, mezcla y restauración de audio | `.csn` | WAV, MP3, OGG, FLAC, M4A | WAV 16/24 bits; MP3, OGG y FLAC (con FFmpeg) |
+| **CoffeeEncoder** *(Ilustración)* | Conversión de video y audio por lotes | `.cen` (cola) | Casi cualquier video o audio | MP4, MOV, MKV, WebM, GIF, MP3, AAC, WAV, FLAC... (con FFmpeg) |
+| **CoffeeAnimate** *(Ilustración)* | Animación 2D interactiva | `.can` | PNG, JPG, SVG | HTML5 interactivo, WebM, GIF, secuencia PNG; MP4 y MOV (con FFmpeg) |
+| **CoffeePuppet** *(Ilustración)* | Animación de personajes en tiempo real | `.cpup` | Cámara y micrófono | WebM, GIF; MP4 y MOV (con FFmpeg) |
 
 Cada aplicación es un ejecutable independiente construido con **Tauri 2** (Rust + WebView2) y **React + TypeScript**.
 
@@ -58,7 +63,7 @@ El Launcher tiene dos secciones más en la barra lateral:
 
 - **Complementos**: un mercado de herramientas opcionales para las apps. No vienen en el instalador para que la suite siga siendo ligera; se descargan una sola vez en `%LOCALAPPDATA%\CoffeeWorks\Addons` y se quitan con un clic. Cada app también ofrece instalar el suyo en el momento en que lo necesita.
   - *Compatibilidad con Access* (CoffeeDataBase, ~8 MB): exporta tablas, datos, claves y relaciones a `.accdb` y `.mdb`. Es [Jackcess](https://jackcess.sourceforge.io) compilado a un ejecutable nativo con GraalVM, así que no necesita Java (código en `addons/coffee-accdb`).
-  - *Motor de video FFmpeg* (CoffeeLive, ~90 MB): necesario para transmitir en directo.
+  - *Motor de video FFmpeg* (~90 MB): necesario para transmitir en directo con CoffeeLive; motor de CoffeeEncoder y de la exportación a MP4, MOV, MP3, OGG y FLAC en CoffeeMotion, CoffeeAnimate, CoffeePuppet y CoffeeSound.
   - *IA generativa* (CoffeePhoto, sin descarga): relleno generativo de una selección y «Generar imagen» como capa nueva, con un servicio compatible con la API de imágenes de OpenAI y la clave del usuario (se guarda solo en el equipo). Sin el complemento, CoffeePhoto ya trae *Relleno según el contenido*, que funciona sin internet.
   - *Revelado RAW* (CoffeeLens y CoffeePhoto, ~4 MB): abre los RAW de casi cualquier cámara con [LibRaw](https://www.libraw.org) (código en `addons/coffee-raw`).
   - *Calco vectorial* (CoffeeVector y CoffeePaint, ~1 MB): convierte imágenes y dibujos en trazados con [Potrace](https://potrace.sourceforge.net), en blanco y negro o por colores (código en `addons/coffee-potrace`).
@@ -122,7 +127,7 @@ npm install
 npm run dev:all
 ```
 
-Antes de la primera vez, instala también las dependencias de cada aplicación (`npm install` dentro de `CoffeeDoc`, `CoffeeCalc`, `CoffeeView`, `CoffeePDF`, `CoffeePage`, `CoffeeDataBase`, `CoffeeEdit`, `CoffeeLive`, `CoffeeUIUX`, `CoffeeUML`, `CoffeePhoto`, `CoffeeVector`, `CoffeePaint` y `CoffeeLens`). Los servidores quedan en:
+Antes de la primera vez, instala también las dependencias de cada aplicación (`npm install` dentro de `CoffeeDoc`, `CoffeeCalc`, `CoffeeView`, `CoffeePDF`, `CoffeePage`, `CoffeeDataBase`, `CoffeeEdit`, `CoffeeLive`, `CoffeeUIUX`, `CoffeeUML`, `CoffeePhoto`, `CoffeeVector`, `CoffeePaint`, `CoffeeLens`, `CoffeeMotion`, `CoffeeSound`, `CoffeeEncoder`, `CoffeeAnimate` y `CoffeePuppet`). Los servidores quedan en:
 
 | Aplicación | Launcher | CoffeeDoc | CoffeeCalc | CoffeeView | CoffeePDF | CoffeePage | CoffeeEdit | CoffeeLive | CoffeeDataBase |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -131,6 +136,10 @@ Antes de la primera vez, instala también las dependencias de cada aplicación (
 | Aplicación | CoffeeUI/UX | CoffeeUML | CoffeePhoto | CoffeeVector | CoffeePaint | CoffeeLens |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | Puerto | 1429 | 1430 | 1431 | 1432 | 1433 | 1434 |
+
+| Aplicación | CoffeeMotion | CoffeeSound | CoffeeEncoder | CoffeeAnimate | CoffeePuppet |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Puerto | 1435 | 1436 | 1437 | 1438 | 1439 |
 
 En el navegador los documentos se guardan en `localStorage` y el Launcher abre las aplicaciones en pestañas; en el ejecutable se usan archivos reales y ventanas nativas.
 
@@ -162,6 +171,11 @@ CoffeeWorks/
 ├── CoffeeVector/            Gráficos vectoriales (src/ + src-tauri/)
 ├── CoffeePaint/             Pintura digital (src/ + src-tauri/)
 ├── CoffeeLens/              Revelado y catálogo de fotos (src/ + src-tauri/)
+├── CoffeeMotion/            Gráficos en movimiento (src/ + src-tauri/)
+├── CoffeeSound/             Edición de audio (src/ + src-tauri/)
+├── CoffeeEncoder/           Conversión de video y audio (src/ + src-tauri/)
+├── CoffeeAnimate/           Animación 2D (src/ + src-tauri/)
+├── CoffeePuppet/            Personajes en tiempo real (src/ + src-tauri/)
 ├── crates/coffee-core/      Código Rust compartido: bóveda, recientes, archivos, diálogos, complementos y diccionarios
 ├── shared/spell/            Corrector ortográfico compartido (se copia a cada app con scripts/sync-shared.mjs)
 ├── shared/studio/           Base de las apps de Ilustración: encabezado, controles oscuros, guardado, historial y complementos
@@ -242,7 +256,7 @@ También existen `--install-all` y `--uninstall-all`.
 
 ### Ilustración
 
-Las cuatro apps de Ilustración comparten una interfaz oscura, autoguardado, deshacer y rehacer, buscador de comandos (`Ctrl+K`) y atajos parecidos. Sus iconos usan degradados cálidos (`scripts/make-art-icons.py`).
+Las nueve apps de Ilustración comparten una interfaz oscura, autoguardado, deshacer y rehacer, buscador de comandos (`Ctrl+K`) y atajos parecidos. Sus iconos usan degradados cálidos (`scripts/make-art-icons.py`).
 
 **CoffeePhoto** (naranja → carmesí) — edición avanzada de imágenes:
 
@@ -276,5 +290,44 @@ Las cuatro apps de Ilustración comparten una interfaz oscura, autoguardado, des
 - *Revelar* (no destructivo): balance de blancos, exposición, contraste, iluminaciones, sombras, blancos, negros, textura, claridad, eliminar neblina, intensidad y saturación; curva de tonos, mezcla de color HSL por gamas, virado, enfoque, reducción de ruido, viñeta y grano; recorte con proporciones y enderezado, giro y volteo; antes y después e histograma.
 - Trece *ajustes preestablecidos* (y los tuyos), copiar y pegar ajustes entre fotos y *exportación por lotes* a JPG, PNG o WebP con cambio de tamaño.
 - Con el complemento *Revelado RAW* abre los archivos RAW de las cámaras.
+
+**CoffeeMotion** (magenta → naranja) — gráficos en movimiento y efectos visuales:
+
+- *Composiciones* anidadas (precomponer) con área de trabajo, fotogramas por segundo, fondo transparente y desenfoque de movimiento.
+- *Capas* de forma (rectángulo, elipse, estrella, polígono y trazados con pluma), texto, imagen, video, audio, sólido, objeto nulo y capa de ajuste; primarios (una capa sigue a otra), modos de fusión y *mates de seguimiento* (alfa y luminancia).
+- *Fotogramas clave* con cronómetro por propiedad, suavizados (incluida una curva Bézier propia, F9 para suavizar) y *expresiones* (`wiggle`, `loopOut`, `time`, `linear`, `ease`...).
+- *Animador de texto* por letras (máquina de escribir, aparecer, subir, crecer, desenfoque y ola) y *recortar trazados* para dibujar formas.
+- *Efectos* animables: desenfoque gaussiano y direccional, resplandor, sombra paralela, contorno, brillo y contraste, tono/saturación, teñir, relleno, invertir, ruido, viñeta y mosaico; *máscaras* rectangulares y elípticas con desvanecido, expansión e inversión.
+- 18 *animaciones predefinidas* y 5 *plantillas de títulos* (rótulo inferior, título cinético, revelado de logotipo, cuenta atrás y cita vertical para redes).
+- Exporta fotograma a fotograma a WebM (con el audio), GIF y secuencia PNG; con FFmpeg, también a MP4 y MOV ProRes 4444 con transparencia.
+
+**CoffeeSound** (naranja → rojo) — edición, mezcla y restauración de audio:
+
+- *Editor de forma de onda* y *espectro de frecuencias*: seleccionar, cortar, copiar, pegar, recortar, silenciar, insertar silencio, fundidos, amplificar, normalizar, invertir, cambiar velocidad, mono y estéreo.
+- *Efectos* con vista previa: ecualizador, compresor, limitador, reverberación, eco, pasa bajos y pasa altos, ganancia, distorsión y coro; *reducción de ruido* con perfil capturado.
+- *Multipista*: pistas con volumen, panorama, silencio, solo y efectos en tiempo real; clips que se mueven entre pistas, se recortan, se dividen y tienen ganancia y fundidos; mezcla final a un archivo nuevo.
+- *Grabación* con el micrófono, generador de tonos y ruido, marcadores, y exportación a WAV de 16 o 24 bits (con FFmpeg, también MP3, OGG y FLAC).
+
+**CoffeeEncoder** (rosa → frambuesa) — conversión de video y audio por lotes:
+
+- *Cola* con varios archivos y varias salidas por archivo, arrastrar y soltar, análisis del original (duración, resolución, códecs) y miniaturas.
+- 33 *ajustes preestablecidos*: H.264, HEVC, AV1, ProRes, WebM; YouTube 1080p y 4K, Reels/TikTok, Instagram, X, Facebook, WhatsApp; teléfono, tableta y televisor; MP3, AAC, pódcast, WAV, FLAC, OGG, Opus; GIF y miniaturas. Guarda los tuyos en «Mis ajustes».
+- *Ajustes de exportación*: contenedor y códec, resolución con encajar/rellenar/estirar, fotogramas, calidad constante o tasa de bits, velocidad, *aceleración por hardware* (NVIDIA, Intel y AMD), audio, normalización de sonoridad (LUFS), giro, desentrelazado, marca de agua y recorte de tiempo, con tamaño estimado.
+- Progreso en vivo (porcentaje, tiempo restante y velocidad), cancelar, historial y comando de FFmpeg visible. Usa el complemento FFmpeg; en el navegador convierte a WebM, WAV y fotogramas sin él.
+
+**CoffeeAnimate** (rojo → naranja) — animación 2D interactiva:
+
+- *Dibujo vectorial*: pincel, lápiz, línea, rectángulo, óvalo, texto, bote de pintura, borrador y cuentagotas.
+- *Línea de tiempo* con capas, fotogramas clave y vacíos (F5, F6, F7), *papel cebolla*, etiquetas y acción «detener» por fotograma.
+- *Interpolación clásica* con suavizado y vueltas, e *interpolación de forma* cuando los trazos tienen los mismos puntos.
+- *Símbolos* (F8): gráficos, clips de película y *botones* con estados (Reposo, Sobre, Presionado, Zona activa) y acciones al hacer clic (reproducir, detener, ir a un fotograma, abrir una web).
+- *Probar película* y exportación a *HTML5 interactivo* (una página que funciona en cualquier navegador), WebM, GIF y secuencia PNG; con FFmpeg, también MP4 y MOV.
+
+**CoffeePuppet** (rosa → violeta) — animación de personajes en tiempo real:
+
+- *Seguimiento facial con la cámara* (cabeza, ojos, mirada, cejas, boca y parpadeo) incluido en la app y sin Internet; sin cámara, el personaje mira al ratón y parpadea solo.
+- *Boca con el micrófono*, 9 *gestos* con el teclado (saludar, saltar, sorpresa, corazones, reír, pulgar arriba, tristeza, enfado, dormir) y desplazamiento por la escena con las flechas.
+- Cinco personajes personalizables (taza de café, persona, robot y gato: colores, pelo y accesorios) y escenas con color, degradado o imagen.
+- *Tomas* grabadas con la voz, reproducción y exportación a video (WebM con audio, GIF; con FFmpeg, MP4 y MOV).
 
 En CoffeeDoc, CoffeeCalc y CoffeeView: autoguardado, *Guardar como*, deshacer y rehacer, impresión y PDF, buscador de menús (`Alt+/`) y documentos fijados en el Launcher.

@@ -20,6 +20,11 @@ members = [
   "CoffeeVector/src-tauri",
   "CoffeePaint/src-tauri",
   "CoffeeLens/src-tauri",
+  "CoffeeMotion/src-tauri",
+  "CoffeeSound/src-tauri",
+  "CoffeeEncoder/src-tauri",
+  "CoffeeAnimate/src-tauri",
+  "CoffeePuppet/src-tauri",
 ]
 
 [workspace.package]

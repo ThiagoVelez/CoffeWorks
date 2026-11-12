@@ -54,9 +54,9 @@ pub const ADDONS: &[CatalogAddon] = &[
     CatalogAddon {
         id: "ffmpeg",
         name: "Motor de video FFmpeg",
-        summary: "Transmisión en directo y codificación por hardware en CoffeeLive",
-        description: "Codifica el video para Twitch, YouTube, Facebook o cualquier servidor RTMP/SRT, con aceleración NVIDIA NVENC, Intel Quick Sync o AMD AMF si el equipo la tiene. Solo hace falta para transmitir: grabar funciona sin él.",
-        apps: &["coffeelive"],
+        summary: "Codificación de video y audio: transmisión, cola de exportación y formatos MP4, MOV, MP3, FLAC...",
+        description: "Codifica el video para Twitch, YouTube, Facebook o cualquier servidor RTMP/SRT, con aceleración NVIDIA NVENC, Intel Quick Sync o AMD AMF si el equipo la tiene. También es el motor de CoffeeEncoder (convertir a H.264, HEVC, ProRes, GIF...), de la exportación a MP4 de CoffeeEdit, CoffeeMotion y CoffeeAnimate, y de la exportación a MP3, OGG y FLAC de CoffeeSound.",
+        apps: &["coffeelive", "coffeeencoder", "coffeeedit", "coffeemotion", "coffeeanimate", "coffeesound"],
         version: "7.x",
         download_size: "90 MB",
         publisher: "Proyecto FFmpeg",
