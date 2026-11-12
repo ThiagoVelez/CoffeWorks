@@ -43,6 +43,7 @@ import { RelationsView } from "./components/RelationsView";
 import { AssistantView } from "./components/AssistantView";
 import { EtlView } from "./components/EtlView";
 import { ManualDialog } from "./components/ManualDialog";
+import { SpellStyles } from "./spell/useSpellCheck";
 import { CoffeeDb, quoteId, templateScript } from "./services/engine";
 import { explain } from "./services/doctor";
 import { accessExportJson, importDesktopDb, importExcel, importMatrix, parseCsv, printHtml, reportHtml, sqlDump, toCsv, toXlsx } from "./services/io";
@@ -891,6 +892,7 @@ export const App: React.FC = () => {
       )}
 
       {manualOpen && <ManualDialog onClose={() => setManualOpen(false)} />}
+      <SpellStyles />
       <DialogHost />
     </div>
   );

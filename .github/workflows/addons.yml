@@ -3,6 +3,8 @@ name: Complementos
 # Compila los complementos opcionales de la suite (Launcher › Complementos).
 # - coffee-accdb: compatibilidad con Access. Jackcess compilado a un
 #   ejecutable nativo con GraalVM, para que no haga falta instalar Java.
+# - coffee-pdfcheck: revisión del PDF original en CoffeePDF. Tesseract OCR
+#   con los idiomas español e inglés, en una sola carpeta.
 # En las pull requests solo se compila y se prueba. En main (o a mano) se
 # publica en la versión «addons», de donde lo descarga el Launcher.
 
@@ -82,3 +84,75 @@ jobs:
           prerelease: false
           make_latest: false
           files: addons/coffee-accdb/coffee-accdb-win64.zip
+
+  pdfcheck:
+    name: Revisión del PDF original (Tesseract)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      TESSDATA: https://github.com/tesseract-ocr/tessdata_fast/raw/main
+    steps:
+      - uses: actions/checkout@v4
+
+      # Paquete de conda-forge: trae tesseract.exe y todas sus DLL sin
+      # instaladores interactivos (el instalador NSIS se queda esperando).
+      - name: Instalar Tesseract (conda-forge)
+        shell: pwsh
+        timeout-minutes: 15
+        run: |
+          $env_dir = "$env:RUNNER_TEMP\tessenv"
+          & "$env:CONDA\Scripts\conda.exe" create -y -q -p $env_dir -c conda-forge --override-channels tesseract
+          if ($LASTEXITCODE -ne 0) { throw "conda no pudo instalar Tesseract" }
+          $exe = Get-ChildItem $env_dir -Recurse -Filter tesseract.exe | Select-Object -First 1
+          if (-not $exe) { throw "El entorno no contiene tesseract.exe" }
+          "TESS_DIR=$($exe.DirectoryName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "TESS_ENV=$env_dir" | Out-File -FilePath $env:GITHUB_ENV -Append
+          & $exe.FullName --version
+
+      - name: Empaquetar
+        working-directory: addons/coffee-pdfcheck
+        shell: pwsh
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item "$env:TESS_DIR\tesseract.exe" dist/
+          # DLL de Tesseract y de sus dependencias (y el runtime de Visual C++ de la raíz del entorno)
+          Get-ChildItem "$env:TESS_DIR" -Filter *.dll | Copy-Item -Destination dist/
+          Get-ChildItem "$env:TESS_ENV" -Filter *.dll | Copy-Item -Destination dist/ -ErrorAction SilentlyContinue
+          foreach ($lang in 'spa', 'eng') {
+            Invoke-WebRequest -Uri "$env:TESSDATA/$lang.traineddata" -OutFile "dist/$lang.traineddata"
+          }
+          Copy-Item README.md dist/LEEME.md
+          Invoke-WebRequest -Uri https://raw.githubusercontent.com/tesseract-ocr/tesseract/main/LICENSE -OutFile dist/LICENSE-tesseract.txt
+          Compress-Archive -Path dist/* -DestinationPath coffee-pdfcheck-win64.zip -Force
+          Get-Item coffee-pdfcheck-win64.zip | Select-Object Name, Length
+
+      - name: Probar el paquete
+        working-directory: addons/coffee-pdfcheck
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          # Igual que CoffeeWorks: carpeta limpia, idiomas al lado del ejecutable
+          Expand-Archive coffee-pdfcheck-win64.zip -DestinationPath "$env:RUNNER_TEMP\pdfcheck" -Force
+          $env:TESSDATA_PREFIX = "$env:RUNNER_TEMP\pdfcheck"
+          $out = & "$env:RUNNER_TEMP\pdfcheck\tesseract.exe" test/muestra.png stdout -l spa+eng --psm 3 tsv
+          if ($LASTEXITCODE -ne 0) { throw "Tesseract terminó con error" }
+          $text = ($out | Out-String)
+          if ($text -notmatch 'programasion' -or $text -notmatch 'equipo') { throw "El OCR no reconoció el texto de prueba" }
+          Write-Host "OCR correcto"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coffee-pdfcheck-win64
+          path: addons/coffee-pdfcheck/coffee-pdfcheck-win64.zip
+
+      - name: Publicar en la versión «addons»
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: addons
+          name: Complementos de CoffeeWorks
+          body: Complementos opcionales que el Launcher descarga desde «Complementos». No hace falta descargarlos a mano.
+          prerelease: false
+          make_latest: false
+          files: addons/coffee-pdfcheck/coffee-pdfcheck-win64.zip

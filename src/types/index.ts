@@ -29,10 +29,11 @@ export interface RecentDocument {
   updated_at?: number;
 }
 
-export type DocumentFilter = "all" | "documents" | "spreadsheets" | "presentations" | "pdf" | "notes" | "videos" | "databases" | "pinned";
+export type DocumentFilter = "all" | "documents" | "spreadsheets" | "presentations" | "pdf" | "notes" | "videos" | "databases" | "designs" | "pinned";
 
 export interface SuiteInfo {
   version: string;
+  stage: string;
   vault_dir: string;
   apps_dir: string;
   data_dir: string;
@@ -56,4 +57,18 @@ export interface AddonInfo {
   installed_bytes: number;
   can_install: boolean;
   manual_hint: string;
+}
+
+/** Estado de las actualizaciones automáticas. */
+export interface UpdateInfo {
+  current: string;
+  stage: string;
+  supported: boolean;
+  auto_install: boolean;
+  last_check: number;
+  latest: string;
+  notes: string;
+  url: string;
+  size: number;
+  ready: boolean;
 }

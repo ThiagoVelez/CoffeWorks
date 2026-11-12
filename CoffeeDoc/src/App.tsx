@@ -31,6 +31,8 @@ import { GoogleDocsToolbar } from "./components/GoogleDocsToolbar";
 import { Ruler } from "./components/Ruler";
 import { DocumentCanvas } from "./components/DocumentCanvas";
 import { StatusBar } from "./components/StatusBar";
+import { SpellStyles, useSpellCheck } from "./spell/useSpellCheck";
+import { EDITOR_ID } from "./services/editor";
 import { OutlineSidebar } from "./components/OutlineSidebar";
 import { ExportModal } from "./components/ExportModal";
 import { FindReplaceModal } from "./components/FindReplaceModal";
@@ -184,7 +186,6 @@ export const App: React.FC = () => {
   // Vista
   const [zoom, setZoom] = useState(100);
   const [readOnly, setReadOnly] = useState(false);
-  const [spellcheck, setSpellcheck] = useState(true);
   const [showRuler, setShowRuler] = useState(true);
   const [outlineOpen, setOutlineOpen] = useState(true);
   const [zenMode, setZenMode] = useState(false);
@@ -215,6 +216,10 @@ export const App: React.FC = () => {
   filePathRef.current = filePath;
 
   const activeTab = doc ? doc.tabs.find((t) => t.id === doc.activeTabId) || doc.tabs[0] : null;
+  // Corrector ortográfico propio (diccionarios de español e inglés del sistema)
+  const spell = useSpellCheck({ mode: "dom", root: () => document.getElementById(EDITOR_ID), watch: `${doc ? 1 : 0}-${doc?.activeTabId}-${showStartScreen}` });
+  const spellcheck = spell.enabled;
+  const setSpellcheck = (fn: (prev: boolean) => boolean) => spell.setEnabled(fn(spell.enabled));
   const content = activeTab?.content ?? "";
   const title = doc?.metadata.title ?? "";
 
@@ -1117,7 +1122,7 @@ export const App: React.FC = () => {
             settings={doc.settings}
             zoom={zoom}
             readOnly={readOnly}
-            spellcheck={spellcheck}
+            spellcheck={false}
             onSelectionChange={handleSelectionChange}
             onPageCount={setPages}
             painterActive={painter !== null}
@@ -1149,7 +1154,7 @@ export const App: React.FC = () => {
           zoom={zoom}
           onZoomChange={setZoom}
           onOpenWordCount={() => setWordCountOpen(true)}
-          spellcheck={spellcheck}
+          spell={spell}
           readOnly={readOnly}
         />
       )}
@@ -1212,6 +1217,8 @@ export const App: React.FC = () => {
         />
       )}
 
+      {spell.menu}
+      <SpellStyles />
       <DialogHost />
     </div>
   );

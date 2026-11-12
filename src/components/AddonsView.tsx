@@ -19,6 +19,9 @@ import {
   Scissors,
   Radio,
   Database,
+  PenTool,
+  Workflow,
+  ScanText,
 } from "lucide-react";
 import { isTauri, tauriBridge } from "../services/tauriBridge";
 import type { AddonInfo, SuiteApp } from "../types";
@@ -28,7 +31,7 @@ const FORMAT_SUPPORT = [
   { app: "CoffeeDoc", icon: FileText, color: "text-[#185abd]", native: ".cfd", opens: "Word (.docx), Markdown (.md), HTML, texto (.txt)", exports: "Word (.docx), Markdown, HTML, texto y PDF" },
   { app: "CoffeeCalc", icon: Table, color: "text-[#107c41]", native: ".cfs", opens: "Excel (.xlsx, .xls), CSV", exports: "Excel (.xlsx) con formato, CSV y PDF" },
   { app: "CoffeeView", icon: Presentation, color: "text-[#c43e1c]", native: ".csl", opens: "PowerPoint (.pptx)", exports: "PowerPoint (.pptx), HTML y PDF" },
-  { app: "CoffeePDF", icon: FilePen, color: "text-[#c62828]", native: ".pdf", opens: "PDF (.pdf), imágenes para insertar (PNG, JPG)", exports: "PDF editado, páginas extraídas y PNG por página" },
+  { app: "CoffeePDF", icon: FilePen, color: "text-[#c62828]", native: ".pdf", opens: "PDF (.pdf), imágenes para insertar (PNG, JPG); revisa la ortografía del texto original y de PDF escaneados (con complemento)", exports: "PDF editado, páginas extraídas y PNG por página" },
   { app: "CoffeePage", icon: NotebookPen, color: "text-[#7b1fa2]", native: ".cpg", opens: "Cuadernos de CoffeePage; imágenes y texto (.txt, .md) para insertar", exports: "HTML (página, sección o cuaderno), Markdown y PDF (imprimir)" },
   {
     app: "CoffeeDataBase",
@@ -47,12 +50,29 @@ const FORMAT_SUPPORT = [
     opens: "Pantalla, cámara, imágenes, videos y audio como fuentes",
     exports: "Grabaciones MP4/WebM, capturas PNG y transmisión RTMP/SRT (con el complemento FFmpeg)",
   },
+  {
+    app: "CoffeeUI/UX",
+    icon: PenTool,
+    color: "text-[#b38600]",
+    native: ".cux",
+    opens: "Diseños de CoffeeUI/UX; imágenes (PNG, JPG, SVG) para insertar",
+    exports: "PNG, JPG, SVG, PDF y código HTML/CSS",
+  },
+  {
+    app: "CoffeeUML",
+    icon: Workflow,
+    color: "text-[#2e6b58]",
+    native: ".cuml",
+    opens: "Modelos de CoffeeUML; importa scripts SQL (CREATE TABLE)",
+    exports: "PNG, SVG, PDF; código Java, C#, TypeScript, Python, SQL, Mermaid y PlantUML",
+  },
 ];
 
 /** Icono y color de cada complemento. */
 const ADDON_LOOK: Record<string, { bg: string; fg: string; icon: React.FC<{ size?: number; className?: string }> }> = {
   accdb: { bg: "#fbe9eb", fg: "#9b111e", icon: Database },
   ffmpeg: { bg: "#fff1e5", fg: "#ef6c00", icon: Radio },
+  pdfcheck: { bg: "#fdecea", fg: "#c62828", icon: ScanText },
 };
 
 const formatBytes = (bytes: number) =>

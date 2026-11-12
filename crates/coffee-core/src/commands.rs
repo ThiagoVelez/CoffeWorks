@@ -310,3 +310,37 @@ pub async fn core_addon_install(id: String) -> Result<crate::addons::AddonInfo, 
 pub async fn core_addon_run(id: String, args: Vec<String>, input: Option<String>) -> Result<String, String> {
     blocking(move || crate::addons::run_addon(&id, &args, input.as_deref())).await
 }
+
+/// Ejecuta un complemento con un archivo binario (en base64) como entrada.
+#[tauri::command]
+pub async fn core_addon_run_file(id: String, args: Vec<String>, data: String, extension: String) -> Result<String, String> {
+    use base64::Engine as _;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(data.as_bytes())
+        .map_err(|e| format!("Datos no válidos: {e}"))?;
+    blocking(move || crate::addons::run_addon_with(&id, &args, Some(&bytes), &extension)).await
+}
+
+// ---------------------------------------------------------------------------
+// Corrector ortográfico
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub async fn core_spell_dictionary(lang: String) -> Result<crate::spell::Dictionary, String> {
+    blocking(move || crate::spell::load_dictionary(&lang)).await
+}
+
+#[tauri::command]
+pub async fn core_spell_user_words() -> Vec<String> {
+    blocking(|| Ok(crate::spell::user_words())).await.unwrap_or_default()
+}
+
+#[tauri::command]
+pub async fn core_spell_add_word(word: String) -> Result<Vec<String>, String> {
+    blocking(move || crate::spell::add_user_word(&word)).await
+}
+
+#[tauri::command]
+pub async fn core_spell_remove_word(word: String) -> Result<Vec<String>, String> {
+    blocking(move || crate::spell::remove_user_word(&word)).await
+}

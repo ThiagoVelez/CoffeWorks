@@ -67,6 +67,20 @@ pub const ADDONS: &[CatalogAddon] = &[
         ],
         manual_hint: "Instala ffmpeg con el gestor de paquetes del sistema (por ejemplo: sudo apt install ffmpeg).",
     },
+    CatalogAddon {
+        id: "pdfcheck",
+        name: "Revisión del PDF original",
+        summary: "Revisa la ortografía del texto que ya trae el PDF, también si está escaneado",
+        description: "CoffeePDF revisa por defecto solo los textos que agregas. Con este complemento también revisa el texto original del documento: lo subraya en rojo, lo cuenta en el indicador de faltas y lo corrige con clic derecho (tapa la palabra y escribe la corrección encima). En las páginas escaneadas reconoce el texto con OCR (Tesseract) en español e inglés.",
+        apps: &["coffeepdf"],
+        version: "5.4",
+        download_size: "36 MB",
+        publisher: "Proyecto Tesseract OCR",
+        license: "Apache 2.0",
+        executable: "tesseract",
+        downloads: &["https://github.com/ThiagoVelez/CoffeWorks/releases/download/addons/coffee-pdfcheck-win64.zip"],
+        manual_hint: "Instala Tesseract con el gestor de paquetes del sistema (por ejemplo: sudo apt install tesseract-ocr tesseract-ocr-spa).",
+    },
 ];
 
 /// Carpeta común de los complementos.
@@ -90,7 +104,18 @@ fn exe_name(base: &str) -> String {
 pub fn addon_executable(id: &str) -> Option<PathBuf> {
     let addon = find_addon(id)?;
     let path = addons_dir().join(addon.id).join(exe_name(addon.executable));
-    path.is_file().then_some(path)
+    if path.is_file() {
+        return Some(path);
+    }
+    // Fuera de Windows se usa el programa instalado con el gestor de paquetes.
+    if cfg!(windows) {
+        return None;
+    }
+    std::env::var_os("PATH").and_then(|paths| {
+        std::env::split_paths(&paths)
+            .map(|dir| dir.join(addon.executable))
+            .find(|candidate| candidate.is_file())
+    })
 }
 
 /// Estado de un complemento para mostrarlo en la interfaz.
@@ -165,8 +190,42 @@ pub fn hidden(cmd: &mut Command) -> &mut Command {
     cmd
 }
 
-fn ps_quote(value: &str) -> String {
+/// Cita un texto para PowerShell.
+pub fn ps_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "''"))
+}
+
+/// Ejecuta un script de PowerShell oculto y devuelve su salida.
+pub fn run_powershell(script: &str) -> Result<String, String> {
+    let output = hidden(Command::new("powershell").args([
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        script,
+    ]))
+    .stdin(Stdio::null())
+    .output()
+    .map_err(|e| format!("No se pudo iniciar PowerShell: {e}"))?;
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    } else {
+        let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        Err(err.lines().last().unwrap_or("Error desconocido").to_string())
+    }
+}
+
+/// Descarga un archivo (HTTPS) a la ruta indicada.
+pub fn download_file(url: &str, target: &Path) -> Result<(), String> {
+    let script = format!(
+        "$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'; \
+         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; \
+         Invoke-WebRequest -UseBasicParsing -Headers @{{ 'User-Agent'='CoffeeWorks' }} -Uri {url} -OutFile {out}",
+        url = ps_quote(url),
+        out = ps_quote(&target.to_string_lossy()),
+    );
+    run_powershell(&script).map(|_| ()).map_err(|e| format!("No se pudo descargar {url}: {e}"))
 }
 
 /// Descarga e instala un complemento. Prueba cada descarga en orden.
@@ -238,15 +297,32 @@ pub fn uninstall_addon(id: &str) -> Result<AddonInfo, String> {
 /// Ejecuta un complemento instalado. Si se da `input`, se escribe en un archivo
 /// temporal y su ruta sustituye a `{input}` en los argumentos.
 pub fn run_addon(id: &str, args: &[String], input: Option<&str>) -> Result<String, String> {
+    run_addon_with(id, args, input.map(|t| t.as_bytes()), "json")
+}
+
+/// Como [`run_addon`], pero con una entrada binaria (por ejemplo, una imagen)
+/// que se guarda con la extensión indicada.
+pub fn run_addon_with(id: &str, args: &[String], input: Option<&[u8]>, extension: &str) -> Result<String, String> {
     let addon = find_addon(id).ok_or_else(|| format!("Complemento desconocido: {id}"))?;
     let exe = addon_executable(id).ok_or_else(|| format!("El complemento «{}» no está instalado.", addon.name))?;
-    let input_path = std::env::temp_dir().join(format!("coffeeworks-{}-{}.json", addon.id, crate::now_millis()));
-    if let Some(text) = input {
-        fs::write(&input_path, text).map_err(|e| format!("No se pudo preparar el archivo temporal: {e}"))?;
+    let extension: String = extension.chars().filter(|c| c.is_ascii_alphanumeric()).take(8).collect();
+    let input_path = std::env::temp_dir().join(format!("coffeeworks-{}-{}.{}", addon.id, crate::now_millis(), extension));
+    if let Some(data) = input {
+        fs::write(&input_path, data).map_err(|e| format!("No se pudo preparar el archivo temporal: {e}"))?;
     }
     let path_text = input_path.to_string_lossy().to_string();
     let args: Vec<String> = args.iter().map(|a| a.replace("{input}", &path_text)).collect();
-    let output = hidden(Command::new(&exe).args(&args))
+    let mut command = Command::new(&exe);
+    // Los datos que acompañan al programa (p. ej., los idiomas del OCR) van a su lado.
+    if let Some(dir) = exe.parent() {
+        let has_data = fs::read_dir(dir)
+            .map(|entries| entries.flatten().any(|e| e.path().extension().is_some_and(|x| x == "traineddata")))
+            .unwrap_or(false);
+        if has_data {
+            command.env("TESSDATA_PREFIX", dir);
+        }
+    }
+    let output = hidden(command.args(&args))
         .stdin(Stdio::null())
         .output()
         .map_err(|e| format!("No se pudo ejecutar «{}»: {e}", addon.name));

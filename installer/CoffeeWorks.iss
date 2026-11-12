@@ -1,8 +1,8 @@
 ; Instalador de CoffeeWorks para Windows (Inno Setup 6).
 ;
 ; Instala el Launcher (CoffeeWorks.exe) y deja los paquetes de CoffeeDoc,
-; CoffeeCalc, CoffeeView, CoffeePDF, CoffeePage, CoffeeDataBase, CoffeeEdit y
-; CoffeeLive en la carpeta "packages". Las aplicaciones se instalan
+; CoffeeCalc, CoffeeView, CoffeePDF, CoffeePage, CoffeeDataBase, CoffeeEdit,
+; CoffeeLive, CoffeeUI/UX y CoffeeUML en la carpeta "packages". Las aplicaciones se instalan
 ; y desinstalan después desde la Tienda de Apps del propio Launcher.
 ;
 ; Antes de compilar este script hay que generar los ejecutables con
@@ -11,7 +11,7 @@
 ;   powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 
 #define AppName "CoffeeWorks"
-#define AppVersion "2.6.0"
+#define AppVersion "2.7.0"
 #define AppPublisher "CoffeeWorks OpenSource Team"
 #define AppExeName "CoffeeWorks.exe"
 
@@ -53,8 +53,8 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [CustomMessages]
-spanish.InstallApps=Instalar ahora todas las aplicaciones (Office y Multimedia)
-english.InstallApps=Install all apps now (Office and Multimedia)
+spanish.InstallApps=Instalar ahora todas las aplicaciones (Office, Multimedia y Desarrollador)
+english.InstallApps=Install all apps now (Office, Multimedia and Developer)
 spanish.SuiteApps=Aplicaciones de la suite:
 english.SuiteApps=Suite applications:
 spanish.InstallingApps=Instalando las aplicaciones de la suite...
@@ -90,8 +90,10 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: deskto
 
 [Run]
 Filename: "{tmp}\MicrosoftEdgeWebview2Setup.exe"; Parameters: "/silent /install"; StatusMsg: "{cm:InstallingWebView}"; Check: NeedsWebView2; Flags: waituntilterminated skipifdoesntexist
-Filename: "{app}\{#AppExeName}"; Parameters: "--install-all"; StatusMsg: "{cm:InstallingApps}"; Tasks: installapps; Flags: waituntilterminated runasoriginaluser
+Filename: "{app}\{#AppExeName}"; Parameters: "--install-all"; StatusMsg: "{cm:InstallingApps}"; Tasks: installapps; Check: not IsAutoUpdate; Flags: waituntilterminated runasoriginaluser
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent runasoriginaluser
+; Actualización automática desde el Launcher («Reiniciar y actualizar»): se vuelve a abrir solo
+Filename: "{app}\{#AppExeName}"; Check: RelaunchAfterUpdate; Flags: nowait runasoriginaluser
 
 [UninstallRun]
 ; Quita las aplicaciones instaladas desde el Launcher, sus accesos directos y
@@ -103,6 +105,17 @@ Type: filesandordirs; Name: "{localappdata}\CoffeeWorks\Apps"
 Type: dirifempty; Name: "{localappdata}\CoffeeWorks"
 
 [Code]
+{ El Launcher ejecuta el instalador con /AUTOUPDATE=0 o /AUTOUPDATE=1 al actualizarse. }
+function IsAutoUpdate: Boolean;
+begin
+  Result := ExpandConstant('{param:AUTOUPDATE|}') <> '';
+end;
+
+function RelaunchAfterUpdate: Boolean;
+begin
+  Result := ExpandConstant('{param:AUTOUPDATE|0}') = '1';
+end;
+
 const
   WebView2ClientKey = '{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}';
 

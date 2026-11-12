@@ -8,6 +8,7 @@ import type { ColumnInfo, TableInfo } from "../types";
 import { CoffeeDb, coerce, formatCell, quoteId } from "../services/engine";
 import { explain } from "../services/doctor";
 import { askConfirm, showMessage, toast } from "./Dialogs";
+import { SpellIndicator, useSpellCheck } from "../spell/useSpellCheck";
 
 interface DatasheetProps {
   db: CoffeeDb;
@@ -62,6 +63,36 @@ export const Datasheet: React.FC<DatasheetProps> = ({ db, table, version, onChan
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db, table, offset, orderBy, desc, query, version, tick]);
+
+  // Corrector ortográfico: campos de texto de los registros visibles
+  const fkColumns = useMemo(() => new Set(table.foreignKeys.map((f) => f.column)), [table]);
+  const textColumns = columns.map((c, i) => ({ c, i })).filter(({ c }) => (c.type === "shortText" || c.type === "longText") && !fkColumns.has(c.name));
+  const spell = useSpellCheck({
+    mode: "model",
+    segments: data.rows.flatMap((row, r) =>
+      textColumns.flatMap(({ c, i }) => (typeof row[i] === "string" && row[i] ? [{ key: `${data.rowids[r]}:${c.name}`, text: row[i] as string, label: `Registro ${offset + r + 1} · ${c.name}` }] : []))
+    ),
+    onReveal: (err) => {
+      const el = document.querySelector<HTMLElement>(`[data-cell="${CSS.escape(err.key)}"]`);
+      el?.focus();
+      el?.scrollIntoView({ block: "center", inline: "nearest" });
+    },
+    onReplace: (err, replacement) => {
+      const sep = err.key.indexOf(":");
+      const rowid = Number(err.key.slice(0, sep));
+      const column = err.key.slice(sep + 1);
+      const r = (data.rowids as number[]).indexOf(rowid);
+      const ci = columns.findIndex((c) => c.name === column);
+      const current = r >= 0 && ci >= 0 ? String(data.rows[r][ci] ?? "") : "";
+      try {
+        db.updateCell(table.name, rowid, column, current.slice(0, err.start) + replacement + current.slice(err.end));
+        onChanged();
+        setTick((t) => t + 1);
+      } catch (e) {
+        void showMessage("No se pudo corregir", explain(e));
+      }
+    },
+  });
 
   // Valores válidos de los campos relacionados (clave + campo descriptivo)
   const lookups: Lookup = useMemo(() => {
@@ -260,6 +291,8 @@ export const Datasheet: React.FC<DatasheetProps> = ({ db, table, version, onChan
           <RefreshCw size={13} />
         </button>
         <div className="flex-1" />
+        <SpellIndicator spell={spell} className="text-[12px]" />
+        {spell.menu}
         <span className="text-[12px] text-[#7a6265]">
           {data.total.toLocaleString("es")} {data.total === 1 ? "registro" : "registros"}
         </span>
@@ -343,6 +376,7 @@ export const Datasheet: React.FC<DatasheetProps> = ({ db, table, version, onChan
                       <td
                         key={c.name}
                         data-cell={`${rowid}:${c.name}`}
+                        data-spell-key={!isEditing && typeof value === "string" && textColumns.some((t) => t.c.name === c.name) ? `${rowid}:${c.name}` : undefined}
                         onDoubleClick={() => startEdit(rowid, c, value)}
                         onKeyDown={(e) => e.key === "Enter" && e.target === e.currentTarget && startEdit(rowid, c, value)}
                         tabIndex={0}

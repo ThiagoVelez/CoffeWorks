@@ -2,6 +2,7 @@ import React from "react";
 import { LayoutGrid, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface SpeakerNotesProps {
+  spellKey?: string;
   notes: string;
   onChangeNotes: (notes: string) => void;
   gridView: boolean;
@@ -15,6 +16,7 @@ export const SpeakerNotes: React.FC<SpeakerNotesProps> = ({
   notes,
   onChangeNotes,
   gridView,
+  spellKey,
   onToggleGridView,
   stripVisible,
   onToggleStrip,
@@ -41,6 +43,8 @@ export const SpeakerNotes: React.FC<SpeakerNotesProps> = ({
 
     <textarea
       id="speaker-notes"
+      data-spell-key={spellKey}
+      spellCheck={false}
       value={notes}
       onChange={(e) => onChangeNotes(e.target.value)}
       placeholder="Haz clic para agregar notas del orador"

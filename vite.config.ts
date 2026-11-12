@@ -120,6 +120,8 @@ export default defineConfig({
         "**/CoffeeEdit/dist/**",
         "**/CoffeeLive/dist/**",
         "**/CoffeeDataBase/dist/**",
+        "**/CoffeeUIUX/dist/**",
+        "**/CoffeeUML/dist/**",
         "**/data/vault.json",
       ],
     },

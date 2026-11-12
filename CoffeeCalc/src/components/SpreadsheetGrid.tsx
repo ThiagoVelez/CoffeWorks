@@ -75,6 +75,8 @@ interface CellBoxProps {
   text: string;
   conditional?: { bg: string; color: string };
   spans: boolean;
+  /** Clave del corrector ortográfico (solo textos escritos a mano). */
+  spellKey?: string;
 }
 
 /** Celda con contenido o formato. Las celdas vacías no se dibujan. */
@@ -87,6 +89,7 @@ const CellBox = React.memo(function CellBox({
   text,
   conditional,
   spans,
+  spellKey,
 }: CellBoxProps) {
   const isNumber = typeof cell.computed === "number";
   const isError = isErrorValue(cell.computed);
@@ -123,7 +126,9 @@ const CellBox = React.memo(function CellBox({
       }}
       className="absolute flex px-1.5 pb-[3px] text-xs leading-[1.25] overflow-hidden pointer-events-none box-border"
     >
-      <span className={cell.wrapText ? "whitespace-pre-wrap break-words w-full" : "whitespace-nowrap"}>{text}</span>
+      <span className={cell.wrapText ? "whitespace-pre-wrap break-words w-full" : "whitespace-nowrap"} data-spell-key={spellKey}>
+        {text}
+      </span>
       {cell.note && (
         <span className="absolute top-0 right-0 w-0 h-0 border-l-[6px] border-l-transparent border-t-[6px] border-t-[#f9a825]" />
       )}
@@ -691,6 +696,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
             text={text}
             conditional={conditional.get(key)}
             spans={spans}
+            spellKey={!showFormulas && typeof data.computed === "string" && data.raw && !data.raw.startsWith("=") && text === data.raw ? `${sheet.id}!${key}` : undefined}
           />
         );
       }

@@ -33,6 +33,7 @@ import { SlideCanvas } from "./components/SlideCanvas";
 import { SlideView } from "./components/SlideView";
 import { SidePanel, type TransformKind } from "./components/SidePanel";
 import { SpeakerNotes } from "./components/SpeakerNotes";
+import { SpellIndicator, SpellStyles, useSpellCheck, type SpellSegment } from "./spell/useSpellCheck";
 import { PresentationMode } from "./components/PresentationMode";
 import { ExportModal, type ExportOption } from "./components/ExportModal";
 import { StartScreen } from "./components/StartScreen";
@@ -190,6 +191,71 @@ export const App: React.FC = () => {
 
   const slides = presentation?.slides || [];
   const activeSlide = slides.find((slide) => slide.id === activeSlideId) || slides[0];
+
+  // -------------------------------------------------------------------------
+  // Corrector ortográfico: textos, tablas y notas de todas las diapositivas
+  // -------------------------------------------------------------------------
+
+  const spellSegments: SpellSegment[] = slides.flatMap((slide, i) => [
+    ...slide.elements.flatMap((el) =>
+      el.type === "table"
+        ? (el.rows || []).flatMap((row, r) => row.map((cell, c) => ({ key: `${el.id}#${r}.${c}`, text: cell, label: `Diapositiva ${i + 1}` })))
+        : el.type === "image" || el.type === "video" || el.type === "line"
+          ? []
+          : [{ key: el.id, text: el.content, label: `Diapositiva ${i + 1}` }]
+    ),
+    ...(slide.notes ? [{ key: `notes:${slide.id}`, text: slide.notes, label: `Notas de la diapositiva ${i + 1}` }] : []),
+  ]);
+
+  const findSpellTarget = (key: string) => {
+    if (key.startsWith("notes:")) return { slide: slides.find((s) => s.id === key.slice(6)), element: null as SlideElement | null, cell: null as [number, number] | null };
+    const [elId, cellPart] = key.split("#");
+    const slide = slides.find((s) => s.elements.some((el) => el.id === elId));
+    const element = slide?.elements.find((el) => el.id === elId) || null;
+    const cell = cellPart ? (cellPart.split(".").map(Number) as [number, number]) : null;
+    return { slide, element, cell };
+  };
+
+  const spell = useSpellCheck({
+    mode: "model",
+    segments: spellSegments,
+    onReveal: (err) => {
+      const { slide, element } = findSpellTarget(err.key);
+      if (!slide) return;
+      setGridView(false);
+      setActiveSlideId(slide.id);
+      setEditingId(null);
+      if (element) setSelectedId(element.id);
+      else {
+        setNotesVisible(true);
+        window.setTimeout(() => {
+          const notes = document.getElementById("speaker-notes") as HTMLTextAreaElement | null;
+          notes?.focus();
+          notes?.setSelectionRange(err.start, err.end);
+        }, 60);
+      }
+    },
+    onReplace: (err, replacement) => {
+      const current = presentationRef.current;
+      const { slide, element, cell } = findSpellTarget(err.key);
+      if (!current || !slide) return;
+      const fix = (text: string) => text.slice(0, err.start) + replacement + text.slice(err.end);
+      applySlides(
+        current.slides.map((s) => {
+          if (s.id !== slide.id) return s;
+          if (!element) return { ...s, notes: fix(s.notes) };
+          return {
+            ...s,
+            elements: s.elements.map((el) => {
+              if (el.id !== element.id) return el;
+              if (cell && el.rows) return { ...el, rows: el.rows.map((row, r) => (r === cell[0] ? row.map((v, c) => (c === cell[1] ? fix(v) : v)) : row)) };
+              return { ...el, content: fix(el.content) };
+            }),
+          };
+        })
+      );
+    },
+  });
   const activeIndex = activeSlide ? slides.indexOf(activeSlide) : 0;
   const selected = activeSlide?.elements.find((el) => el.id === selectedId) || null;
   const theme = themeById(presentation?.metadata.themeId || "theme_light");
@@ -1489,6 +1555,7 @@ export const App: React.FC = () => {
                   />
                   {notesVisible && (
                     <SpeakerNotes
+                      spellKey={`notes:${activeSlide.id}`}
                       notes={activeSlide.notes}
                       onChangeNotes={handleChangeNotes}
                       gridView={gridView}
@@ -1590,6 +1657,17 @@ export const App: React.FC = () => {
         onExport={(format) => void handleExport(format)}
       />
       <CommandSearch isOpen={commandSearchOpen} onClose={() => setCommandSearchOpen(false)} menus={menus} />
+
+      {presentation && activeSlide && !presentingFrom && (
+        <footer className="h-7 px-3 flex items-center justify-between text-[11px] select-none shrink-0 text-white print:hidden" style={{ background: "#c43e1c" }} data-view-status>
+          <span className="font-mono">
+            Diapositiva {slides.findIndex((s) => s.id === activeSlide.id) + 1} de {slides.length}
+          </span>
+          <SpellIndicator spell={spell} tone="dark" />
+        </footer>
+      )}
+      {spell.menu}
+      <SpellStyles />
 
       {showStartScreen && (
         <StartScreen

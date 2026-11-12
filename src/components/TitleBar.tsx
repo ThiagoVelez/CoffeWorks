@@ -1,12 +1,15 @@
 import React from "react";
 import { Search, Minus, Square, X } from "lucide-react";
 import { tauriBridge } from "../services/tauriBridge";
+import { APP_STAGE, APP_VERSION } from "../version";
 
 interface TitleBarProps {
   onOpenCommandPalette: () => void;
+  version?: string;
+  stage?: string;
 }
 
-export const TitleBar: React.FC<TitleBarProps> = ({ onOpenCommandPalette }) => {
+export const TitleBar: React.FC<TitleBarProps> = ({ onOpenCommandPalette, version = APP_VERSION, stage = APP_STAGE }) => {
   return (
     <header
       data-tauri-drag-region
@@ -19,8 +22,16 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onOpenCommandPalette }) => {
           CoffeeWorks
         </span>
         <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-[#f4ede6] text-[#6f4e37] font-semibold border border-[#dfd3c7]">
-          v2.6
+          v{version}
         </span>
+        {stage && (
+          <span
+            title="Versión en desarrollo: puede tener errores. Se actualiza sola."
+            className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-[#fff3e0] text-[#e65100] font-bold border border-[#ffcc80] uppercase tracking-wide"
+          >
+            {stage}
+          </span>
+        )}
       </div>
 
       {/* Buscador global con atajo Ctrl+K en tono crema y café */}

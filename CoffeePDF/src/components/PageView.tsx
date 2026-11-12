@@ -6,6 +6,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Annotation, PageItem, TextAnnotation, Tool, ToolStyle } from "../types";
 import type { SourcePdf } from "../services/pdfEngine";
 import { renderPage } from "../services/pdfEngine";
+import type { OriginalItem } from "../services/originalText";
 import {
   FONT_CSS,
   LINE_HEIGHT,
@@ -36,6 +37,8 @@ interface PageViewProps {
   onChangeAnnotations: (pageId: string, update: (list: Annotation[]) => Annotation[], coalesceKey?: string) => void;
   onToolDone: () => void;
   registerElement: (pageId: string, element: HTMLDivElement | null) => void;
+  /** Texto original (complemento «Revisión del PDF original»): capa invisible donde se marcan las faltas. */
+  original?: Array<{ item: OriginalItem }>;
 }
 
 type Handle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
@@ -89,6 +92,7 @@ export const PageView: React.FC<PageViewProps> = ({
   onChangeAnnotations,
   onToolDone,
   registerElement,
+  original,
 }) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -461,6 +465,32 @@ export const PageView: React.FC<PageViewProps> = ({
           onPointerMove={handleDraftMove}
           onPointerUp={handleDraftUp}
         >
+          {original && original.length > 0 && (
+            <div className="absolute inset-0 overflow-hidden" style={{ pointerEvents: "none" }} aria-hidden data-original-layer>
+              {/* Se dibuja el texto completo (mismas posiciones); las palabras ya corregidas no se marcan porque el corrector recibe su texto en blanco */}
+              {original.map(({ item: t }) => (
+                <span
+                  key={t.key}
+                  data-spell-key={t.key}
+                  style={{
+                    position: "absolute",
+                    left: t.x,
+                    top: t.y,
+                    height: t.h,
+                    lineHeight: `${t.h}px`,
+                    fontSize: t.fontSize,
+                    fontFamily: FONT_CSS[t.font],
+                    whiteSpace: "pre",
+                    color: "transparent",
+                    transform: `scaleX(${t.scaleX})`,
+                    transformOrigin: "0 0",
+                  }}
+                >
+                  {t.text}
+                </span>
+              ))}
+            </div>
+          )}
           <svg className="absolute inset-0 overflow-visible" width={size.width} height={size.height} style={{ pointerEvents: "none" }}>
             {item.annotations.map(svgElement)}
             {searchBoxes.map((box, i) => (
@@ -552,6 +582,7 @@ export const PageView: React.FC<PageViewProps> = ({
                   cursor: interactive ? "move" : tool === "text" ? "text" : undefined,
                   pointerEvents: interactive || tool === "text" ? "auto" : "none",
                 }}
+                data-spell-key={annotation.id}
               >
                 {annotation.text}
               </div>
@@ -648,7 +679,8 @@ const TextEditor: React.FC<{
     <textarea
       ref={ref}
       value={annotation.text}
-      spellCheck
+      spellCheck={false}
+      data-spell-key={annotation.id}
       placeholder="Escribe aquí"
       onChange={(e) => onChange({ ...annotation, text: e.target.value })}
       onBlur={onFinish}

@@ -15,6 +15,8 @@ interface SheetTabsBarProps {
   stats: SelectionStats;
   zoom: number;
   onZoomChange: (zoom: number) => void;
+  /** Indicador del corrector ortográfico. */
+  spellSlot?: React.ReactNode;
 }
 
 const formatNumber = (value: number) =>
@@ -33,6 +35,7 @@ export const SheetTabsBar: React.FC<SheetTabsBarProps> = ({
   stats,
   zoom,
   onZoomChange,
+  spellSlot,
 }) => {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [tempName, setTempName] = useState("");
@@ -227,6 +230,7 @@ export const SheetTabsBar: React.FC<SheetTabsBarProps> = ({
       </div>
 
       <div className="flex items-center gap-4 text-[11px] text-[#444746] shrink-0 pl-3">
+        {spellSlot}
         {isEditing && (
           <span className="text-[10px] bg-emerald-100 text-[#0F9D58] px-2 py-0.5 rounded font-medium">Editando</span>
         )}

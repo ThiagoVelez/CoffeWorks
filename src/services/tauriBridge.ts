@@ -3,7 +3,7 @@
 // desarrollo y el estado se guarda en localStorage y en /api/vault.
 
 import { invoke } from "@tauri-apps/api/core";
-import type { AddonInfo, RecentDocument, SuiteApp, SuiteInfo } from "../types";
+import type { AddonInfo, RecentDocument, SuiteApp, SuiteInfo, UpdateInfo } from "../types";
 
 export const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
@@ -12,7 +12,7 @@ const INSTALLED_KEY = "coffeeworks_installed_apps";
 const FOCUS_KEY = "coffeeworks_focus_mode";
 
 /** Puertos de los servidores de desarrollo de cada aplicación. */
-const DEV_PORTS: Record<string, number> = { coffeedoc: 1421, coffeecalc: 1422, coffeeview: 1423, coffeepdf: 1424, coffeepage: 1425, coffeeedit: 1426, coffeelive: 1427, coffeedatabase: 1428 };
+const DEV_PORTS: Record<string, number> = { coffeedoc: 1421, coffeecalc: 1422, coffeeview: 1423, coffeepdf: 1424, coffeepage: 1425, coffeeedit: 1426, coffeelive: 1427, coffeedatabase: 1428, coffeeuiux: 1429, coffeeuml: 1430 };
 
 const ALIASES: Record<string, string> = { coffeesheet: "coffeecalc", coffeeslides: "coffeeview", coffeecams: "coffeeedit" };
 
@@ -34,6 +34,8 @@ export function appForDocument(doc: Pick<RecentDocument, "app_id" | "name">): st
   if (["ccm", "mp4", "webm", "mov", "mkv"].includes(extension)) return "coffeeedit";
   if (extension === "clv") return "coffeelive";
   if (["cdb", "db", "sqlite", "sqlite3"].includes(extension)) return "coffeedatabase";
+  if (extension === "cux") return "coffeeuiux";
+  if (extension === "cuml") return "coffeeuml";
   return "coffeedoc";
 }
 
@@ -66,6 +68,22 @@ const WEB_ADDONS: AddonInfo[] = [
     download_size: "90 MB",
     publisher: "Proyecto FFmpeg",
     license: "GPL",
+    installed: false,
+    installed_bytes: 0,
+    can_install: false,
+    manual_hint: "Los complementos se instalan en la aplicación de escritorio de CoffeeWorks.",
+  },
+  {
+    id: "pdfcheck",
+    name: "Revisión del PDF original",
+    summary: "Revisa la ortografía del texto que ya trae el PDF, también si está escaneado",
+    description:
+      "CoffeePDF revisa por defecto solo los textos que agregas. Con este complemento también revisa el texto original del documento: lo subraya en rojo, lo cuenta en el indicador de faltas y lo corrige con clic derecho (tapa la palabra y escribe la corrección encima). En las páginas escaneadas reconoce el texto con OCR (Tesseract) en español e inglés.",
+    apps: ["coffeepdf"],
+    version: "5.4",
+    download_size: "36 MB",
+    publisher: "Proyecto Tesseract OCR",
+    license: "Apache 2.0",
     installed: false,
     installed_bytes: 0,
     can_install: false,
@@ -202,7 +220,39 @@ const WEB_CATALOG: SuiteApp[] = [
     icon_name: "radio",
     icon_url: "/icons/CoffeeLive.ico",
     category: "Multimedia",
+  },  {
+    id: "coffeeuiux",
+    name: "CoffeeUI/UX",
+    subtitle: "Diseño de interfaces y prototipos",
+    description:
+      "Diseña interfaces para móvil, escritorio y web: marcos con tamaños de dispositivo, formas, textos, componentes, diseño automático, prototipos navegables y exportación a PNG, SVG, PDF y HTML/CSS.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "design",
+    icon_name: "pen-tool",
+    icon_url: "/icons/CoffeeUIUX.ico",
+    category: "Desarrollador",
   },
+  {
+    id: "coffeeuml",
+    name: "CoffeeUML",
+    subtitle: "Modelado UML y diagramas",
+    description:
+      "Diagramas UML de clases, casos de uso, secuencia, actividad, estados, componentes y despliegue; modelos entidad-relación y diagramas de flujo. Genera código y SQL y exporta a PNG, SVG y PDF.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "diagram",
+    icon_name: "workflow",
+    icon_url: "/icons/CoffeeUML.ico",
+    category: "Desarrollador",
+  },
+
 ];
 
 function readJson<T>(key: string, fallback: T): T {
@@ -326,6 +376,24 @@ export const tauriBridge = {
       return invoke<string>("create_document_file", { appId, docId, fileName, contents });
     }
     return openDevApp(appId, `#cfw=${encodeURIComponent(contents)}`);
+  },
+
+  async updateStatus(): Promise<UpdateInfo | null> {
+    return isTauri ? invoke<UpdateInfo>("update_status") : null;
+  },
+
+  /** Busca una versión nueva y, si la hay, la descarga. */
+  async updateCheck(): Promise<UpdateInfo> {
+    return invoke<UpdateInfo>("update_check");
+  },
+
+  /** Cierra el Launcher, instala la actualización y lo vuelve a abrir. */
+  async updateApply(): Promise<void> {
+    await invoke("update_apply");
+  },
+
+  async updateSetAuto(enabled: boolean): Promise<UpdateInfo> {
+    return invoke<UpdateInfo>("update_set_auto", { enabled });
   },
 
   async getAddons(): Promise<AddonInfo[]> {

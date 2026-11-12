@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod addons;
 pub mod commands;
+pub mod spell;
 
 /// Nombre de la carpeta de la suite dentro de los directorios del sistema.
 pub const SUITE_DIR: &str = "CoffeeWorks";
@@ -367,7 +368,12 @@ macro_rules! editor_handler {
             $crate::commands::core_window_set_title,
             $crate::commands::core_addon_status,
             $crate::commands::core_addon_install,
-            $crate::commands::core_addon_run
+            $crate::commands::core_addon_run,
+            $crate::commands::core_addon_run_file,
+            $crate::commands::core_spell_dictionary,
+            $crate::commands::core_spell_user_words,
+            $crate::commands::core_spell_add_word,
+            $crate::commands::core_spell_remove_word
             $(, $extra)*
         ]
     };

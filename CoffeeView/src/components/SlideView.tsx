@@ -144,6 +144,8 @@ export const ElementView: React.FC<ElementViewProps> = ({
                   {editing ? (
                     <input
                       value={cell}
+                      spellCheck={false}
+                      data-spell-key={onChangeCell ? `${el.id}#${r}.${c}` : undefined}
                       autoFocus={r === 0 && c === 0}
                       onChange={(e) => onChangeCell?.(r, c, e.target.value)}
                       onMouseDown={(e) => e.stopPropagation()}
@@ -155,7 +157,9 @@ export const ElementView: React.FC<ElementViewProps> = ({
                       style={{ color: "inherit", font: "inherit" }}
                     />
                   ) : (
-                    <span className="block truncate">{cell}</span>
+                    <span className="block truncate" data-spell-key={onChangeCell ? `${el.id}#${r}.${c}` : undefined}>
+                      {cell}
+                    </span>
                   )}
                 </td>
               ))}
@@ -204,7 +208,8 @@ export const ElementView: React.FC<ElementViewProps> = ({
           <textarea
             value={el.content}
             autoFocus
-            spellCheck
+            spellCheck={false}
+            data-spell-key={onChangeContent ? el.id : undefined}
             onChange={(e) => onChangeContent?.(e.target.value)}
             onBlur={onFinishEditing}
             onMouseDown={(e) => e.stopPropagation()}
@@ -220,7 +225,7 @@ export const ElementView: React.FC<ElementViewProps> = ({
             style={textStyle}
           />
         ) : el.content ? (
-          <div className="whitespace-pre-wrap break-words" style={textStyle}>
+          <div className="whitespace-pre-wrap break-words" style={textStyle} data-spell-key={onChangeContent ? el.id : undefined}>
             {el.content}
           </div>
         ) : showPlaceholders && PLACEHOLDERS[el.type] ? (
