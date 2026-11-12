@@ -90,29 +90,24 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 30
     env:
-      TESSERACT_SETUP: https://github.com/UB-Mannheim/tesseract/releases/download/v5.4.0.20240606/tesseract-ocr-w64-setup-5.4.0.20240606.exe
       TESSDATA: https://github.com/tesseract-ocr/tessdata_fast/raw/main
     steps:
       - uses: actions/checkout@v4
 
-      - name: Instalar Tesseract
+      # Paquete de conda-forge: trae tesseract.exe y todas sus DLL sin
+      # instaladores interactivos (el instalador NSIS se queda esperando).
+      - name: Instalar Tesseract (conda-forge)
         shell: pwsh
+        timeout-minutes: 15
         run: |
-          $ProgressPreference = 'SilentlyContinue'
-          $dir = "$env:RUNNER_TEMP\tesseract"
-          try {
-            Invoke-WebRequest -Uri $env:TESSERACT_SETUP -OutFile "$env:RUNNER_TEMP\tess-setup.exe"
-            Start-Process -Wait -FilePath "$env:RUNNER_TEMP\tess-setup.exe" -ArgumentList "/S /D=$dir"
-          } catch {
-            Write-Host "Descarga directa fallida ($_); se usa Chocolatey"
-          }
-          if (-not (Test-Path "$dir\tesseract.exe")) {
-            choco install tesseract -y --no-progress
-            $dir = "C:\Program Files\Tesseract-OCR"
-          }
-          if (-not (Test-Path "$dir\tesseract.exe")) { throw "No se pudo instalar Tesseract" }
-          "TESS_DIR=$dir" | Out-File -FilePath $env:GITHUB_ENV -Append
-          & "$dir\tesseract.exe" --version
+          $env_dir = "$env:RUNNER_TEMP\tessenv"
+          & "$env:CONDA\Scripts\conda.exe" create -y -q -p $env_dir -c conda-forge --override-channels tesseract
+          if ($LASTEXITCODE -ne 0) { throw "conda no pudo instalar Tesseract" }
+          $exe = Get-ChildItem $env_dir -Recurse -Filter tesseract.exe | Select-Object -First 1
+          if (-not $exe) { throw "El entorno no contiene tesseract.exe" }
+          "TESS_DIR=$($exe.DirectoryName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "TESS_ENV=$env_dir" | Out-File -FilePath $env:GITHUB_ENV -Append
+          & $exe.FullName --version
 
       - name: Empaquetar
         working-directory: addons/coffee-pdfcheck
@@ -121,7 +116,9 @@ jobs:
           $ProgressPreference = 'SilentlyContinue'
           New-Item -ItemType Directory -Force dist | Out-Null
           Copy-Item "$env:TESS_DIR\tesseract.exe" dist/
+          # DLL de Tesseract y de sus dependencias (y el runtime de Visual C++ de la raíz del entorno)
           Get-ChildItem "$env:TESS_DIR" -Filter *.dll | Copy-Item -Destination dist/
+          Get-ChildItem "$env:TESS_ENV" -Filter *.dll | Copy-Item -Destination dist/ -ErrorAction SilentlyContinue
           foreach ($lang in 'spa', 'eng') {
             Invoke-WebRequest -Uri "$env:TESSDATA/$lang.traineddata" -OutFile "dist/$lang.traineddata"
           }
@@ -133,6 +130,7 @@ jobs:
       - name: Probar el paquete
         working-directory: addons/coffee-pdfcheck
         shell: pwsh
+        timeout-minutes: 5
         run: |
           # Igual que CoffeeWorks: carpeta limpia, idiomas al lado del ejecutable
           Expand-Archive coffee-pdfcheck-win64.zip -DestinationPath "$env:RUNNER_TEMP\pdfcheck" -Force

@@ -16,7 +16,7 @@ tamaño de letra parecido.
 El flujo `.github/workflows/addons.yml` arma `coffee-pdfcheck-win64.zip` en
 Windows con:
 
-- `tesseract.exe` y sus DLL (compilación de UB Mannheim);
+- `tesseract.exe` y sus DLL (paquete de conda-forge, sin instalador);
 - `spa.traineddata` y `eng.traineddata` (modelos *fast* de tessdata).
 
 Todo va en la misma carpeta: CoffeeWorks define `TESSDATA_PREFIX` al ejecutarlo.
