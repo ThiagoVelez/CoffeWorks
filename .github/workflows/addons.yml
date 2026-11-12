@@ -207,6 +207,8 @@ jobs:
           $out = (& "$env:RUNNER_TEMP\rawtest\dcraw_emu.exe" 2>&1 | Out-String)
           Write-Host $out
           if ($out -notmatch 'LibRaw|dcraw|Usage|usage') { throw "dcraw_emu no arranca (¿faltan DLL?)" }
+          # Sin argumentos muestra la ayuda y sale con código 1: arrancar es lo que se comprueba
+          exit 0
 
       - uses: actions/upload-artifact@v4
         with:
