@@ -214,6 +214,63 @@ async fn update_set_auto(enabled: bool) -> updater::UpdateInfo {
     updater::set_auto_install(enabled)
 }
 
+// ---------------------------------------------------------------------------
+// Servidor MCP de CoffeeAnimate3D (Ajustes › Claude)
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize)]
+struct McpState {
+    enabled: bool,
+    url: String,
+    connected: bool,
+    installed: bool,
+}
+
+fn mcp_state(c: &coffee_core::mcp::McpConfig) -> McpState {
+    McpState {
+        enabled: c.enabled,
+        url: c.url(),
+        connected: c.enabled && coffee_core::mcp::connected(),
+        installed: apps::find_app("coffeeanimate3d").is_some_and(apps::is_installed),
+    }
+}
+
+#[tauri::command]
+async fn mcp_status() -> McpState {
+    mcp_state(&coffee_core::mcp::McpConfig::load())
+}
+
+#[tauri::command]
+async fn mcp_set_enabled(enabled: bool) -> Result<McpState, String> {
+    blocking(move || coffee_core::mcp::set_enabled(enabled).map(|c| mcp_state(&c))).await
+}
+
+#[tauri::command]
+async fn mcp_regenerate_token() -> Result<McpState, String> {
+    blocking(|| coffee_core::mcp::regenerate_token().map(|c| mcp_state(&c))).await
+}
+
+/// Texto para pegar en Claude: la orden de Claude Code y el JSON de Claude Desktop.
+#[tauri::command]
+async fn mcp_client_config() -> Result<String, String> {
+    blocking(|| {
+        let c = coffee_core::mcp::McpConfig::load();
+        if !c.enabled || c.token.is_empty() {
+            return Err("Activa primero el servidor MCP.".to_string());
+        }
+        let exe = match apps::find_app("coffeeanimate3d") {
+            Some(app) => apps::installed_exe(app),
+            None => coffee_core::apps_dir().join("CoffeeAnimate3D").join(if cfg!(windows) { "CoffeeAnimate3D.exe" } else { "CoffeeAnimate3D" }),
+        };
+        Ok(format!(
+            "# Claude Code (terminal):\n{}\n\n# Claude Desktop (claude_desktop_config.json):\n{}\n",
+            coffee_core::mcp::claude_code_command(&c),
+            coffee_core::mcp::claude_desktop_json(&exe)
+        ))
+    })
+    .await
+}
+
 #[tauri::command]
 async fn open_vault_folder() -> Result<String, String> {
     blocking(move || {
@@ -477,6 +534,10 @@ fn main() {
             update_check,
             update_apply,
             update_set_auto,
+            mcp_status,
+            mcp_set_enabled,
+            mcp_regenerate_token,
+            mcp_client_config,
             game_status,
             game_install,
             game_uninstall,

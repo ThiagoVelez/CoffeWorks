@@ -9,6 +9,7 @@
 - CoffeeEncoder: flechas de conversión alrededor de un fotograma (cobre → vino).
 - CoffeeAnimate: pelota que rebota con estela (coral → amarillo).
 - CoffeePuppet: cara de marioneta con puntos de control (rosa → salmón).
+- CoffeeAnimate3D: cubo en perspectiva con un hueso articulado (naranja → violeta).
 """
 
 import math
@@ -207,3 +208,16 @@ for x, y in ((128, 40), (40, 128), (216, 128)):
     d.line([p(128, 128), p(x, y)], fill=(255, 255, 255, 150), width=3 * S)
     d.ellipse(box(x - 9, y - 9, x + 9, y + 9), fill=WHITE)
 save(img, "CoffeePuppet")
+
+# --- CoffeeAnimate3D: cubo en perspectiva con un hueso articulado -----------------
+img, d = gradient_canvas((255, 138, 61), (121, 80, 242))
+top = [p(128, 52), p(196, 88), p(128, 124), p(60, 88)]
+left = [p(60, 88), p(128, 124), p(128, 204), p(60, 168)]
+right = [p(128, 124), p(196, 88), p(196, 168), p(128, 204)]
+d.polygon(top, fill=WHITE)
+d.polygon(left, fill=(255, 255, 255, 215))
+d.polygon(right, fill=(255, 255, 255, 170))
+d.line([p(92, 156), p(128, 164), p(164, 140)], fill=(214, 96, 60, 255), width=8 * S, joint="curve")
+for x, y in ((92, 156), (128, 164), (164, 140)):
+    d.ellipse(box(x - 9, y - 9, x + 9, y + 9), fill=(214, 96, 60, 255))
+save(img, "CoffeeAnimate3D")

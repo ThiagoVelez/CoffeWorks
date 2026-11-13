@@ -41,7 +41,13 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libsoup-3.0-dev librsvg2-dev patchelf xvfb imagemagick desktop-file-utils shared-mime-info xdg-utils libfile-mimeinfo-perl
 
       - name: Pruebas del núcleo y del Launcher
-        run: cargo test -p coffee-core -p coffeeworks-launcher
+        run: cargo test -p coffee-core -p coffeeworks-launcher -p coffeeanimate3d
+
+      - name: Pruebas de CoffeeAnimate3D (modelo, glTF y herramientas MCP)
+        working-directory: CoffeeAnimate3D
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
 
       - name: Código compartido y temas al día
         run: |
@@ -66,7 +72,7 @@ jobs:
           coffeeworks --list > /dev/null
           # Instalación por usuario: apps, menús y tipos de archivo
           coffeeworks --install-all
-          for app in CoffeeDoc CoffeeCalc CoffeeView CoffeePDF CoffeePage CoffeeBooks CoffeeDataBase CoffeeEdit CoffeeLive CoffeeUIUX CoffeeUML CoffeePhoto CoffeeVector CoffeePaint CoffeeLens CoffeeMotion CoffeeSound CoffeeEncoder CoffeeAnimate CoffeePuppet; do
+          for app in CoffeeDoc CoffeeCalc CoffeeView CoffeePDF CoffeePage CoffeeBooks CoffeeDataBase CoffeeEdit CoffeeLive CoffeeUIUX CoffeeUML CoffeePhoto CoffeeVector CoffeePaint CoffeeLens CoffeeMotion CoffeeSound CoffeeEncoder CoffeeAnimate CoffeePuppet CoffeeAnimate3D; do
             test -x "$HOME/.local/share/CoffeeWorks/Apps/$app/$app" || { echo "Falta $app"; exit 1; }
           done
           test -f "$HOME/.local/share/applications/coffeeworks-coffeebooks.desktop"

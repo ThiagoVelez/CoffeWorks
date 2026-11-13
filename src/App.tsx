@@ -11,6 +11,7 @@ import { AddonsView } from "./components/AddonsView";
 import { GamesView } from "./components/GamesView";
 import { ThemeSwitch } from "./theme/ThemeSwitch";
 import { UpdateBanner, UpdateSettings, useUpdates } from "./components/Updates";
+import { McpSettings } from "./components/McpSettings";
 import { APP_STAGE, APP_VERSION } from "./version";
 import { isTauri, tauriBridge } from "./services/tauriBridge";
 import type { RecentDocument, SuiteApp, SuiteInfo } from "./types";
@@ -323,6 +324,8 @@ export const App: React.FC = () => {
                 stage={suiteInfo ? suiteInfo.stage : APP_STAGE}
                 onNotify={showNotification}
               />
+
+              <McpSettings onNotify={showNotification} />
 
               <div className="p-6 rounded-2xl bg-white border border-[#dfd3c7] flex flex-col gap-4 text-xs text-[#5c3a21]">
                 <label className="flex items-start gap-3 cursor-pointer">

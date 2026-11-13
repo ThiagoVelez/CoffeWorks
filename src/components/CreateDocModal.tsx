@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import {
-  BookOpen, X, FileText, Table, Presentation, FilePen, NotebookPen, Database, Scissors, Radio, Plus, PenTool, Workflow, Image as ImageIcon, PenLine, Brush, Aperture, WandSparkles, AudioWaveform, RefreshCw, Film, Smile } from "lucide-react";
+  BookOpen, X, FileText, Table, Presentation, FilePen, NotebookPen, Database, Scissors, Radio, Plus, PenTool, Workflow, Image as ImageIcon, PenLine, Brush, Aperture, WandSparkles, AudioWaveform, RefreshCw, Film, Smile, Box as BoxIcon } from "lucide-react";
 
 interface CreateDocModalProps {
   isOpen: boolean;
@@ -40,6 +40,7 @@ export const CreateDocModal: React.FC<CreateDocModalProps> = ({
     { id: "coffeeencoder", name: "CoffeeEncoder", ext: ".cen", icon: RefreshCw, color: "text-[#a8324a]", bg: "bg-[#fbe4ea]" },
     { id: "coffeeanimate", name: "CoffeeAnimate", ext: ".can", icon: Film, color: "text-[#e8433f]", bg: "bg-[#ffe3e3]" },
     { id: "coffeepuppet", name: "CoffeePuppet", ext: ".cpup", icon: Smile, color: "text-[#d6336c]", bg: "bg-[#ffe0ec]" },
+    { id: "coffeeanimate3d", name: "CoffeeAnimate3D", ext: ".ca3d", icon: BoxIcon, color: "text-[#e8672a]", bg: "bg-[#fff0e6]" },
     { id: "coffeelens", name: "CoffeeLens", ext: ".clc", icon: Aperture, color: "text-[#d9480f]", bg: "bg-[#ffead5]" },
   ];
 

@@ -1,6 +1,6 @@
 # CoffeeWorks
 
-Suite ofimática de escritorio para Windows, de código abierto y sin conexión. Se compone de un **Launcher** que instala y gestiona las aplicaciones y de veinte aplicaciones, en cuatro categorías (**Office**, **Multimedia**, **Desarrollador** e **Ilustración**):
+Suite ofimática de escritorio para Windows, de código abierto y sin conexión. Se compone de un **Launcher** que instala y gestiona las aplicaciones y de veintiuna aplicaciones, en cuatro categorías (**Office**, **Multimedia**, **Desarrollador** e **Ilustración**):
 
 | Aplicación | Qué es | Formato propio | Abre | Exporta |
 | :--- | :--- | :--- | :--- | :--- |
@@ -24,12 +24,13 @@ Suite ofimática de escritorio para Windows, de código abierto y sin conexión.
 | **CoffeeEncoder** *(Ilustración)* | Conversión de video y audio por lotes | `.cen` (cola) | Casi cualquier video o audio | MP4, MOV, MKV, WebM, GIF, MP3, AAC, WAV, FLAC... (con FFmpeg) |
 | **CoffeeAnimate** *(Ilustración)* | Animación 2D interactiva | `.can` | PNG, JPG, SVG | HTML5 interactivo, WebM, GIF, secuencia PNG; MP4 y MOV (con FFmpeg) |
 | **CoffeePuppet** *(Ilustración)* | Animación de personajes en tiempo real | `.cpup` | Cámara y micrófono | WebM, GIF; MP4 y MOV (con FFmpeg) |
+| **CoffeeAnimate3D** *(Ilustración)* | Modelado y animación 3D por bloques, con Claude por MCP | `.ca3d` | — | glTF (`.glb`), PNG |
 
 Cada aplicación es un ejecutable independiente construido con **Tauri 2** (Rust + WebView2) y **React + TypeScript**.
 
 ## Cómo funciona la instalación
 
-1. El instalador de Windows (`CoffeeWorks-Setup-2.10.0.exe`, hecho con **Inno Setup**) instala solo el Launcher y deja los paquetes de las veinte aplicaciones en su carpeta `packages`.
+1. El instalador de Windows (`CoffeeWorks-Setup-2.10.0.exe`, hecho con **Inno Setup**) instala solo el Launcher y deja los paquetes de las veintiuna aplicaciones en su carpeta `packages`.
 2. Dentro del Launcher, en la **Tienda de Apps**, cada aplicación tiene sus botones **Instalar**, **Abrir App** y **Desinstalar**:
    - *Instalar* copia la aplicación a `%LOCALAPPDATA%\CoffeeWorks\Apps\<App>`, crea su acceso directo en el menú Inicio (carpeta *CoffeeWorks*) y asocia su tipo de archivo, de modo que un doble clic sobre un `.cfd`, `.cfs`, `.csl`, `.cpg`, `.cdb`, `.ccm` o `.clv` lo abre. CoffeePDF no reemplaza tu lector de PDF predeterminado: aparece en *Abrir con* del Explorador.
    - *Desinstalar* borra la aplicación, su acceso directo y su asociación. **Los documentos no se tocan.**
@@ -71,6 +72,16 @@ Después se sube el cambio a `main` (por ejemplo, con una pull request). El fluj
 
 - Mientras la fase sea *alpha* o *beta*, las versiones se marcan como *pre-release*.
 - Para cambiar de fase: `node scripts/version.mjs 2.8.0 beta`, o `estable` para la primera versión estable.
+
+## Claude (MCP) en CoffeeAnimate3D
+
+CoffeeAnimate3D incluye un servidor [MCP](https://modelcontextprotocol.io) para que Claude modele y anime en la app abierta. Está **desactivado por defecto**.
+
+- **Activarlo:** Launcher › *Ajustes* › *Claude (MCP)* › *Permitir que Claude use CoffeeAnimate3D*. Con CoffeeAnimate3D abierta, el estado pasa a *Esperando a Claude* y luego a *Claude conectado*.
+- **Conectar Claude:** *Copiar configuración para Claude* copia dos cosas: la orden para **Claude Code** (`claude mcp add --transport http …` con la clave) y el bloque para `claude_desktop_config.json` de **Claude Desktop** (lanza `CoffeeAnimate3D --mcp-stdio`, que hace de puente con la app abierta).
+- **Seguridad:** el servidor solo escucha en `127.0.0.1:48631`, rechaza peticiones de páginas web de otros orígenes y exige la clave (`Authorization: Bearer`). *Generar una clave nueva* invalida la anterior. La configuración vive en `mcp.json`, en la carpeta de datos locales de CoffeeWorks.
+- **Herramientas:** `get_model`, `new_model` (con plantillas), `add_part`, `update_part`, `remove_part`, `duplicate_part`, `mirror_part`, `fill_face`, `paint_pixels`, `add_animation`, `set_keyframe`, `remove_keyframe`, `update_animation`, `preview` (devuelve una imagen de la vista) y `export_glb` (guarda en `Documentos/CoffeeWorks/Exportaciones`).
+- Cada cambio de Claude entra en el historial de la app: se deshace con `Ctrl+Z`.
 
 ## Complementos y plantillas
 
@@ -143,7 +154,7 @@ npm install
 npm run dev:all
 ```
 
-Antes de la primera vez, instala también las dependencias de cada aplicación (`npm install` dentro de `CoffeeDoc`, `CoffeeCalc`, `CoffeeView`, `CoffeePDF`, `CoffeePage`, `CoffeeBooks`, `CoffeeDataBase`, `CoffeeEdit`, `CoffeeLive`, `CoffeeUIUX`, `CoffeeUML`, `CoffeePhoto`, `CoffeeVector`, `CoffeePaint`, `CoffeeLens`, `CoffeeMotion`, `CoffeeSound`, `CoffeeEncoder`, `CoffeeAnimate` y `CoffeePuppet`). Los servidores quedan en:
+Antes de la primera vez, instala también las dependencias de cada aplicación (`npm install` dentro de `CoffeeDoc`, `CoffeeCalc`, `CoffeeView`, `CoffeePDF`, `CoffeePage`, `CoffeeBooks`, `CoffeeDataBase`, `CoffeeEdit`, `CoffeeLive`, `CoffeeUIUX`, `CoffeeUML`, `CoffeePhoto`, `CoffeeVector`, `CoffeePaint`, `CoffeeLens`, `CoffeeMotion`, `CoffeeSound`, `CoffeeEncoder`, `CoffeeAnimate`, `CoffeePuppet` y `CoffeeAnimate3D`). Los servidores quedan en:
 
 | Aplicación | Launcher | CoffeeDoc | CoffeeCalc | CoffeeView | CoffeePDF | CoffeePage | CoffeeEdit | CoffeeLive | CoffeeDataBase |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -157,9 +168,9 @@ Antes de la primera vez, instala también las dependencias de cada aplicación (
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | Puerto | 1435 | 1436 | 1437 | 1438 | 1439 |
 
-| Aplicación | CoffeeBooks |
-| :--- | :--- |
-| Puerto | 1440 |
+| Aplicación | CoffeeBooks | CoffeeAnimate3D |
+| :--- | :--- | :--- |
+| Puerto | 1440 | 1441 |
 
 En el navegador los documentos se guardan en `localStorage` y el Launcher abre las aplicaciones en pestañas; en el ejecutable se usan archivos reales y ventanas nativas.
 
@@ -197,6 +208,7 @@ CoffeeWorks/
 ├── CoffeeEncoder/           Conversión de video y audio (src/ + src-tauri/)
 ├── CoffeeAnimate/           Animación 2D (src/ + src-tauri/)
 ├── CoffeePuppet/            Personajes en tiempo real (src/ + src-tauri/)
+├── CoffeeAnimate3D/         Modelado y animación 3D por bloques, con servidor MCP (src/ + src-tauri/)
 ├── crates/coffee-core/      Código Rust compartido: bóveda, recientes, archivos, diálogos, complementos y diccionarios
 ├── shared/spell/            Corrector ortográfico compartido (se copia a cada app con scripts/sync-shared.mjs)
 ├── shared/studio/           Base de las apps de Ilustración: encabezado, controles oscuros, guardado, historial y complementos
@@ -357,6 +369,15 @@ Las nueve apps de Ilustración comparten una interfaz oscura, autoguardado, desh
 - *Boca con el micrófono*, 9 *gestos* con el teclado (saludar, saltar, sorpresa, corazones, reír, pulgar arriba, tristeza, enfado, dormir) y desplazamiento por la escena con las flechas.
 - Cinco personajes personalizables (taza de café, persona, robot y gato: colores, pelo y accesorios) y escenas con color, degradado o imagen.
 - *Tomas* grabadas con la voz, reproducción y exportación a video (WebM con audio, GIF; con FFmpeg, MP4 y MOV).
+
+**CoffeeAnimate3D** (naranja → violeta) — modelado y animación 3D por bloques:
+
+- Modelos hechos de *cubos* (16 unidades = 1 bloque) organizados en un árbol de *huesos*: cada parte gira sobre su pivote y arrastra a sus hijas.
+- *Texturas pixeladas de 32×32* por cara, con lápiz, relleno y cuentagotas, y la paleta del juego SurvivalForest.
+- *Animaciones* por fotogramas clave (posición, giro y escala) con suavizado lineal, suave o escalonado, en bucle o de una vez.
+- Plantillas de *cuadrúpedo, bípedo, ave y araña* con animaciones de reposo, andar y volar; duplicar y *reflejar* partes (izquierda ↔ derecha).
+- Exportación a *glTF binario* (`.glb`, con texturas y animaciones) y captura PNG desde seis vistas.
+- **Claude por MCP**: Claude puede crear, pintar y animar modelos en la app abierta (ver *Claude (MCP)* más abajo).
 
 **Modo claro y oscuro**: toda la suite usa el modo claro por defecto. En el Launcher (*Ajustes › Apariencia*), en el menú *Ver* de cada app o en los ajustes de CoffeeLive se cambia al modo oscuro, en negro, y el cambio vale para todas las apps. Los temas se generan a partir de los colores de cada app con `scripts/make-theme.mjs`; la hoja de los documentos, las diapositivas, las páginas PDF y los lienzos de diseño conservan sus colores. Las apps de Ilustración son siempre oscuras.
 

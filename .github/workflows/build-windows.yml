@@ -120,6 +120,7 @@ jobs:
           Assert (Test-Path "$apps\CoffeeEncoder\CoffeeEncoder.exe") "CoffeeEncoder queda instalado"
           Assert (Test-Path "$apps\CoffeeAnimate\CoffeeAnimate.exe") "CoffeeAnimate queda instalado"
           Assert (Test-Path "$apps\CoffeePuppet\CoffeePuppet.exe") "CoffeePuppet queda instalado"
+          Assert (Test-Path "$apps\CoffeeAnimate3D\CoffeeAnimate3D.exe") "CoffeeAnimate3D queda instalado"
           Assert (Test-Path "$apps\CoffeeBooks\CoffeeBooks.exe") "CoffeeBooks queda instalado"
           $cbk = (Get-ItemProperty "HKCU:\Software\Classes\.cbk" -ErrorAction SilentlyContinue).'(default)'
           Assert ($cbk -eq "CoffeeWorks.CoffeeBooks.cbk") "se asocia el tipo de archivo .cbk"
@@ -154,6 +155,8 @@ jobs:
           Assert ($t -eq "CoffeeWorks.CoffeeAnimate.can") "se asocia el tipo de archivo .can"
           $t = (Get-ItemProperty "HKCU:\Software\Classes\.cpup" -ErrorAction SilentlyContinue).'(default)'
           Assert ($t -eq "CoffeeWorks.CoffeePuppet.cpup") "se asocia el tipo de archivo .cpup"
+          $t = (Get-ItemProperty "HKCU:\Software\Classes\.ca3d" -ErrorAction SilentlyContinue).'(default)'
+          Assert ($t -eq "CoffeeWorks.CoffeeAnimate3D.ca3d") "se asocia el tipo de archivo .ca3d"
           $pdfDefault = (Get-ItemProperty "HKCU:\Software\Classes\.pdf" -ErrorAction SilentlyContinue).'(default)'
           Assert ($pdfDefault -ne "CoffeeWorks.CoffeePDF.pdf") "CoffeePDF no reemplaza el lector de PDF predeterminado"
           Assert ((Get-ItemProperty "HKCU:\Software\Classes\.pdf\OpenWithProgids" -ErrorAction SilentlyContinue).'CoffeeWorks.CoffeePDF.pdf' -ne $null) "CoffeePDF aparece en Abrir con"
@@ -161,7 +164,7 @@ jobs:
           # Las ventanas deben arrancar y seguir abiertas
           New-Item -ItemType Directory -Force screenshots | Out-Null
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-          foreach ($exe in @("$dir\CoffeeWorks.exe", "$apps\CoffeeDoc\CoffeeDoc.exe", "$apps\CoffeeCalc\CoffeeCalc.exe", "$apps\CoffeeView\CoffeeView.exe", "$apps\CoffeePDF\CoffeePDF.exe", "$apps\CoffeePage\CoffeePage.exe", "$apps\CoffeeBooks\CoffeeBooks.exe", "$apps\CoffeeDataBase\CoffeeDataBase.exe", "$apps\CoffeeEdit\CoffeeEdit.exe", "$apps\CoffeeLive\CoffeeLive.exe", "$apps\CoffeeUIUX\CoffeeUIUX.exe", "$apps\CoffeeUML\CoffeeUML.exe", "$apps\CoffeePhoto\CoffeePhoto.exe", "$apps\CoffeeVector\CoffeeVector.exe", "$apps\CoffeePaint\CoffeePaint.exe", "$apps\CoffeeLens\CoffeeLens.exe", "$apps\CoffeeMotion\CoffeeMotion.exe", "$apps\CoffeeSound\CoffeeSound.exe", "$apps\CoffeeEncoder\CoffeeEncoder.exe", "$apps\CoffeeAnimate\CoffeeAnimate.exe", "$apps\CoffeePuppet\CoffeePuppet.exe")) {
+          foreach ($exe in @("$dir\CoffeeWorks.exe", "$apps\CoffeeDoc\CoffeeDoc.exe", "$apps\CoffeeCalc\CoffeeCalc.exe", "$apps\CoffeeView\CoffeeView.exe", "$apps\CoffeePDF\CoffeePDF.exe", "$apps\CoffeePage\CoffeePage.exe", "$apps\CoffeeBooks\CoffeeBooks.exe", "$apps\CoffeeDataBase\CoffeeDataBase.exe", "$apps\CoffeeEdit\CoffeeEdit.exe", "$apps\CoffeeLive\CoffeeLive.exe", "$apps\CoffeeUIUX\CoffeeUIUX.exe", "$apps\CoffeeUML\CoffeeUML.exe", "$apps\CoffeePhoto\CoffeePhoto.exe", "$apps\CoffeeVector\CoffeeVector.exe", "$apps\CoffeePaint\CoffeePaint.exe", "$apps\CoffeeLens\CoffeeLens.exe", "$apps\CoffeeMotion\CoffeeMotion.exe", "$apps\CoffeeSound\CoffeeSound.exe", "$apps\CoffeeEncoder\CoffeeEncoder.exe", "$apps\CoffeeAnimate\CoffeeAnimate.exe", "$apps\CoffeePuppet\CoffeePuppet.exe", "$apps\CoffeeAnimate3D\CoffeeAnimate3D.exe")) {
             $name = [IO.Path]::GetFileNameWithoutExtension($exe)
             $process = Start-Process $exe -PassThru
             Start-Sleep -Seconds 12

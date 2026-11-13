@@ -51,7 +51,7 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
     if (activeFilter === "videos") return ["coffeecams", "coffeeedit", "coffeelive"].includes(app) || lower.endsWith(".ccm") || lower.endsWith(".clv");
     if (activeFilter === "databases") return app === "coffeedatabase" || /\.(cdb|db|sqlite3?)$/.test(lower);
     if (activeFilter === "designs") return app === "coffeeuiux" || app === "coffeeuml" || /\.(cux|cuml)$/.test(lower);
-    if (activeFilter === "art") return ["coffeephoto", "coffeevector", "coffeepaint", "coffeelens", "coffeemotion", "coffeesound", "coffeeencoder", "coffeeanimate", "coffeepuppet"].includes(app) || /\.(cph|cvc|cpt|clc|cmo|csn|cen|can|cpup)$/.test(lower);
+    if (activeFilter === "art") return ["coffeephoto", "coffeevector", "coffeepaint", "coffeelens", "coffeemotion", "coffeesound", "coffeeencoder", "coffeeanimate", "coffeepuppet", "coffeeanimate3d"].includes(app) || /\.(cph|cvc|cpt|clc|cmo|csn|cen|can|cpup|ca3d)$/.test(lower);
     return true;
   });
 
@@ -160,6 +160,9 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
     }
     if (lowerName.endsWith(".can") || appId === "coffeeanimate") {
       return { iconUrl: "/icons/CoffeeAnimate.ico", alt: "CoffeeAnimate", bg: "bg-[#ffe3e3]", border: "border-[#e8433f]/30" };
+    }
+    if (lowerName.endsWith(".ca3d") || appId === "coffeeanimate3d") {
+      return { iconUrl: "/icons/CoffeeAnimate3D.ico", alt: "CoffeeAnimate3D", bg: "bg-[#fff0e6]", border: "border-[#ff8a3d]/30" };
     }
     if (lowerName.endsWith(".cpup") || appId === "coffeepuppet") {
       return { iconUrl: "/icons/CoffeePuppet.ico", alt: "CoffeePuppet", bg: "bg-[#ffe0ec]", border: "border-[#d6336c]/30" };
