@@ -2,9 +2,9 @@
 // modelo abierto con las mismas operaciones puras que usa el editor. Las que necesitan
 // la ventana (captura y exportación) se devuelven como `needs` para que las haga la app.
 
-import { addAnimation, addPart, duplicatePart, fillFace, groupParts, mirrorPart, ungroup, newModel, paintPixels, removeAnimation, removeKeyframe, removePart, setKeyframe, updateAnimation, updatePart, type PartPatch } from "./model";
+import { addAnimation, addPart, copyPose, pastePose, type PoseClip, duplicatePart, fillFace, groupParts, mirrorPart, ungroup, newModel, paintPixels, removeAnimation, removeKeyframe, removePart, setKeyframe, updateAnimation, updatePart, type PartPatch } from "./model";
 import { TEMPLATES } from "./templates";
-import { FACES, SHAPES, TEX, type Ease, type Shape, type FaceName, type Model3D, type Vec3 } from "./types";
+import { EASES, FACES, SHAPES, TEX, type Ease, type Shape, type FaceName, type Model3D, type Vec3 } from "./types";
 import type { ViewAngle } from "./viewport";
 
 export type Content = { type: "text"; text: string } | { type: "image"; data: string; mimeType: string };
@@ -16,7 +16,7 @@ export interface ToolResult {
   isError?: boolean;
   /** Qué seleccionar en la app para que se vea lo que ha hecho Claude. */
   select?: string;
-  needs?: { preview: PreviewRequest } | { export: string };
+  needs?: { preview: PreviewRequest } | { export: string } | { exportObj: string };
 }
 
 export interface PreviewRequest {
@@ -238,6 +238,30 @@ const HANDLERS: Record<string, Handler> = {
       preview.time = typeof a.time === "number" ? a.time : 0;
     }
     return { content: [], needs: { preview } };
+  },
+
+  copy_pose: (m, a) => {
+    const anim = animRef(m, a.animation);
+    const t = typeof a.time === "number" ? a.time : 0;
+    const ids = Array.isArray(a.parts) && a.parts.length ? a.parts.map((p) => partRef(m, p)) : m.parts.map((p) => p.id);
+    const clip = copyPose(m, anim, t, ids);
+    return ok(`Pose de ${clip.length} pieza(s) en ${t} s. Pásala tal cual como «pose» a paste_pose:\n${JSON.stringify(clip)}`);
+  },
+
+  paste_pose: (m, a) => {
+    const anim = animRef(m, a.animation);
+    if (typeof a.time !== "number") throw new ToolError("Falta time (segundos)");
+    if (!Array.isArray(a.pose)) throw new ToolError("pose debe ser la lista que devuelve copy_pose");
+    const clip: PoseClip = (a.pose as any[]).map((x) => ({ name: String(x?.name ?? ""), pose: { pos: vec(x?.pose?.pos, "pose.pos") ?? [0, 0, 0], rot: vec(x?.pose?.rot, "pose.rot") ?? [0, 0, 0], scale: vec(x?.pose?.scale, "pose.scale") ?? [1, 1, 1] } }));
+    const ease: Ease = EASES.includes(a.ease as Ease) ? (a.ease as Ease) : "smooth";
+    const r = pastePose(m, anim, a.time, clip, a.mirrored === true, ease);
+    const extra = r.skipped.length ? ` Sin pareja: ${r.skipped.join(", ")}.` : "";
+    return ok(`Pose ${a.mirrored ? "reflejada " : ""}pegada en ${r.pasted} pieza(s).${extra}`, r.pasted ? { model: r.model } : {});
+  },
+
+  export_obj: (_m, a) => {
+    const base = String(a.file_name ?? "modelo").split(/[\\/]/).pop()!.replace(/\.(zip|obj)$/i, "").replace(/[^\p{L}\p{N} _.-]/gu, "_").replace(/^\.+/, "") || "modelo";
+    return { content: [], needs: { exportObj: base } };
   },
 
   export_glb: (_m, a) => {

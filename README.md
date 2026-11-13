@@ -80,7 +80,7 @@ CoffeeAnimate3D incluye un servidor [MCP](https://modelcontextprotocol.io) para 
 - **Activarlo:** Launcher › *Ajustes* › *Claude (MCP)* › *Permitir que Claude use CoffeeAnimate3D*. Con CoffeeAnimate3D abierta, el estado pasa a *Esperando a Claude* y luego a *Claude conectado*.
 - **Conectar Claude:** *Copiar configuración para Claude* copia dos cosas: la orden para **Claude Code** (`claude mcp add --transport http …` con la clave) y el bloque para `claude_desktop_config.json` de **Claude Desktop** (lanza `CoffeeAnimate3D --mcp-stdio`, que hace de puente con la app abierta).
 - **Seguridad:** el servidor solo escucha en `127.0.0.1:48631`, rechaza peticiones de páginas web de otros orígenes y exige la clave (`Authorization: Bearer`). *Generar una clave nueva* invalida la anterior. La configuración vive en `mcp.json`, en la carpeta de datos locales de CoffeeWorks.
-- **Herramientas:** `get_model`, `new_model` (con plantillas), `add_part` y `update_part` (con `shape`: cubo, cilindro, esfera, rampa o plano), `remove_part`, `duplicate_part`, `mirror_part`, `fill_face`, `paint_pixels`, `add_animation`, `set_keyframe`, `remove_keyframe`, `update_animation`, `group_parts`, `ungroup`, `preview` (devuelve una imagen de la vista; también desde cualquier dirección con `direction`) y `export_glb` (guarda en `Documentos/CoffeeWorks/Exportaciones`).
+- **Herramientas:** `get_model`, `new_model` (con plantillas), `add_part` y `update_part` (con `shape`: cubo, cilindro, esfera, rampa o plano), `remove_part`, `duplicate_part`, `mirror_part`, `fill_face`, `paint_pixels`, `add_animation`, `set_keyframe`, `remove_keyframe`, `update_animation`, `group_parts`, `ungroup`, `copy_pose`, `paste_pose` (también reflejada), `export_obj`, `preview` (devuelve una imagen de la vista; también desde cualquier dirección con `direction`) y `export_glb` (guarda en `Documentos/CoffeeWorks/Exportaciones`).
 - Cada cambio de Claude entra en el historial de la app: se deshace con `Ctrl+Z`.
 
 ## Complementos y plantillas
@@ -374,12 +374,12 @@ Las nueve apps de Ilustración comparten una interfaz oscura, autoguardado, desh
 
 - Modelos hechos de *cubos, cilindros, esferas, rampas y planos* (16 unidades = 1 bloque) organizados en un árbol de *huesos*: cada parte gira sobre su pivote y arrastra a sus hijas.
 - *Texturas pixeladas de 32×32* por cara, con lápiz, relleno y cuentagotas, y la paleta del juego SurvivalForest.
-- *Animaciones* por fotogramas clave (posición, giro y escala) con suavizado lineal, suave o escalonado, en bucle o de una vez.
+- *Animaciones* por fotogramas clave (posición, giro y escala) con suavizado lineal, suave, escalonado, de entrada lenta o de salida lenta, en bucle o de una vez; *vista de curvas* para arrastrar claves, *papel cebolla* y *copiar y pegar poses* (Ctrl+Mayús+C / V; Ctrl+Mayús+B la pega reflejada en el otro lado).
 - Plantillas de *cuadrúpedo, bípedo, ave y araña* con animaciones de reposo, andar y volar; duplicar y *reflejar* partes (izquierda ↔ derecha).
 - Gizmo para *mover* (G), *girar* (R) y *escalar* (S, desde el pivote), con *ajuste a la cuadrícula* (1 px, 1 u, ½ bloque o 1 bloque) y giro en pasos de 15°; botones −/+ para agrandar o encoger la caja de ½ en ½ bloque.
 - *Cubo de vista* en la esquina: clic en una cara, arista o esquina para girar la cámara; la casa vuelve a la vista isométrica.
 - *Selección múltiple* (Mayús+clic, rectángulo con Mayús+arrastrar, Ctrl+A), *grupos* (Ctrl+G / Ctrl+Mayús+G) y *medir* distancias en bloques (Mayús+M).
-- Exportación a *glTF binario* (`.glb`, con texturas y animaciones) y captura PNG desde seis vistas.
+- Exportación a *glTF binario* (`.glb`, con texturas y animaciones; lleva el modelo dentro, así que se vuelve a importar exacto), a *OBJ* (ZIP con `.obj`, `.mtl` y la textura) y captura PNG. *Importar*: un `.glb` de CoffeeAnimate3D vuelve como modelo; cualquier otro `.glb` u `.obj` entra como *referencia* gris para calcar encima.
 - **Claude por MCP**: Claude puede crear, pintar y animar modelos en la app abierta (ver *Claude (MCP)* más abajo).
 
 **Modo claro y oscuro**: toda la suite usa el modo claro por defecto. En el Launcher (*Ajustes › Apariencia*), en el menú *Ver* de cada app o en los ajustes de CoffeeLive se cambia al modo oscuro, en negro, y el cambio vale para todas las apps. Los temas se generan a partir de los colores de cada app con `scripts/make-theme.mjs`; la hoja de los documentos, las diapositivas, las páginas PDF y los lienzos de diseño conservan sus colores. Las apps de Ilustración son siempre oscuras.

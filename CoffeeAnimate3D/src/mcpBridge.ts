@@ -8,6 +8,8 @@ import { listen } from "@tauri-apps/api/event";
 import { isTauri } from "./studio/desktop";
 import { runTool, type Content } from "./mcp";
 import { exportGlb } from "./gltf";
+import { exportObj } from "./objfile";
+import { makeZip } from "./studio/zip";
 import type { Model3D, Vec3 } from "./types";
 import type { ViewAngle } from "./viewport";
 
@@ -74,6 +76,12 @@ export function useMcpBridge(options: Options): { status: McpStatus; address: st
           const url = opts.current.capture(p.direction ?? p.angle ?? "isométrica", 640, 480);
           if (!url) throw new Error("No se pudo capturar la vista.");
           content = [{ type: "image", data: url.split(",")[1], mimeType: "image/png" }];
+        } else if (r.needs && "exportObj" in r.needs) {
+          const base = r.needs.exportObj;
+          const { obj, mtl, png } = exportObj(opts.current.getModel()!, base);
+          const zip = new Uint8Array(await makeZip([{ name: `${base}.obj`, data: obj }, { name: `${base}.mtl`, data: mtl }, { name: `${base}.png`, data: png }]).arrayBuffer());
+          const path = await invoke<string>("mcp_save_export", { fileName: `${base}-obj.zip`, data: toBase64(zip) });
+          content = [{ type: "text", text: `Exportado a ${path} (.obj, .mtl y la textura .png)` }];
         } else if (r.needs && "export" in r.needs) {
           const path = await invoke<string>("mcp_save_export", { fileName: r.needs.export, data: toBase64(exportGlb(opts.current.getModel()!)) });
           content = [{ type: "text", text: `Exportado a ${path}` }];

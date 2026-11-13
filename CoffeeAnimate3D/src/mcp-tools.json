@@ -179,6 +179,42 @@
     }
   },
   {
+    "name": "copy_pose",
+    "description": "Copia la pose (posición, giro y escala animados) de unas piezas en un instante de una animación. Devuelve la pose en JSON para pasarla a paste_pose. Sin parts, copia todas las piezas.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "animation": { "type": "string" },
+        "time": { "type": "number" },
+        "parts": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["animation"]
+    }
+  },
+  {
+    "name": "paste_pose",
+    "description": "Pega como fotogramas clave una pose copiada con copy_pose en otro instante. Con mirrored: true la pega reflejada en las piezas del otro lado (izquierda ↔ derecha por el nombre), ideal para la segunda mitad de un paso.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "animation": { "type": "string" },
+        "time": { "type": "number" },
+        "pose": { "type": "array", "items": { "type": "object" } },
+        "mirrored": { "type": "boolean" },
+        "ease": { "type": "string", "enum": ["linear", "smooth", "step", "ease-in", "ease-out"] }
+      },
+      "required": ["animation", "time", "pose"]
+    }
+  },
+  {
+    "name": "export_obj",
+    "description": "Exporta el modelo a OBJ (ZIP con .obj, .mtl y la textura .png, en bloques, sin animación) en Documentos/CoffeeWorks/Exportaciones.",
+    "inputSchema": {
+      "type": "object",
+      "properties": { "file_name": { "type": "string" } }
+    }
+  },
+  {
     "name": "export_glb",
     "description": "Exporta el modelo con sus animaciones a glTF binario (.glb) en la carpeta Documentos/CoffeeWorks/Exportaciones. Devuelve la ruta del archivo.",
     "inputSchema": { "type": "object", "properties": { "file_name": { "type": "string", "description": "Nombre del archivo sin ruta" } } }

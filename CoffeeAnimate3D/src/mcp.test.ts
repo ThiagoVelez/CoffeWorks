@@ -92,5 +92,27 @@ test("preview acepta una dirección", () => {
 
 test("las 15 herramientas originales siguen y hay 17 en total", () => {
   for (const n of ["get_model", "new_model", "add_part", "update_part", "remove_part", "duplicate_part", "mirror_part", "fill_face", "paint_pixels", "add_animation", "set_keyframe", "remove_keyframe", "update_animation", "preview", "export_glb"]) assert.ok(TOOL_NAMES.includes(n), n);
-  assert.equal(TOOL_NAMES.length, 17);
+  assert.ok(TOOL_NAMES.length >= 17);
+});
+
+test("copy_pose y paste_pose reflejada", () => {
+  let m = TEMPLATES["bípedo"]();
+  const anim = m.animations.find((a) => a.name === "Andar")!.id;
+  m = runTool(m, "set_keyframe", { animation: anim, part: "brazo izquierdo", time: 0, rot: [40, 5, 10] }).model!;
+  const c = runTool(m, "copy_pose", { animation: anim, time: 0, parts: ["brazo izquierdo"] });
+  assert.ok(!c.isError, text(c));
+  const clip = JSON.parse(text(c).split("\n").slice(1).join("\n"));
+  const r = runTool(m, "paste_pose", { animation: anim, time: 0.5, pose: clip, mirrored: true });
+  assert.ok(!r.isError, text(r));
+  const right = r.model!.parts.find((p) => p.name === "brazo derecho")!.id;
+  assert.deepEqual(samplePose(r.model!, anim, 0.5).get(right)!.rot, [40, -5, -10]);
+});
+
+test("export_obj pide a la app guardar el ZIP", () => {
+  const r = runTool(TEMPLATES["ave"](), "export_obj", { file_name: "pájaro" });
+  assert.deepEqual(r.needs, { exportObj: "pájaro" });
+});
+
+test("hay 20 herramientas", () => {
+  assert.equal(TOOL_NAMES.length, 20);
 });
