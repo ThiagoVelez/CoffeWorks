@@ -427,3 +427,101 @@ export function parseModel(text: string): Model3D {
     });
   return { version: 1, name: str(raw.name, "Modelo"), parts, animations };
 }
+
+// ---------------------------------------------------------------------------
+// Varias piezas: selección, grupos y transformaciones en conjunto
+// ---------------------------------------------------------------------------
+
+const r2 = (v: number) => Math.round(v * 100) / 100 + 0;
+
+/** Quita de la lista las piezas que cuelgan de otra de la lista (para no moverlas dos veces). */
+export function topLevel(m: Model3D, ids: string[]): string[] {
+  const set = new Set(ids);
+  return ids.filter((id, i) => {
+    if (ids.indexOf(id) !== i) return false;
+    let p = m.parts.find((x) => x.id === id)?.parent ?? null;
+    while (p) {
+      if (set.has(p)) return false;
+      p = m.parts.find((x) => x.id === p)?.parent ?? null;
+    }
+    return true;
+  });
+}
+
+export function sameParent(m: Model3D, ids: string[]): boolean {
+  if (!ids.length) return false;
+  const parents = new Set(ids.map((id) => findPart(m, id).parent));
+  return parents.size === 1;
+}
+
+function mapParts(m: Model3D, ids: string[], fn: (p: Part) => Part): Model3D {
+  const set = new Set(topLevel(m, ids));
+  return { ...m, parts: m.parts.map((p) => (set.has(p.id) ? fn(clone(p)) : p)) };
+}
+
+export function translateParts(m: Model3D, ids: string[], delta: Vec3): Model3D {
+  return mapParts(m, ids, (p) => ({ ...p, pivot: p.pivot.map((v, i) => r2(v + delta[i])) as Vec3 }));
+}
+
+/** Gira las piezas `deg` grados sobre un eje, alrededor de `center` (en el espacio del padre). */
+export function rotateParts(m: Model3D, ids: string[], axis: 0 | 1 | 2, deg: number, center: Vec3): Model3D {
+  const a = (deg * Math.PI) / 180;
+  const [c, s] = [Math.cos(a), Math.sin(a)];
+  // Ejes del plano de giro (regla de la mano derecha): X gira Y→Z, Y gira Z→X, Z gira X→Y.
+  const [u, v] = axis === 0 ? [1, 2] : axis === 1 ? [2, 0] : [0, 1];
+  return mapParts(m, ids, (p) => {
+    const d = p.pivot.map((x, i) => x - center[i]);
+    const pivot = [...p.pivot] as Vec3;
+    pivot[u] = r2(center[u] + d[u] * c - d[v] * s);
+    pivot[v] = r2(center[v] + d[u] * s + d[v] * c);
+    const rotation = [...p.rotation] as Vec3;
+    rotation[axis] = r2(rotation[axis] + deg);
+    return { ...p, pivot, rotation };
+  });
+}
+
+/** Escala cajas y distancias al centro. Ningún lado queda por debajo de 1 unidad. */
+export function scaleParts(m: Model3D, ids: string[], factor: Vec3, center: Vec3): Model3D {
+  return mapParts(m, ids, (p) => {
+    const pivot = p.pivot.map((x, i) => r2(center[i] + (x - center[i]) * Math.max(0, factor[i]))) as Vec3;
+    if (!p.box) return { ...p, pivot };
+    const size = p.box.size.map((x, i) => Math.max(1, r2(x * factor[i]))) as Vec3;
+    const from = p.box.from.map((x, i) => r2(x * (size[i] / p.box!.size[i]))) as Vec3;
+    return { ...p, pivot, box: { ...p.box, from, size } };
+  });
+}
+
+/** Crea un grupo (pieza sin caja) con las piezas; deben tener el mismo padre. */
+export function groupParts(m: Model3D, ids: string[], name = "Grupo"): [Model3D, string] {
+  const list = topLevel(m, ids);
+  if (!list.length) throw new Error("Selecciona al menos una pieza");
+  if (!sameParent(m, list)) throw new Error("Solo se pueden agrupar piezas con el mismo padre");
+  const parts = list.map((id) => findPart(m, id));
+  const center = [0, 1, 2].map((i) => Math.round((parts.reduce((s, p) => s + p.pivot[i], 0) / parts.length) * 2) / 2) as Vec3;
+  const [withGroup, gid] = addPart(m, { name, parent: parts[0].parent, pivot: center });
+  const set = new Set(list);
+  return [
+    {
+      ...withGroup,
+      parts: withGroup.parts.map((p) => (set.has(p.id) ? { ...p, parent: gid, pivot: p.pivot.map((v, i) => r2(v - center[i])) as Vec3 } : p)),
+    },
+    gid,
+  ];
+}
+
+/** Deshace un grupo: sus hijos pasan al padre del grupo en el mismo sitio. */
+export function ungroup(m: Model3D, groupId: string): Model3D {
+  const g = findPart(m, groupId);
+  if (g.box) throw new Error("Solo se pueden desagrupar grupos (piezas sin caja)");
+  if (g.rotation.some((r) => r !== 0)) throw new Error("Pon a 0 el giro del grupo antes de desagrupar");
+  const moved: Model3D = {
+    ...m,
+    parts: m.parts
+      .filter((p) => p.id !== groupId)
+      .map((p) => (p.parent === groupId ? { ...p, parent: g.parent, pivot: p.pivot.map((v, i) => r2(v + g.pivot[i])) as Vec3 } : p)),
+  };
+  return {
+    ...moved,
+    animations: moved.animations.map((a) => ({ ...a, tracks: Object.fromEntries(Object.entries(a.tracks).filter(([pid]) => pid !== groupId)) })),
+  };
+}
