@@ -525,3 +525,16 @@ export function ungroup(m: Model3D, groupId: string): Model3D {
     animations: moved.animations.map((a) => ({ ...a, tracks: Object.fromEntries(Object.entries(a.tracks).filter(([pid]) => pid !== groupId)) })),
   };
 }
+
+/**
+ * Cambia el tamaño de la caja. `"pivot"`: escala desde el pivote (como el gizmo);
+ * `"center"`: mantiene el centro de la caja (botones −/+). Mínimo 1 unidad por lado.
+ */
+export function resizeBox(m: Model3D, id: string, size: Vec3, anchor: "pivot" | "center"): Model3D {
+  const p = findPart(m, id);
+  if (!p.box) throw new Error("La pieza no tiene caja");
+  const old = p.box;
+  const next = size.map((s) => Math.max(1, r2(s))) as Vec3;
+  const from = old.from.map((f, i) => (anchor === "pivot" ? r2(f * (next[i] / old.size[i])) : r2(f + (old.size[i] - next[i]) / 2))) as Vec3;
+  return { ...m, parts: m.parts.map((x) => (x.id === id ? { ...x, box: { ...old, from, size: next } } : x)) };
+}
