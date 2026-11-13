@@ -18,6 +18,7 @@ use serde::{Deserialize, Serialize};
 pub mod addons;
 pub mod commands;
 pub mod jobs;
+pub mod mcp;
 pub mod spell;
 
 /// Nombre de la carpeta de la suite dentro de los directorios del sistema.

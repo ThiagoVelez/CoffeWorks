@@ -288,7 +288,8 @@ export class Viewport {
   frame(angle: ViewAngle = "isométrica") {
     const box = new THREE.Box3().setFromObject(this.root);
     const center = box.isEmpty() ? new THREE.Vector3(0, 8, 0) : box.getCenter(new THREE.Vector3());
-    const size = box.isEmpty() ? 16 : Math.max(8, box.getSize(new THREE.Vector3()).length());
+    // Vacío: encuadre amplio, como para una criatura mediana.
+    const size = box.isEmpty() ? 40 : Math.max(8, box.getSize(new THREE.Vector3()).length());
     const d = size * 1.4;
     const dir: Record<ViewAngle, [number, number, number]> = {
       frente: [0, 0.15, 1],

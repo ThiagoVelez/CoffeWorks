@@ -25,6 +25,7 @@ members = [
   "CoffeeSound/src-tauri",
   "CoffeeEncoder/src-tauri",
   "CoffeeAnimate/src-tauri",
+  "CoffeeAnimate3D/src-tauri",
   "CoffeePuppet/src-tauri",
 ]
 

@@ -114,3 +114,23 @@ test("plantillas válidas con animaciones", () => {
     assert.ok(moved, `${name} se mueve`);
   }
 });
+
+test("las plantillas miran hacia +Z (delante), como glTF", () => {
+  const FRONT: Record<string, string> = { cuadrúpedo: "hocico", bípedo: "nariz", ave: "pico", araña: "cabeza" };
+  for (const [name, make] of Object.entries(TEMPLATES)) {
+    const m = make();
+    // z aproximada en el mundo: pivotes encadenados + centro de la caja.
+    const z = (id: string): number => {
+      const p = m.parts.find((x) => x.id === id)!;
+      return p.pivot[2] + (p.parent ? z(p.parent) : 0);
+    };
+    const center = (n: string) => {
+      const p = m.parts.find((x) => x.name === n)!;
+      return z(p.id) + (p.box ? p.box.from[2] + p.box.size[2] / 2 : 0);
+    };
+    const front = center(FRONT[name]);
+    const others = m.parts.filter((p) => p.box && p.name !== FRONT[name]).map((p) => center(p.name));
+    assert.ok(front > 0, `${name}: ${FRONT[name]} delante (+Z), z = ${front}`);
+    assert.ok(front >= Math.max(...others) - 0.01, `${name}: ${FRONT[name]} es lo más adelantado`);
+  }
+});

@@ -98,6 +98,8 @@ export const App: React.FC = () => {
       onPaint: (id, f, x, y, last) => handlers.current.onPaint(id, f, x, y, last),
     });
     vpRef.current = vp;
+    // Acceso para las pruebas automáticas (solo en desarrollo).
+    if (import.meta.env.DEV) (window as unknown as { __ca3dViewport?: Viewport }).__ca3dViewport = vp;
     vp.setModel(docRef.current!, poseNow());
     vp.frame();
     return () => {
@@ -108,8 +110,14 @@ export const App: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!doc, sd.docId]);
 
+  // Encuadrar cuando el modelo pasa de vacío a tener piezas (plantilla, archivo o Claude).
+  const hadParts = useRef(false);
   useEffect(() => {
-    if (doc) vpRef.current?.setModel(doc, poseNow());
+    if (!doc) return;
+    vpRef.current?.setModel(doc, poseNow());
+    const has = doc.parts.length > 0;
+    if (has && !hadParts.current) vpRef.current?.frame();
+    hadParts.current = has;
   }, [doc, poseNow]);
   useEffect(() => vpRef.current?.applyPose(poseNow()), [time, poseNow]);
   useEffect(() => vpRef.current?.select(sel), [sel]);

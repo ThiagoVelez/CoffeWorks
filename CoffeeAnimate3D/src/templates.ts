@@ -4,6 +4,26 @@
 import { addAnimation, addPart, mirrorPart, newModel, setKeyframe, type BoxInput } from "./model";
 import type { Model3D, Vec3 } from "./types";
 
+const neg = (v: number) => (v === 0 ? 0 : -v);
+
+/** Las plantillas se dibujan con la cabeza hacia −Z; se reflejan en Z para que miren
+ *  hacia +Z (el «delante» de glTF y de los motores de juego). */
+function faceForward(m: Model3D): Model3D {
+  return {
+    ...m,
+    parts: m.parts.map((p) => ({
+      ...p,
+      pivot: [p.pivot[0], p.pivot[1], neg(p.pivot[2])],
+      rotation: [neg(p.rotation[0]), neg(p.rotation[1]), p.rotation[2]],
+      box: p.box ? { ...p.box, from: [p.box.from[0], p.box.from[1], neg(p.box.from[2] + p.box.size[2])], faces: { ...p.box.faces, pz: p.box.faces.nz, nz: p.box.faces.pz } } : null,
+    })),
+    animations: m.animations.map((a) => ({
+      ...a,
+      tracks: Object.fromEntries(Object.entries(a.tracks).map(([id, keys]) => [id, keys.map((k) => ({ ...k, pos: [k.pos[0], k.pos[1], neg(k.pos[2])] as Vec3, rot: [neg(k.rot[0]), neg(k.rot[1]), k.rot[2]] as Vec3 }))])),
+    })),
+  };
+}
+
 type Spec = { name: string; parent?: string; pivot?: Vec3; rotation?: Vec3; box?: BoxInput };
 
 function build(name: string, specs: Spec[]): [Model3D, Map<string, string>] {
@@ -81,6 +101,7 @@ export function biped(): Model3D {
   let [m, ids] = build("Bípedo", [
     { name: "torso", pivot: [0, 12, 0], box: { from: [-4, 0, -2], size: [8, 12, 4], color: shirt } },
     { name: "cabeza", parent: "torso", pivot: [0, 12, 0], box: { from: [-4, 0, -4], size: [8, 8, 8], color: skin } },
+    { name: "nariz", parent: "cabeza", pivot: [0, 3, -4], box: { from: [-1, 0, -1.5], size: [2, 2, 1.5], color: "#b07a52" } },
     { name: "brazo izquierdo", parent: "torso", pivot: [5, 11, 0], box: { from: [-1, -11, -2], size: [4, 12, 4], color: shirt } },
     { name: "pierna izquierda", parent: "torso", pivot: [2, 0, 0], box: { from: [-2, -12, -2], size: [4, 12, 4], color: pants } },
   ]);
@@ -154,8 +175,8 @@ export function spider(): Model3D {
 }
 
 export const TEMPLATES: Record<string, () => Model3D> = {
-  cuadrúpedo: quadruped,
-  bípedo: biped,
-  ave: bird,
-  araña: spider,
+  cuadrúpedo: () => faceForward(quadruped()),
+  bípedo: () => faceForward(biped()),
+  ave: () => faceForward(bird()),
+  araña: () => faceForward(spider()),
 };
