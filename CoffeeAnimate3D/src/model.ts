@@ -645,3 +645,26 @@ export function clearReference(m: Model3D): Model3D {
   const { reference: _gone, ...rest } = m;
   return rest;
 }
+
+// ---------------------------------------------------------------------------
+// Piezas listas (complemento «Pack de piezas»)
+// ---------------------------------------------------------------------------
+
+/** Ids deterministas (p1…, a1…) para que los archivos generados no cambien en cada vuelta. */
+export function normalizeIds(m: Model3D): Model3D {
+  const pmap = new Map(m.parts.map((p, i) => [p.id, `p${i + 1}`]));
+  const amap = new Map(m.animations.map((a, i) => [a.id, `a${i + 1}`]));
+  return {
+    ...m,
+    parts: m.parts.map((p) => ({ ...p, id: pmap.get(p.id)!, parent: p.parent ? pmap.get(p.parent) ?? null : null })),
+    animations: m.animations.map((a) => ({ ...a, id: amap.get(a.id)!, tracks: Object.fromEntries(Object.entries(a.tracks).map(([k, v]) => [pmap.get(k)!, v])) })),
+  };
+}
+
+/** Inserta una pieza (otro modelo) como grupo nuevo en la raíz, con ids nuevos y sin animaciones. */
+export function insertPiece(m: Model3D, piece: Model3D, name: string): [Model3D, string] {
+  const [withGroup, gid] = addPart(m, { name, pivot: [0, 0, 0] });
+  const map = new Map(piece.parts.map((p) => [p.id, newId("p")]));
+  const copies = piece.parts.map((p) => ({ ...clone(p), id: map.get(p.id)!, parent: p.parent ? map.get(p.parent) ?? gid : gid }));
+  return [{ ...withGroup, parts: [...withGroup.parts, ...copies] }, gid];
+}
