@@ -14,7 +14,7 @@ import { addAnimation, addPart, insertPiece, clearReference, copyPose, getRefere
 import { SNAP_OPTIONS, formatDistance, loadSnap, parseNumber, saveSnap, snapValue, type SnapPrefs, type SnapStep } from "./snap";
 import { TEMPLATES } from "./templates";
 import { exportGlb, importGlb } from "./gltf";
-import { exportObj, parseObj } from "./objfile";
+import { exportObj, objFileBase, objReference } from "./objfile";
 import { RenderDialog, PiecesDialog } from "./panels";
 import { canRender, loadPiece, type PieceEntry } from "./addonsLib";
 import { Viewport, type GizmoMode, type TransformChange, type ViewAngle, type ViewTool } from "./viewport";
@@ -343,7 +343,7 @@ export const App: React.FC = () => {
     if (!f) return;
     try {
       if (f.name.toLowerCase().endsWith(".obj")) {
-        apply(setReference(cur(), f.name, parseObj(bytesToText(f.bytes))));
+        apply(setReference(cur(), f.name, objReference(bytesToText(f.bytes))));
         setRefVisible(true);
         return toast("Referencia cargada: calca encima con cubos (Ver › Referencia)");
       }
@@ -362,7 +362,7 @@ export const App: React.FC = () => {
     }
   };
   const exportObjZip = async () => {
-    const base = (sd.title || "modelo").replace(/[\\/:*?"<>|]/g, "_");
+    const base = objFileBase((sd.title || "modelo").replace(/[\\/:*?"<>|]/g, "_"));
     const { obj, mtl, png } = exportObj(cur(), base);
     const zip = makeZip([{ name: `${base}.obj`, data: obj }, { name: `${base}.mtl`, data: mtl }, { name: `${base}.png`, data: png }]);
     if (await saveFileAs(`${base}-obj.zip`, [{ name: "ZIP con OBJ, MTL y PNG", extensions: ["zip"] }], zip, "Exportar a OBJ")) toast("Exportado a OBJ (.zip con .obj, .mtl y la textura)");

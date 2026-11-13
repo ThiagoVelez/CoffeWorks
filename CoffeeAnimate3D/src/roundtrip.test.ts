@@ -47,7 +47,7 @@ test("la referencia se guarda en el documento, no se exporta y tiene límite", (
   assert.equal(getReference(back)!.name, "calco.obj");
   assert.ok(!exportObj(back, "x").obj.includes("calco"));
   const r = importGlb(exportGlb(back));
-  assert.ok("model" in r && r.model.reference, "viaja dentro del .ca3d embebido");
+  assert.ok("model" in r && !r.model.reference, "la referencia no se exporta");
   assert.equal(clearReference(back).reference, undefined);
   const huge = { positions: new Array(3 * 900_000).fill(1), indices: new Array(900_000).fill(0) };
   assert.throws(() => setReference(m, "grande", huge), /demasiado grande/);

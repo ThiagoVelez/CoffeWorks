@@ -21,7 +21,13 @@ function toWorld(m: Model3D, part: Part, v: Vec3): Vec3 {
   return parent ? toWorld(m, parent, p) : p;
 }
 
-export function exportObj(m: Model3D, baseName: string): { obj: string; mtl: string; png: Uint8Array } {
+/** Nombre de archivo sin espacios (muchos lectores de OBJ cortan `mtllib` en el primer espacio). */
+export function objFileBase(name: string): string {
+  return name.trim().replace(/\s+/g, "_") || "modelo";
+}
+
+export function exportObj(m: Model3D, name: string): { obj: string; mtl: string; png: Uint8Array } {
+  const baseName = objFileBase(name);
   const atlas = buildAtlas(m);
   const out = [`# CoffeeAnimate3D (CoffeeWorks): ${m.name}`, `# 1 unidad = 1 bloque`, `mtllib ${baseName}.mtl`];
   let base = 1;
@@ -76,4 +82,10 @@ export function parseObj(text: string): RefMesh {
   }
   if (!indices.length) throw new Error("El archivo OBJ no tiene caras");
   return { positions, indices };
+}
+
+/** OBJ como malla de referencia, en unidades del editor (el OBJ va en bloques o metros: ×16). */
+export function objReference(text: string): RefMesh {
+  const r = parseObj(text);
+  return { positions: r.positions.map((v) => v * UNITS_PER_BLOCK), indices: r.indices };
 }

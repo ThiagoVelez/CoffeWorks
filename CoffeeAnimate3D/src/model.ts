@@ -221,7 +221,9 @@ export function mirrorPart(m: Model3D, id: string): [Model3D, string] {
       if (p.box) {
         const f = p.box.faces;
         p.box.from = [neg(p.box.from[0] + p.box.size[0]), p.box.from[1], p.box.from[2]];
-        p.box.faces = { px: f.nx, nx: f.px, py: flipU(f.py), ny: flipU(f.ny), pz: flipU(f.pz), nz: flipU(f.nz) };
+        // En la rampa el lado es un triángulo: al pasar al otro lado hay que voltearlo.
+        const side = p.box.shape === "ramp" ? flipU : (x: FaceTex) => x;
+        p.box.faces = { px: side(f.nx), nx: side(f.px), py: flipU(f.py), ny: flipU(f.ny), pz: flipU(f.pz), nz: flipU(f.nz) };
       }
       return p;
     },
@@ -589,9 +591,11 @@ export function pastePose(m: Model3D, animId: string, t: number, clip: PoseClip,
   let pasted = 0;
   const skipped: string[] = [];
   for (const { name, pose } of clip) {
-    const target = mirrored ? mirrorName(name) : name;
+    // Reflejada: las piezas de un lado van al otro; las del centro (cuerpo, cabeza…) se reflejan sobre sí mismas.
+    const sided = /izquierd|derech/i.test(name);
+    const target = mirrored && sided ? mirrorName(name) : name;
     const found = m.parts.filter((p) => p.name.toLowerCase() === target.toLowerCase());
-    if (found.length !== 1 || (mirrored && target === name)) {
+    if (found.length !== 1) {
       skipped.push(name);
       continue;
     }
@@ -635,7 +639,12 @@ export function getReference(m: Model3D): { name: string; mesh: { positions: num
   try {
     const p = fromB64(m.reference.positions);
     const i = fromB64(m.reference.indices);
-    return { name: m.reference.name, mesh: { positions: [...new Float32Array(p.buffer, 0, p.length >> 2)], indices: [...new Uint32Array(i.buffer, 0, i.length >> 2)] } };
+    const positions = Array.from(new Float32Array(p.buffer, 0, p.length >> 2));
+    const indices = Array.from(new Uint32Array(i.buffer, 0, i.length >> 2));
+    const count = positions.length / 3;
+    // Un .ca3d editado a mano podría traer índices imposibles: entonces no hay referencia.
+    if (indices.some((x) => x >= count) || positions.some((v) => !Number.isFinite(v))) return null;
+    return { name: m.reference.name, mesh: { positions, indices } };
   } catch {
     return null;
   }

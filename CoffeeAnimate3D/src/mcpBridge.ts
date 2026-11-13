@@ -8,7 +8,7 @@ import { listen } from "@tauri-apps/api/event";
 import { isTauri } from "./studio/desktop";
 import { runTool, type Content } from "./mcp";
 import { exportGlb } from "./gltf";
-import { exportObj } from "./objfile";
+import { exportObj, objFileBase } from "./objfile";
 import { makeZip } from "./studio/zip";
 import type { Model3D, Vec3 } from "./types";
 import type { ViewAngle, Viewport } from "./viewport";
@@ -97,20 +97,24 @@ export function useMcpBridge(options: Options): { status: McpStatus; address: st
           const q = r.needs.render;
           await nextFrame();
           const session = new RenderSession(vp, { ...DEFAULT_RENDER, width: q.width, height: q.height, transparent: q.transparent, angle: q.direction ?? q.angle });
-          const big = session.render();
-          const bytes = new Uint8Array(await (await new Promise<Blob>((ok) => big.toBlob((b) => ok(b!), "image/png"))).arrayBuffer());
           const small = document.createElement("canvas");
-          small.width = 640;
-          small.height = Math.round((640 * q.height) / q.width);
-          small.getContext("2d")!.drawImage(big, 0, 0, small.width, small.height);
-          session.dispose();
+          let bytes: Uint8Array;
+          try {
+            const big = session.render();
+            bytes = new Uint8Array(await (await new Promise<Blob>((ok) => big.toBlob((b) => ok(b!), "image/png"))).arrayBuffer());
+            small.width = 640;
+            small.height = Math.round((640 * q.height) / q.width);
+            small.getContext("2d")!.drawImage(big, 0, 0, small.width, small.height);
+          } finally {
+            session.dispose();
+          }
           const path = await invoke<string>("mcp_save_export", { fileName: `render-${Date.now()}.png`, data: toBase64(bytes) });
           content = [
             { type: "text", text: `Render ${q.width}×${q.height} guardado en ${path}` },
             { type: "image", data: small.toDataURL("image/png").split(",")[1], mimeType: "image/png" },
           ];
         } else if (r.needs && "exportObj" in r.needs) {
-          const base = r.needs.exportObj;
+          const base = objFileBase(r.needs.exportObj);
           const { obj, mtl, png } = exportObj(opts.current.getModel()!, base);
           const zip = new Uint8Array(await makeZip([{ name: `${base}.obj`, data: obj }, { name: `${base}.mtl`, data: mtl }, { name: `${base}.png`, data: png }]).arrayBuffer());
           const path = await invoke<string>("mcp_save_export", { fileName: `${base}-obj.zip`, data: toBase64(zip) });

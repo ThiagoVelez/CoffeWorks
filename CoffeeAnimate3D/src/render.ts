@@ -39,6 +39,9 @@ export class RenderSession {
   private scene = new THREE.Scene();
   private camera: THREE.PerspectiveCamera;
   private composer: EffectComposer | null = null;
+  private passes: { dispose(): void }[] = [];
+  private sun: THREE.DirectionalLight;
+  private ground: THREE.Mesh | null = null;
   readonly target: THREE.Vector3;
   private distance: number;
   private height: number;
@@ -69,7 +72,7 @@ export class RenderSession {
     const radius = box.isEmpty() ? 20 : Math.max(8, box.getSize(new THREE.Vector3()).length() / 2);
 
     this.scene.add(new THREE.HemisphereLight("#dbefff", "#6b5a48", 1.4));
-    const sun = new THREE.DirectionalLight("#fff1d6", 2.4);
+    const sun = (this.sun = new THREE.DirectionalLight("#fff1d6", 2.4));
     sun.position.copy(center).add(new THREE.Vector3(radius * 1.2, radius * 2.2, radius * 1.6));
     sun.target.position.copy(center);
     sun.castShadow = o.shadows;
@@ -82,7 +85,7 @@ export class RenderSession {
     sun.shadow.bias = -0.0005;
     this.scene.add(sun, sun.target);
     if (o.shadows) {
-      const ground = new THREE.Mesh(new THREE.PlaneGeometry(radius * 8, radius * 8), new THREE.ShadowMaterial({ opacity: 0.3 }));
+      const ground = (this.ground = new THREE.Mesh(new THREE.PlaneGeometry(radius * 8, radius * 8), new THREE.ShadowMaterial({ opacity: 0.3 })));
       ground.rotation.x = -Math.PI / 2;
       ground.position.set(center.x, box.isEmpty() ? 0 : box.min.y, center.z);
       ground.receiveShadow = true;
@@ -107,13 +110,16 @@ export class RenderSession {
     if (o.ao) {
       this.composer = new EffectComposer(this.renderer);
       this.composer.setSize(o.width, o.height);
-      this.composer.addPass(new RenderPass(this.scene, this.camera));
+      const renderPass = new RenderPass(this.scene, this.camera);
+      this.composer.addPass(renderPass);
       const ssao = new SSAOPass(this.scene, this.camera, o.width, o.height);
       ssao.kernelRadius = Math.max(2, radius / 6);
       ssao.minDistance = 0.001;
       ssao.maxDistance = 0.08;
       this.composer.addPass(ssao);
-      this.composer.addPass(new OutputPass());
+      const output = new OutputPass();
+      this.composer.addPass(output);
+      this.passes = [renderPass, ssao, output];
     }
   }
 
@@ -132,8 +138,16 @@ export class RenderSession {
   }
   private startAngle = 0;
 
+  /** Libera todo, también el contexto WebGL: el navegador solo admite unos 16 a la vez. */
   dispose() {
+    for (const p of this.passes) p.dispose();
     this.composer?.dispose();
+    this.sun.shadow.dispose();
+    if (this.ground) {
+      this.ground.geometry.dispose();
+      (this.ground.material as THREE.Material).dispose();
+    }
     this.renderer.dispose();
+    this.renderer.forceContextLoss();
   }
 }

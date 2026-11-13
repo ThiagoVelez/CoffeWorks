@@ -37,6 +37,8 @@ export interface RenderRequest {
 
 const RENDER_SIZES: Record<string, [number, number]> = { "1280x720": [1280, 720], "1920x1080": [1920, 1080], "3840x2160": [3840, 2160] };
 
+const VIEW_ANGLES: ViewAngle[] = ["frente", "detrás", "izquierda", "derecha", "arriba", "isométrica"];
+
 class ToolError extends Error {}
 
 const ok = (text: string, extra: Partial<ToolResult> = {}): ToolResult => ({ content: [{ type: "text", text }], ...extra });
@@ -284,7 +286,10 @@ const HANDLERS: Record<string, Handler> = {
     const size = RENDER_SIZES[key];
     if (!size) throw new ToolError("size debe ser 1280x720, 1920x1080 o 3840x2160");
     const req: RenderRequest = { width: size[0], height: size[1], transparent: a.transparent === true };
-    if (typeof a.angle === "string") req.angle = a.angle as ViewAngle;
+    if (a.angle !== undefined) {
+      if (typeof a.angle !== "string" || !VIEW_ANGLES.includes(a.angle as ViewAngle)) throw new ToolError(`angle debe ser ${VIEW_ANGLES.join(", ")}`);
+      req.angle = a.angle as ViewAngle;
+    }
     const dir = vec(a.direction, "direction");
     if (dir) req.direction = dir;
     return { content: [], needs: { render: req } };

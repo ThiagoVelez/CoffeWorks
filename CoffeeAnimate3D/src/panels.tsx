@@ -37,10 +37,14 @@ export const RenderDialog: React.FC<{ viewport: () => Viewport | null; title: st
     const vp = viewport();
     if (!vp) return;
     const t = window.setTimeout(() => {
+      // Una vista previa cada vez (no se acumulan contextos WebGL).
       const s = new RenderSession(vp, { ...o, width: 480, height: Math.round((480 * o.height) / o.width) });
-      setPreview(s.render().toDataURL("image/png"));
-      s.dispose();
-    }, 120);
+      try {
+        setPreview(s.render().toDataURL("image/png"));
+      } finally {
+        s.dispose();
+      }
+    }, 250);
     return () => window.clearTimeout(t);
   }, [o, viewport]);
 
@@ -50,8 +54,12 @@ export const RenderDialog: React.FC<{ viewport: () => Viewport | null; title: st
     setBusy("Renderizando…");
     try {
       const s = new RenderSession(vp, o);
-      const bytes = await toBytes(s.render());
-      s.dispose();
+      let bytes: Uint8Array;
+      try {
+        bytes = await toBytes(s.render());
+      } finally {
+        s.dispose();
+      }
       if (await saveFileAs(`${title || "modelo"}-render.png`, [{ name: "Imagen PNG", extensions: ["png"] }], bytes, "Guardar render")) toast("Render guardado");
     } catch (e) {
       toast(String((e as Error).message), "error");
