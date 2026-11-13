@@ -164,12 +164,21 @@ pub fn uninstall_from(root: &Path, id: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Mensaje para el usuario cuando no se puede leer el manifiesto: un 404 significa
+/// que el juego aún no tiene ninguna versión publicada, no que falte conexión.
+fn manifest_error(name: &str, err: &str) -> String {
+    if err.contains("404") || err.contains("Not Found") {
+        format!("{name} aún no tiene una versión publicada para descargar. Vuelve a intentarlo más tarde.")
+    } else {
+        format!("No se pudo consultar {name}. Comprueba tu conexión a internet.")
+    }
+}
+
 /// Descarga y lee el manifiesto más reciente del juego.
 pub fn fetch_manifest(game: &CatalogGame) -> Result<GameManifest, String> {
     let url = format!("https://github.com/{}/releases/latest/download/manifest.json", game.repo);
     let tmp = std::env::temp_dir().join(format!("coffeeworks-{}-manifest.json", game.id));
-    coffee_core::addons::download_file(&url, &tmp)
-        .map_err(|_| format!("No se pudo consultar {}. Comprueba tu conexión a internet.", game.name))?;
+    coffee_core::addons::download_file(&url, &tmp).map_err(|e| manifest_error(&game.name, &e))?;
     let text = std::fs::read_to_string(&tmp).map_err(|e| e.to_string())?;
     let _ = std::fs::remove_file(&tmp);
     let m = parse_manifest(&text)?;
@@ -268,6 +277,15 @@ mod tests {
           "size": 10, "sha256": "bb", "exe": "survivalforest.exe"}
       }
     }"#;
+
+    #[test]
+    fn manifest_error_distinguishes_unpublished_from_offline() {
+        let curl = "No se pudo descargar https://x: curl: (22) The requested URL returned error: 404";
+        let ps = "No se pudo descargar https://x: El servidor remoto devolvió un error: (404) No se encontró.";
+        assert!(manifest_error("SF", curl).contains("aún no tiene una versión publicada"));
+        assert!(manifest_error("SF", ps).contains("aún no tiene una versión publicada"));
+        assert!(manifest_error("SF", "curl: (6) Could not resolve host").contains("conexión"));
+    }
 
     #[test]
     fn parses_manifest_and_picks_platform() {
