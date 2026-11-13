@@ -2,7 +2,8 @@
 // una malla por caja, un atlas PNG con todas las caras (muestreo sin suavizar) y las
 // animaciones muestreadas a 24 fps. 16 unidades del editor = 1 metro (1 bloque).
 
-import { facePixels, findAnimation, samplePose } from "./model";
+import { facePixels, findAnimation, parseModel, samplePose, serializeModel } from "./model";
+import { rotateVec, type Quat } from "./rotation";
 import { shapeGeometry } from "./geometry";
 import { FACES, TEX, UNITS_PER_BLOCK, type FaceName, type Model3D, type Vec3 } from "./types";
 
@@ -253,7 +254,8 @@ export function exportGlb(m: Model3D): Uint8Array {
 
   const binBytes = bin.bytes();
   const json: any = {
-    asset: { version: "2.0", generator: "CoffeeAnimate3D (CoffeeWorks)" },
+    // El modelo completo viaja dentro: al importar este .glb vuelve exacto.
+    asset: { version: "2.0", generator: "CoffeeAnimate3D (CoffeeWorks)", extras: { ca3d: serializeModel(m) } },
     scene: 0,
     scenes: [{ name: m.name, nodes: m.parts.filter((p) => !p.parent).map((p) => nodeIndex.get(p.id)!) }],
     nodes,
@@ -289,4 +291,63 @@ export function exportGlb(m: Model3D): Uint8Array {
   dv.setUint32(24 + jsonBytes.length, 0x004e4942, true);
   out.set(binBytes, 28 + jsonBytes.length);
   return out;
+}
+
+// ---------- Importación ----------
+
+/** Lee un .glb: si lo hizo CoffeeAnimate3D devuelve el modelo; si no, su malla como referencia (en unidades, ×16). */
+export function importGlb(bytes: Uint8Array): { model: Model3D } | { reference: { positions: number[]; indices: number[] } } {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (bytes.byteLength < 20 || dv.getUint32(0, true) !== 0x46546c67) throw new Error("No es un archivo .glb válido");
+  const jsonLen = dv.getUint32(12, true);
+  const json: any = JSON.parse(new TextDecoder().decode(bytes.subarray(20, 20 + jsonLen)));
+  if (typeof json.asset?.extras?.ca3d === "string") return { model: parseModel(json.asset.extras.ca3d) };
+  const binStart = 20 + jsonLen;
+  const bin = binStart + 8 <= bytes.byteLength ? bytes.subarray(binStart + 8, binStart + 8 + dv.getUint32(binStart, true)) : new Uint8Array();
+  const bdv = new DataView(bin.buffer, bin.byteOffset, bin.byteLength);
+  const read = (accIndex: number): number[] => {
+    const acc = json.accessors[accIndex];
+    const view = json.bufferViews[acc.bufferView];
+    const comps = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 }[acc.type as string] ?? 1;
+    const size = { 5126: 4, 5125: 4, 5123: 2, 5121: 1 }[acc.componentType as number] ?? 4;
+    const stride = view.byteStride || comps * size;
+    const base = (view.byteOffset ?? 0) + (acc.byteOffset ?? 0);
+    const out: number[] = [];
+    for (let i = 0; i < acc.count; i++)
+      for (let c = 0; c < comps; c++) {
+        const o = base + i * stride + c * size;
+        out.push(acc.componentType === 5126 ? bdv.getFloat32(o, true) : acc.componentType === 5125 ? bdv.getUint32(o, true) : acc.componentType === 5123 ? bdv.getUint16(o, true) : bdv.getUint8(o));
+      }
+    return out;
+  };
+  const positions: number[] = [];
+  const indices: number[] = [];
+  type Xf = { q: Quat; t: Vec3; s: Vec3 };
+  const apply = (x: Xf, v: Vec3): Vec3 => {
+    const r = rotateVec(x.q, [v[0] * x.s[0], v[1] * x.s[1], v[2] * x.s[2]]);
+    return [r[0] + x.t[0], r[1] + x.t[1], r[2] + x.t[2]];
+  };
+  const visit = (ni: number, chain: Xf[]) => {
+    const n = json.nodes[ni];
+    const local: Xf = { q: n.rotation ?? [0, 0, 0, 1], t: n.translation ?? [0, 0, 0], s: n.scale ?? [1, 1, 1] };
+    const xs = [local, ...chain];
+    if (n.mesh !== undefined)
+      for (const prim of json.meshes[n.mesh].primitives ?? []) {
+        if (prim.attributes?.POSITION === undefined || (prim.mode ?? 4) !== 4) continue;
+        const pos = read(prim.attributes.POSITION);
+        const base = positions.length / 3;
+        for (let i = 0; i < pos.length; i += 3) {
+          let v: Vec3 = [pos[i], pos[i + 1], pos[i + 2]];
+          for (const x of xs) v = apply(x, v);
+          positions.push(v[0] * UNITS_PER_BLOCK, v[1] * UNITS_PER_BLOCK, v[2] * UNITS_PER_BLOCK);
+        }
+        const idx = prim.indices !== undefined ? read(prim.indices) : Array.from({ length: pos.length / 3 }, (_, i) => i);
+        indices.push(...idx.map((i) => i + base));
+      }
+    for (const c of n.children ?? []) visit(c, xs);
+  };
+  const roots: number[] = json.scenes?.[json.scene ?? 0]?.nodes ?? (json.nodes ?? []).map((_: unknown, i: number) => i);
+  for (const r of roots) visit(r, []);
+  if (!indices.length) throw new Error("El archivo .glb no tiene mallas");
+  return { reference: { positions, indices } };
 }

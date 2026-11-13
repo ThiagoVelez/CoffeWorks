@@ -85,6 +85,8 @@ export interface Animation {
 
 export interface Model3D {
   version: 2;
+  /** Malla de referencia para calcar (no se edita ni se exporta): base64 de Float32 y Uint32. */
+  reference?: { name: string; positions: string; indices: string };
   name: string;
   parts: Part[];
   animations: Animation[];

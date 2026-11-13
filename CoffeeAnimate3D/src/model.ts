@@ -431,7 +431,10 @@ export function parseModel(text: string): Model3D {
       }
       return { id: a.id, name: str(a.name, "Animación"), length: Math.max(0.05, num(a.length, 1)), loop: a.loop !== false, tracks };
     });
-  return { version: 2, name: str(raw.name, "Modelo"), parts, animations };
+  const out: Model3D = { version: 2, name: str(raw.name, "Modelo"), parts, animations };
+  const ref = raw.reference;
+  if (ref && typeof ref.positions === "string" && typeof ref.indices === "string") out.reference = { name: str(ref.name, "Referencia"), positions: ref.positions, indices: ref.indices };
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -598,4 +601,47 @@ export function pastePose(m: Model3D, animId: string, t: number, clip: PoseClip,
     pasted++;
   }
   return { model, pasted, skipped };
+}
+
+// ---------------------------------------------------------------------------
+// Malla de referencia (para calcar)
+// ---------------------------------------------------------------------------
+
+export const MAX_REFERENCE_BYTES = 10 * 1024 * 1024;
+
+function toB64(bytes: Uint8Array): string {
+  let s = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
+function fromB64(text: string): Uint8Array {
+  const s = atob(text);
+  const out = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+  return out;
+}
+
+export function setReference(m: Model3D, name: string, mesh: { positions: number[]; indices: number[] }): Model3D {
+  const bytes = mesh.positions.length * 4 + mesh.indices.length * 4;
+  if (bytes > MAX_REFERENCE_BYTES) throw new Error("La referencia es demasiado grande (más de 10 MB)");
+  const pos = new Uint8Array(new Float32Array(mesh.positions).buffer);
+  const idx = new Uint8Array(new Uint32Array(mesh.indices).buffer);
+  return { ...m, reference: { name, positions: toB64(pos), indices: toB64(idx) } };
+}
+
+export function getReference(m: Model3D): { name: string; mesh: { positions: number[]; indices: number[] } } | null {
+  if (!m.reference) return null;
+  try {
+    const p = fromB64(m.reference.positions);
+    const i = fromB64(m.reference.indices);
+    return { name: m.reference.name, mesh: { positions: [...new Float32Array(p.buffer, 0, p.length >> 2)], indices: [...new Uint32Array(i.buffer, 0, i.length >> 2)] } };
+  } catch {
+    return null;
+  }
+}
+
+export function clearReference(m: Model3D): Model3D {
+  const { reference: _gone, ...rest } = m;
+  return rest;
 }
