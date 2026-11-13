@@ -59,7 +59,8 @@ export interface Part {
   visible: boolean;
 }
 
-export type Ease = "linear" | "smooth" | "step";
+export type Ease = "linear" | "smooth" | "step" | "ease-in" | "ease-out";
+export const EASES: Ease[] = ["linear", "smooth", "step", "ease-in", "ease-out"];
 
 export interface Keyframe {
   /** Segundos. */

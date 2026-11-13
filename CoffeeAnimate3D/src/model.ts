@@ -3,7 +3,7 @@
 
 import { newId } from "./studio/color";
 import { eulerFromQuat, quatFromAxisAngle, quatFromEuler, quatMul, rotateVec, type Quat } from "./rotation";
-import { FACES, SHAPES, TEX, type Shape, type Animation, type Box, type Ease, type FaceName, type FaceTex, type Keyframe, type Model3D, type Part, type Pose, type Vec3 } from "./types";
+import { EASES, FACES, SHAPES, TEX, type Shape, type Animation, type Box, type Ease, type FaceName, type FaceTex, type Keyframe, type Model3D, type Part, type Pose, type Vec3 } from "./types";
 
 export const DEFAULT_COLOR = "#c8a27a";
 
@@ -307,6 +307,8 @@ function sampleTrack(keys: Keyframe[], t: number): Pose {
   let f = (t - a.t) / (b.t - a.t);
   if (a.ease === "step") f = 0;
   else if (a.ease === "smooth") f = f * f * (3 - 2 * f);
+  else if (a.ease === "ease-in") f = f * f;
+  else if (a.ease === "ease-out") f = 1 - (1 - f) * (1 - f);
   return { pos: lerp3(a.pos, b.pos, f), rot: lerp3(a.rot, b.rot, f), scale: lerp3(a.scale, b.scale, f) };
 }
 
@@ -424,7 +426,7 @@ export function parseModel(text: string): Model3D {
       for (const [pid, keys] of Object.entries(a.tracks ?? {})) {
         if (!ids.has(pid) || !Array.isArray(keys)) continue;
         tracks[pid] = (keys as any[])
-          .map((k): Keyframe => ({ t: num(k?.t, 0), pos: vec(k?.pos, [0, 0, 0]), rot: vec(k?.rot, [0, 0, 0]), scale: vec(k?.scale, [1, 1, 1]), ease: k?.ease === "smooth" || k?.ease === "step" ? k.ease : "linear" }))
+          .map((k): Keyframe => ({ t: num(k?.t, 0), pos: vec(k?.pos, [0, 0, 0]), rot: vec(k?.rot, [0, 0, 0]), scale: vec(k?.scale, [1, 1, 1]), ease: EASES.includes(k?.ease) ? k.ease : "linear" }))
           .sort((x, y) => x.t - y.t);
       }
       return { id: a.id, name: str(a.name, "Animación"), length: Math.max(0.05, num(a.length, 1)), loop: a.loop !== false, tracks };
@@ -544,4 +546,56 @@ export function resizeBox(m: Model3D, id: string, size: Vec3, anchor: "pivot" | 
   const next = size.map((s) => Math.max(1, r2(s))) as Vec3;
   const from = old.from.map((f, i) => (anchor === "pivot" ? r2(f * (next[i] / old.size[i])) : r2(f + (old.size[i] - next[i]) / 2))) as Vec3;
   return { ...m, parts: m.parts.map((x) => (x.id === id ? { ...x, box: { ...old, from, size: next } } : x)) };
+}
+
+// ---------------------------------------------------------------------------
+// Claves y poses
+// ---------------------------------------------------------------------------
+
+const keyTime = (a: Animation, t: number) => Math.round(Math.min(Math.max(t, 0), a.length) * 1000) / 1000;
+
+/** Mueve una clave en el tiempo y/o cambia un valor (vista de curvas). Si cae sobre otra, la sustituye. */
+export function moveKeyframe(m: Model3D, animId: string, partId: string, t: number, patch: { t?: number; channel?: { kind: "pos" | "rot" | "scale"; axis: 0 | 1 | 2; value: number } }): Model3D {
+  const a = findAnimation(m, animId);
+  const keys = (a.tracks[partId] ?? []).map((k) => clone(k));
+  const i = keys.findIndex((k) => Math.abs(k.t - t) < 1e-4);
+  if (i < 0) throw new Error("No hay ninguna clave en ese instante");
+  const k = keys[i];
+  if (patch.channel) k[patch.channel.kind][patch.channel.axis] = r2(patch.channel.value);
+  if (patch.t !== undefined) k.t = keyTime(a, patch.t);
+  const rest = keys.filter((x, j) => j !== i && Math.abs(x.t - k.t) >= 1e-4);
+  const next = [...rest, k].sort((x, y) => x.t - y.t);
+  return { ...m, animations: m.animations.map((x) => (x.id === animId ? { ...x, tracks: { ...x.tracks, [partId]: next } } : x)) };
+}
+
+export type PoseClip = { name: string; pose: Pose }[];
+
+/** Pose de las piezas en un instante (para pegarla en otro). */
+export function copyPose(m: Model3D, animId: string, t: number, ids: string[]): PoseClip {
+  const pose = samplePose(m, animId, t);
+  return ids.map((id) => ({ name: findPart(m, id).name, pose: clone(pose.get(id) ?? { pos: [0, 0, 0], rot: [0, 0, 0], scale: [1, 1, 1] }) }));
+}
+
+/**
+ * Pega una pose como claves. Empareja por nombre; `mirrored` la lleva a la pieza del otro
+ * lado (izquierda ↔ derecha) reflejada en X. Devuelve cuántas se pegaron y cuáles no tenían pareja.
+ */
+export function pastePose(m: Model3D, animId: string, t: number, clip: PoseClip, mirrored: boolean, ease: Ease): { model: Model3D; pasted: number; skipped: string[] } {
+  const a = findAnimation(m, animId);
+  let model = m;
+  let pasted = 0;
+  const skipped: string[] = [];
+  for (const { name, pose } of clip) {
+    const target = mirrored ? mirrorName(name) : name;
+    const found = m.parts.filter((p) => p.name.toLowerCase() === target.toLowerCase());
+    if (found.length !== 1 || (mirrored && target === name)) {
+      skipped.push(name);
+      continue;
+    }
+    const pos: Vec3 = mirrored ? [neg(pose.pos[0]), pose.pos[1], pose.pos[2]] : pose.pos;
+    const rot: Vec3 = mirrored ? [pose.rot[0], neg(pose.rot[1]), neg(pose.rot[2])] : pose.rot;
+    model = setKeyframe(model, a.id, found[0].id, t, { pos, rot, scale: pose.scale, ease });
+    pasted++;
+  }
+  return { model, pasted, skipped };
 }
