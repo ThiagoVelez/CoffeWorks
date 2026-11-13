@@ -3,8 +3,8 @@
 // animaciones muestreadas a 24 fps. 16 unidades del editor = 1 metro (1 bloque).
 
 import { facePixels, findAnimation, samplePose } from "./model";
-import { CORNER_UV, FACE_GEOMETRY, QUAD_INDICES, faceCorners } from "./geometry";
-import { FACES, TEX, UNITS_PER_BLOCK, type Model3D, type Vec3 } from "./types";
+import { shapeGeometry } from "./geometry";
+import { FACES, TEX, UNITS_PER_BLOCK, type FaceName, type Model3D, type Vec3 } from "./types";
 
 export const FPS = 24;
 const S = 1 / UNITS_PER_BLOCK;
@@ -188,22 +188,19 @@ export function exportGlb(m: Model3D): Uint8Array {
     const kids = m.parts.filter((c) => c.parent === p.id).map((c) => nodeIndex.get(c.id)!);
     if (kids.length) node.children = kids;
     if (p.box && p.visible) {
-      const pos: number[] = [];
-      const nor: number[] = [];
+      // La geometría de la forma, con la UV de cada cara llevada a su sitio en el atlas.
+      const g = shapeGeometry(p.box, S);
+      const faceOf: FaceName[] = new Array(g.positions.length / 3);
+      for (const grp of g.groups) for (let k = grp.start; k < grp.start + grp.count; k++) faceOf[g.indices[k]] = grp.face;
+      const pos = g.positions.map(round);
+      const nor = g.normals;
       const uv: number[] = [];
-      const idx: number[] = [];
-      for (const f of FACES) {
-        const base = pos.length / 3;
-        const rect = atlas.rects.get(`${p.id}:${f}`)!;
-        faceCorners(p.box, f, S).forEach((c, i) => {
-          pos.push(...r3(c));
-          nor.push(...FACE_GEOMETRY[f].normal);
-          // Medio texel hacia dentro para que el muestreo no tome la cara vecina.
-          const [cu, cv] = CORNER_UV[i];
-          uv.push((rect.x + 0.02 + cu * (TEX - 0.04)) / atlas.width, (rect.y + 0.02 + cv * (TEX - 0.04)) / atlas.height);
-        });
-        idx.push(...QUAD_INDICES.map((k) => k + base));
+      for (let v = 0; v < faceOf.length; v++) {
+        const rect = atlas.rects.get(`${p.id}:${faceOf[v]}`)!;
+        // Medio texel hacia dentro para que el muestreo no tome la cara vecina.
+        uv.push((rect.x + 0.02 + g.uvs[v * 2] * (TEX - 0.04)) / atlas.width, (rect.y + 0.02 + g.uvs[v * 2 + 1] * (TEX - 0.04)) / atlas.height);
       }
+      const idx = g.indices;
       meshes.push({
         name: p.name,
         primitives: [

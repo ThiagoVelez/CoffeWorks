@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FilePlus, FolderOpen, SaveAll, Home, Undo2, Redo2, Download, Keyboard, Info, Play, Pause, Plus, Trash2, Eye, EyeOff, Copy, FlipHorizontal2, Box as BoxIcon, Bone, Move3d, Rotate3d, Focus, Pencil, PaintBucket, Pipette, Diamond, Camera, Bot, Shapes, Scale3d, Ruler, Group, Ungroup, Minus } from "lucide-react";
+import { FilePlus, FolderOpen, SaveAll, Home, Undo2, Redo2, Download, Keyboard, Info, Play, Pause, Plus, Trash2, Eye, EyeOff, Copy, FlipHorizontal2, Box as BoxIcon, Bone, Move3d, Rotate3d, Focus, Pencil, PaintBucket, Pipette, Diamond, Camera, Bot, Shapes, Scale3d, Ruler, Group, Ungroup, Minus, Cylinder, Circle, Triangle, Square } from "lucide-react";
 import { SuiteHeader, type MenuDefinition } from "./studio/SuiteHeader";
 import { StartScreen } from "./studio/StartScreen";
 import { CommandSearch } from "./studio/CommandSearch";
@@ -8,7 +8,7 @@ import { createDocStore } from "./studio/docStore";
 import { useStudioDoc } from "./studio/useStudioDoc";
 import { Button, IconButton, NumberField, STUDIO_CSS, Section, Select, Toggle, cx } from "./studio/ui";
 import { saveFileAs } from "./studio/desktop";
-import { ACCENT, ACCENT_DARK, FACES, FACE_LABEL, type Ease, type FaceName, type Model3D, type Part, type Vec3 } from "./types";
+import { ACCENT, ACCENT_DARK, FACE_LABEL, SHAPES, SHAPE_FACES, SHAPE_LABEL, type Ease, type Shape, type FaceName, type Model3D, type Part, type Vec3 } from "./types";
 import { addAnimation, addPart, descendants, duplicatePart, fillFace, findPart, getPixel, groupParts, mirrorPart, newModel, paintPixels, parseModel, removeAnimation, removeKeyframe, removePart, resizeBox, rotatePartsQuat, samplePose, scaleParts, serializeModel, setKeyframe, topLevel, translateParts, ungroup, updateAnimation, updatePart, wrapTime } from "./model";
 import { SNAP_OPTIONS, formatDistance, loadSnap, parseNumber, saveSnap, snapValue, type SnapPrefs, type SnapStep } from "./snap";
 import { TEMPLATES } from "./templates";
@@ -213,13 +213,13 @@ export const App: React.FC = () => {
 
   // ---------- Acciones ----------
   const selPart = doc && sel ? doc.parts.find((p) => p.id === sel) ?? null : null;
-  const addCube = (bone = false) => {
+  const addCube = (bone = false, shape: Shape = "box") => {
     const parent = selPart?.id ?? null;
     const [m, id] = addPart(cur(), {
-      name: bone ? `hueso ${cur().parts.length + 1}` : `cubo ${cur().parts.length + 1}`,
+      name: bone ? `hueso ${cur().parts.length + 1}` : `${SHAPE_LABEL[shape].toLowerCase()} ${cur().parts.length + 1}`,
       parent,
       pivot: parent ? [0, 0, 0] : [0, 4, 0],
-      box: bone ? null : { from: [-2, 0, -2], size: [4, 4, 4], color },
+      box: bone ? null : { from: [-2, 0, -2], size: [4, 4, 4], color, shape },
     });
     apply(m);
     setSel(id);
@@ -414,6 +414,10 @@ export const App: React.FC = () => {
             { label: "Rehacer", icon: Redo2, shortcut: "Ctrl+Mayús+Z", action: sd.redo, disabled: !sd.canRedo },
             { divider: true },
             { label: "Añadir cubo", icon: BoxIcon, action: () => addCube(false) },
+            { label: "Añadir cilindro", icon: Cylinder, action: () => addCube(false, "cylinder") },
+            { label: "Añadir esfera", icon: Circle, action: () => addCube(false, "sphere") },
+            { label: "Añadir rampa", icon: Triangle, action: () => addCube(false, "ramp") },
+            { label: "Añadir plano", icon: Square, action: () => addCube(false, "plane") },
             { label: "Añadir hueso (sin caja)", icon: Bone, action: () => addCube(true) },
             { label: "Duplicar", icon: Copy, shortcut: "Ctrl+D", action: dup, disabled: !sel },
             { label: "Copia reflejada (izquierda ↔ derecha)", icon: FlipHorizontal2, shortcut: "M", action: mirror, disabled: !sel },
@@ -462,7 +466,7 @@ export const App: React.FC = () => {
               action: () =>
                 void showMessage(
                   "Cómo usar CoffeeAnimate3D",
-                  "Modelar (1): añade cubos y huesos; cada pieza gira alrededor de su pivote y arrastra a sus hijas. Con el gizmo mueves (G), giras (R) o escalas (S, desde el pivote); el tamaño exacto y los botones −/+ van en Propiedades. M crea la copia reflejada (por ejemplo, la pata derecha a partir de la izquierda). Mayús+clic añade piezas a la selección (Mayús+arrastrar en vacío: rectángulo; Ctrl+A: todas); Ctrl+G agrupa y Ctrl+Mayús+G desagrupa. El ajuste a la cuadrícula está en la barra (Ctrl invierte el paso de giro de 15°). Mayús+M mide distancias. El cubo de vista (arriba a la derecha) gira la cámara hacia la cara, arista o esquina que pulses.\n\nPintar (2): pinta píxel a píxel sobre las caras (texturas de 32×32), rellena una cara o toma un color con el cuentagotas.\n\nAnimar (3): elige una animación, coloca el tiempo, mueve o gira piezas con el gizmo (crea una clave) o pulsa K. Espacio reproduce.\n\nExporta a glTF (.glb) para SurvivalForest, Blender, Godot o Unity. 16 unidades = 1 bloque.",
+                  "Modelar (1): añade cubos, cilindros, esferas, rampas, planos y huesos (la forma se cambia en Propiedades; todas se pintan cara a cara: el cilindro reparte su lateral en cuatro caras y la rampa usa la de arriba como pendiente); cada pieza gira alrededor de su pivote y arrastra a sus hijas. Con el gizmo mueves (G), giras (R) o escalas (S, desde el pivote); el tamaño exacto y los botones −/+ van en Propiedades. M crea la copia reflejada (por ejemplo, la pata derecha a partir de la izquierda). Mayús+clic añade piezas a la selección (Mayús+arrastrar en vacío: rectángulo; Ctrl+A: todas); Ctrl+G agrupa y Ctrl+Mayús+G desagrupa. El ajuste a la cuadrícula está en la barra (Ctrl invierte el paso de giro de 15°). Mayús+M mide distancias. El cubo de vista (arriba a la derecha) gira la cámara hacia la cara, arista o esquina que pulses.\n\nPintar (2): pinta píxel a píxel sobre las caras (texturas de 32×32), rellena una cara o toma un color con el cuentagotas.\n\nAnimar (3): elige una animación, coloca el tiempo, mueve o gira piezas con el gizmo (crea una clave) o pulsa K. Espacio reproduce.\n\nExporta a glTF (.glb) para SurvivalForest, Blender, Godot o Unity. 16 unidades = 1 bloque.",
                 ),
             },
             {
@@ -518,14 +522,22 @@ export const App: React.FC = () => {
           <div className="flex flex-1 min-h-0">
             {/* Árbol de piezas */}
             <aside className="w-60 shrink-0 border-r border-[#2a2a30] bg-[#1f1f23] flex flex-col min-h-0">
-              <div className="px-3 py-2 flex items-center justify-between border-b border-[#2a2a30]">
-                <span className="text-[11px] uppercase tracking-wider text-[#8a8a92] font-semibold">Piezas</span>
-                <div className="flex gap-0.5">
+              <div className="px-3 py-2 flex flex-col gap-1.5 border-b border-[#2a2a30]">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] uppercase tracking-wider text-[#8a8a92] font-semibold">Piezas</span>
+                  <div className="flex gap-0.5">
+                    <IconButton icon={Copy} title="Duplicar (Ctrl+D)" onClick={dup} disabled={!sel} />
+                    <IconButton icon={FlipHorizontal2} title="Copia reflejada (M)" onClick={mirror} disabled={!sel} />
+                    <IconButton icon={Trash2} title="Eliminar (Supr)" onClick={del} disabled={!sel} />
+                  </div>
+                </div>
+                <div className="flex gap-0.5" data-add-shapes>
                   <IconButton icon={BoxIcon} title="Añadir cubo" onClick={() => addCube(false)} />
+                  <IconButton icon={Cylinder} title="Añadir cilindro" onClick={() => addCube(false, "cylinder")} />
+                  <IconButton icon={Circle} title="Añadir esfera" onClick={() => addCube(false, "sphere")} />
+                  <IconButton icon={Triangle} title="Añadir rampa (sube hacia atrás)" onClick={() => addCube(false, "ramp")} />
+                  <IconButton icon={Square} title="Añadir plano" onClick={() => addCube(false, "plane")} />
                   <IconButton icon={Bone} title="Añadir hueso (sin caja)" onClick={() => addCube(true)} />
-                  <IconButton icon={Copy} title="Duplicar (Ctrl+D)" onClick={dup} disabled={!sel} />
-                  <IconButton icon={FlipHorizontal2} title="Copia reflejada (M)" onClick={mirror} disabled={!sel} />
-                  <IconButton icon={Trash2} title="Eliminar (Supr)" onClick={del} disabled={!sel} />
                 </div>
               </div>
               <div className="flex-1 overflow-auto py-1" data-outliner>
@@ -672,7 +684,7 @@ const Tree: React.FC<{ model: Model3D; parent: string | null; depth: number; sel
             onClick={(e) => onSelect(p.id, e.shiftKey)}
             data-part={p.name}
           >
-            {p.box ? <BoxIcon size={13} className="text-[#ffb27a] shrink-0" /> : <Bone size={13} className="text-[#8ab4ff] shrink-0" />}
+            {p.box ? <ShapeIcon shape={p.box.shape} /> : <Bone size={13} className="text-[#8ab4ff] shrink-0" />}
             <span className="truncate flex-1">{p.name}</span>
             {anim?.tracks[p.id]?.length ? <Diamond size={10} className="text-[#ffd166] shrink-0" /> : null}
             <button
@@ -692,6 +704,12 @@ const Tree: React.FC<{ model: Model3D; parent: string | null; depth: number; sel
       ))}
   </>
 );
+
+const SHAPE_ICON: Record<Shape, typeof BoxIcon> = { box: BoxIcon, cylinder: Cylinder, sphere: Circle, ramp: Triangle, plane: Square };
+const ShapeIcon: React.FC<{ shape: Shape }> = ({ shape }) => {
+  const Icon = SHAPE_ICON[shape] ?? BoxIcon;
+  return <Icon size={13} className="text-[#ffb27a] shrink-0" />;
+};
 
 // ---------------------------------------------------------------------------
 // Propiedades de la pieza
@@ -731,6 +749,10 @@ const PartPanel: React.FC<{ model: Model3D; part: Part; mode: Mode; color: strin
       <Section title="Caja">
         {part.box ? (
           <div className="flex flex-col gap-2">
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] text-[#8a8a92]">Forma</span>
+              <Select value={part.box.shape} onChange={(v) => onPatch({ box: { shape: v as Shape } })} options={SHAPES.map((sh) => ({ value: sh, label: SHAPE_LABEL[sh] }))} data-shape-select />
+            </label>
             <Vec3Field label="Desde (relativo al pivote)" value={part.box.from} onChange={(v) => onPatch({ box: { from: v } }, `from-${part.id}`)} step={0.5} />
             <Vec3Field label="Tamaño (16 = 1 bloque)" value={part.box.size} onChange={(v) => onPatch({ box: { size: v.map((s) => Math.max(0.1, s)) as Vec3 } }, `size-${part.id}`)} step={0.5} min={0.1} />
             <div className="flex flex-col gap-1" data-grow>
@@ -768,7 +790,7 @@ const PartPanel: React.FC<{ model: Model3D; part: Part; mode: Mode; color: strin
       {part.box && (
         <Section title="Caras" defaultOpen={mode === "paint"}>
           <div className="grid grid-cols-2 gap-1.5">
-            {FACES.map((f) => (
+            {SHAPE_FACES[part.box.shape].map((f) => (
               <button key={f} type="button" onClick={() => onFill(f)} title={`Rellenar «${FACE_LABEL[f]}» con el color actual`} className="flex items-center gap-1.5 h-7 px-2 rounded-md bg-[#141416] border border-[#2a2a30] hover:border-[#ff8a3d] text-[11px] text-left">
                 <span className="w-3 h-3 rounded-sm border border-black/40" style={{ background: part.box!.faces[f].color }} />
                 <span className="truncate">{FACE_LABEL[f]}</span>

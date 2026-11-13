@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { TransformControls } from "three/addons/controls/TransformControls.js";
 import { facePixels } from "./model";
-import { CORNER_UV, FACE_GEOMETRY, QUAD_INDICES, faceCorners, uvToPixel } from "./geometry";
+import { shapeGeometry, uvToPixel } from "./geometry";
 import { FACES, TEX, type FaceName, type Model3D, type Pose, type Vec3 } from "./types";
 import { ViewCube, cameraDir } from "./viewcube";
 import { ROTATE_STEP, gridAnchor, type SnapStep } from "./snap";
@@ -56,27 +56,15 @@ function faceTexture(px: Uint8Array): THREE.DataTexture {
   return tex;
 }
 
-/** Caja con nuestro orden de caras y UV (igual que la exportación). */
-function boxGeometry(box: NonNullable<Model3D["parts"][number]["box"]>): THREE.BufferGeometry {
-  const pos: number[] = [];
-  const nor: number[] = [];
-  const uv: number[] = [];
-  const idx: number[] = [];
+/** Geometría de la forma con un grupo por cara (material = índice en FACES), igual que la exportación. */
+function partGeometry(box: NonNullable<Model3D["parts"][number]["box"]>): THREE.BufferGeometry {
+  const g = shapeGeometry(box);
   const geo = new THREE.BufferGeometry();
-  FACES.forEach((f, i) => {
-    const base = i * 4;
-    faceCorners(box, f).forEach((c, k) => {
-      pos.push(...c);
-      nor.push(...FACE_GEOMETRY[f].normal);
-      uv.push(...CORNER_UV[k]);
-    });
-    idx.push(...QUAD_INDICES.map((q) => q + base));
-    geo.addGroup(i * 6, 6, i);
-  });
-  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-  geo.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
-  geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
-  geo.setIndex(idx);
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(g.positions, 3));
+  geo.setAttribute("normal", new THREE.Float32BufferAttribute(g.normals, 3));
+  geo.setAttribute("uv", new THREE.Float32BufferAttribute(g.uvs, 2));
+  geo.setIndex(g.indices);
+  for (const grp of g.groups) geo.addGroup(grp.start, grp.count, FACES.indexOf(grp.face));
   return geo;
 }
 
@@ -225,7 +213,7 @@ export class Viewport {
       this.groups.set(p.id, g);
       if (p.box && p.visible) {
         const mats = FACES.map((f) => new THREE.MeshLambertMaterial({ map: faceTexture(facePixels(p.box!.faces[f])) }));
-        const mesh = new THREE.Mesh(boxGeometry(p.box), mats);
+        const mesh = new THREE.Mesh(partGeometry(p.box), mats);
         mesh.userData.partId = p.id;
         g.add(mesh);
         this.meshes.push(mesh);
