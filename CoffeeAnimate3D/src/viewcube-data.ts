@@ -35,10 +35,20 @@ function build(): CubeRegion[] {
 
 export const VIEWCUBE_REGIONS: CubeRegion[] = build();
 
-/** Dirección unitaria para la cámara; evita mirar justo en vertical (sin «arriba» definido). */
-export function cameraDir(dir: Vec3): Vec3 {
+/**
+ * Dirección unitaria para la cámara. Si es vertical (sin «arriba» definido), se inclina
+ * un poco hacia el rumbo de la cámara actual (`current`) para no girar la imagen.
+ */
+export function cameraDir(dir: Vec3, current?: Vec3): Vec3 {
   const d: Vec3 = [dir[0], dir[1], dir[2]];
-  if (Math.abs(d[0]) < 1e-6 && Math.abs(d[2]) < 1e-6) d[2] = 0.001 * Math.max(1, Math.abs(d[1]));
+  if (Math.abs(d[0]) < 1e-6 && Math.abs(d[2]) < 1e-6) {
+    const h = current ? Math.hypot(current[0], current[2]) : 0;
+    const k = 0.001 * Math.max(1, Math.abs(d[1]));
+    if (current && h > 1e-6) {
+      d[0] = (current[0] / h) * k;
+      d[2] = (current[2] / h) * k;
+    } else d[2] = k;
+  }
   const len = Math.hypot(...d) || 1;
   return d.map((v) => v / len + 0) as Vec3;
 }

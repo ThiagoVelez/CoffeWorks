@@ -2,6 +2,7 @@
 // MCP y la exportación. Todas devuelven un modelo nuevo; nunca mutan el anterior.
 
 import { newId } from "./studio/color";
+import { eulerFromQuat, quatFromAxisAngle, quatFromEuler, quatMul, rotateVec, type Quat } from "./rotation";
 import { FACES, TEX, type Animation, type Box, type Ease, type FaceName, type FaceTex, type Keyframe, type Model3D, type Part, type Pose, type Vec3 } from "./types";
 
 export const DEFAULT_COLOR = "#c8a27a";
@@ -463,19 +464,22 @@ export function translateParts(m: Model3D, ids: string[], delta: Vec3): Model3D 
   return mapParts(m, ids, (p) => ({ ...p, pivot: p.pivot.map((v, i) => r2(v + delta[i])) as Vec3 }));
 }
 
-/** Gira las piezas `deg` grados sobre un eje, alrededor de `center` (en el espacio del padre). */
+/** Gira las piezas `deg` grados sobre un eje del padre, alrededor de `center`. */
 export function rotateParts(m: Model3D, ids: string[], axis: 0 | 1 | 2, deg: number, center: Vec3): Model3D {
-  const a = (deg * Math.PI) / 180;
-  const [c, s] = [Math.cos(a), Math.sin(a)];
-  // Ejes del plano de giro (regla de la mano derecha): X gira Y→Z, Y gira Z→X, Z gira X→Y.
-  const [u, v] = axis === 0 ? [1, 2] : axis === 1 ? [2, 0] : [0, 1];
+  const dir: Vec3 = [0, 0, 0];
+  dir[axis] = 1;
+  return rotatePartsQuat(m, ids, quatFromAxisAngle(dir, deg), center);
+}
+
+/**
+ * Gira las piezas con un cuaternión (en el espacio del padre) alrededor de `center`:
+ * mueve los pivotes y compone el giro con el que ya tenía cada pieza.
+ */
+export function rotatePartsQuat(m: Model3D, ids: string[], q: Quat, center: Vec3): Model3D {
   return mapParts(m, ids, (p) => {
-    const d = p.pivot.map((x, i) => x - center[i]);
-    const pivot = [...p.pivot] as Vec3;
-    pivot[u] = r2(center[u] + d[u] * c - d[v] * s);
-    pivot[v] = r2(center[v] + d[u] * s + d[v] * c);
-    const rotation = [...p.rotation] as Vec3;
-    rotation[axis] = r2(rotation[axis] + deg);
+    const d = rotateVec(q, p.pivot.map((x, i) => x - center[i]) as Vec3);
+    const pivot = d.map((v, i) => r2(center[i] + v)) as Vec3;
+    const rotation = eulerFromQuat(quatMul(q, quatFromEuler(p.rotation))).map(r2) as Vec3;
     return { ...p, pivot, rotation };
   });
 }

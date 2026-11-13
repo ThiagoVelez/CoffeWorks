@@ -60,3 +60,16 @@ export function formatDistance(units: number): string {
   const blocks = units / 16;
   return `${num(blocks)} ${Math.round(blocks * 100) === 100 ? "bloque" : "bloques"} (${num(units)} u)`;
 }
+
+/** Punto de partida del gizmo de varias piezas: su centro, llevado a la cuadrícula. */
+export function gridAnchor(points: Vec3[], step: SnapStep): Vec3 {
+  const center = [0, 1, 2].map((i) => points.reduce((s, p) => s + p[i], 0) / (points.length || 1)) as Vec3;
+  return snapVec(center, step);
+}
+
+/** Número escrito por el usuario (acepta coma decimal); vacío o no numérico → null. */
+export function parseNumber(text: string): number | null {
+  if (!text.trim()) return null;
+  const n = Number(text.trim().replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}

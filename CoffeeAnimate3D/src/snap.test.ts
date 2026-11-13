@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { SNAP_OPTIONS, formatDistance, loadSnap, snapValue, snapVec } from "./snap";
+import { SNAP_OPTIONS, formatDistance, gridAnchor, loadSnap, parseNumber, snapValue, snapVec } from "./snap";
 import { addPart, findPart, newModel, resizeBox } from "./model";
 
 test("snapValue", () => {
@@ -31,4 +31,17 @@ test("formatDistance en bloques y unidades con coma decimal", () => {
   assert.equal(formatDistance(40), "2,5 bloques (40 u)");
   assert.equal(formatDistance(16), "1 bloque (16 u)");
   assert.equal(formatDistance(7.25), "0,45 bloques (7,25 u)");
+});
+
+test("gridAnchor: el gizmo de varias piezas empieza en la cuadrícula", () => {
+  assert.deepEqual(gridAnchor([[0, 0, 0], [3, 0, 0]], 1), [2, 0, 0]);
+  assert.deepEqual(gridAnchor([[0, 0, 0], [3, 0, 0]], 16), [0, 0, 0]);
+  assert.deepEqual(gridAnchor([[0, 0, 0], [3, 0, 0]], 0), [1.5, 0, 0]);
+});
+
+test("parseNumber: vacío no es 0", () => {
+  assert.equal(parseNumber(""), null);
+  assert.equal(parseNumber("  "), null);
+  assert.equal(parseNumber("2,5"), 2.5);
+  assert.equal(parseNumber("abc"), null);
 });

@@ -26,3 +26,10 @@ test("cameraDir no es paralela a Y ni da NaN", () => {
   const c = cameraDir([1, 1, 1]);
   assert.ok(Math.abs(c[0] - 1 / Math.sqrt(3)) < 1e-9);
 });
+
+test("cameraDir vertical conserva el rumbo de la cámara actual", () => {
+  const d = cameraDir([0, 1, 0], [1, 0.2, 0]);
+  assert.ok(d[0] > 0 && Math.abs(d[2]) < 1e-9, d.join());
+  const b = cameraDir([0, -1, 0], [0, 0, -3]);
+  assert.ok(b[2] < 0 && Math.abs(b[0]) < 1e-9, b.join());
+});

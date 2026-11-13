@@ -9,8 +9,8 @@ import { useStudioDoc } from "./studio/useStudioDoc";
 import { Button, IconButton, NumberField, STUDIO_CSS, Section, Select, Toggle, cx } from "./studio/ui";
 import { saveFileAs } from "./studio/desktop";
 import { ACCENT, ACCENT_DARK, FACES, FACE_LABEL, type Ease, type FaceName, type Model3D, type Part, type Vec3 } from "./types";
-import { addAnimation, addPart, descendants, duplicatePart, fillFace, findPart, getPixel, groupParts, mirrorPart, newModel, paintPixels, parseModel, removeAnimation, removeKeyframe, removePart, resizeBox, rotateParts, samplePose, scaleParts, serializeModel, setKeyframe, topLevel, translateParts, ungroup, updateAnimation, updatePart, wrapTime } from "./model";
-import { SNAP_OPTIONS, formatDistance, loadSnap, saveSnap, snapValue, type SnapPrefs, type SnapStep } from "./snap";
+import { addAnimation, addPart, descendants, duplicatePart, fillFace, findPart, getPixel, groupParts, mirrorPart, newModel, paintPixels, parseModel, removeAnimation, removeKeyframe, removePart, resizeBox, rotatePartsQuat, samplePose, scaleParts, serializeModel, setKeyframe, topLevel, translateParts, ungroup, updateAnimation, updatePart, wrapTime } from "./model";
+import { SNAP_OPTIONS, formatDistance, loadSnap, parseNumber, saveSnap, snapValue, type SnapPrefs, type SnapStep } from "./snap";
 import { TEMPLATES } from "./templates";
 import { exportGlb } from "./gltf";
 import { Viewport, type GizmoMode, type TransformChange, type ViewAngle, type ViewTool } from "./viewport";
@@ -153,7 +153,7 @@ export const App: React.FC = () => {
     const d = cur();
     try {
       if (c.delta) return apply(translateParts(d, c.ids, c.delta));
-      if (c.rotate) return apply(rotateParts(d, c.ids, c.rotate.axis, c.rotate.deg, c.rotate.center));
+      if (c.rotate) return apply(rotatePartsQuat(d, c.ids, c.rotate.quat, c.rotate.center));
       const id = c.ids[0];
       const part = findPart(d, id);
       if (modeRef.current === "animate" && animId) {
@@ -804,8 +804,8 @@ const MultiPanel: React.FC<{ model: Model3D; ids: string[]; onGroup: () => void;
                     className="w-full bg-transparent outline-none"
                     onKeyDown={(e) => {
                       if (e.key !== "Enter") return;
-                      const n = Number((e.target as HTMLInputElement).value.replace(",", "."));
-                      if (!Number.isFinite(n)) return;
+                      const n = parseNumber((e.target as HTMLInputElement).value);
+                      if (n == null) return;
                       const delta: Vec3 = [0, 0, 0];
                       delta[i] = v == null ? n : n - v;
                       onMove(delta);

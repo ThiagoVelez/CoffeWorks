@@ -8,7 +8,9 @@ import { facePixels } from "./model";
 import { CORNER_UV, FACE_GEOMETRY, QUAD_INDICES, faceCorners, uvToPixel } from "./geometry";
 import { FACES, TEX, type FaceName, type Model3D, type Pose, type Vec3 } from "./types";
 import { ViewCube, cameraDir } from "./viewcube";
-import { ROTATE_STEP, type SnapStep } from "./snap";
+import { ROTATE_STEP, gridAnchor, type SnapStep } from "./snap";
+import { topLevel } from "./model";
+import type { Quat } from "./rotation";
 
 export type GizmoMode = "translate" | "rotate" | "scale";
 export type ViewTool = "select" | "measure";
@@ -22,8 +24,8 @@ export interface TransformChange {
   rotation?: Vec3;
   /** Varias piezas movidas. */
   delta?: Vec3;
-  /** Varias piezas giradas sobre un eje alrededor de un centro. */
-  rotate?: { axis: 0 | 1 | 2; deg: number; center: Vec3 };
+  /** Varias piezas giradas (cuaternión en el espacio del padre) alrededor de un centro. */
+  rotate?: { quat: Quat; center: Vec3 };
   /** Escala: factor por eje (una pieza en Modelar: desde su pivote; en Animar: escala absoluta del hueso). */
   scale?: { factor: Vec3; center: Vec3 };
 }
@@ -282,13 +284,16 @@ export class Viewport {
       this.gizmo.attach(g);
       return;
     }
-    // Varias piezas: solo en Modelar y si cuelgan del mismo padre.
-    const parents = this.parentsOf(ids);
+    // Varias piezas: solo en Modelar y si cuelgan del mismo padre (sin contar las hijas
+    // de otras seleccionadas, que ya se mueven con su padre).
+    const top = topLevel(this.model!, ids);
+    const parents = this.parentsOf(top);
     if (this.mode !== "model" || parents.size !== 1) return;
     const parentId = [...parents][0];
     const parent = parentId ? this.groups.get(parentId) ?? this.root : this.root;
-    const pivots = ids.map((id) => this.model!.parts.find((p) => p.id === id)!.pivot);
-    const center = [0, 1, 2].map((i) => pivots.reduce((s, p) => s + p[i], 0) / pivots.length) as Vec3;
+    const pivots = top.map((id) => this.model!.parts.find((p) => p.id === id)!.pivot);
+    // En la cuadrícula: así el ajuste del gizmo da desplazamientos enteros de paso.
+    const center = gridAnchor(pivots, this.snap.step);
     this.multi.position.set(...center);
     this.multi.rotation.set(0, 0, 0);
     this.multi.scale.set(1, 1, 1);
@@ -376,9 +381,8 @@ export class Viewport {
         const d = this.multi.position.clone().sub(this.multiStart.pos);
         this.events.onTransform({ ids, delta: [r(d.x), r(d.y), r(d.z)] });
       } else if (this.gizmoMode === "rotate") {
-        const e = [this.multi.rotation.x, this.multi.rotation.y, this.multi.rotation.z];
-        const axis = e.map((v) => Math.abs(v)).reduce((best, v, i, arr) => (v > arr[best] ? i : best), 0) as 0 | 1 | 2;
-        this.events.onTransform({ ids, rotate: { axis, deg: r(e[axis] / DEG), center: c } });
+        const q = this.multi.quaternion;
+        this.events.onTransform({ ids, rotate: { quat: [q.x, q.y, q.z, q.w], center: c } });
       } else {
         const s = this.multi.scale;
         this.events.onTransform({ ids, scale: { factor: [r(s.x), r(s.y), r(s.z)], center: c } });
@@ -533,7 +537,7 @@ export class Viewport {
   lookFrom(dir: Vec3, animate = true) {
     const offset = this.camera.position.clone().sub(this.orbit.target);
     const dist = offset.length() || 40;
-    const to = new THREE.Vector3(...cameraDir(dir));
+    const to = new THREE.Vector3(...cameraDir(dir, offset.toArray() as Vec3));
     if (!animate) {
       this.camera.position.copy(this.orbit.target).add(to.multiplyScalar(dist));
       this.camera.lookAt(this.orbit.target);
