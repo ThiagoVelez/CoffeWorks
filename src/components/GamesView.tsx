@@ -2,7 +2,7 @@
 // desinstalar) y, para cada uno, sus Mods, TexturePacks y Shaders.
 
 import React, { useCallback, useEffect, useState } from "react";
-import { Gamepad2, Puzzle, Palette, Sparkles, Rocket, ShieldCheck, Download, Cpu, Play, RefreshCw, Trash2, Loader2, Check } from "lucide-react";
+import { Gamepad2, Puzzle, Palette, Sparkles, Rocket, Download, Play, RefreshCw, Trash2, Loader2, Check } from "lucide-react";
 import { CONTENT_INFO, GAMES, type GameContentKind, type GameEntry } from "../services/games";
 import { isTauri, tauriBridge, type GameStatus } from "../services/tauriBridge";
 
@@ -214,26 +214,6 @@ export const GamesView: React.FC = () => {
             text={`${CONTENT_INFO[tab].description} ${CONTENT_INFO[tab].detail}`}
           />
         ))}
-
-      {/* Cómo funcionará */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {(Object.keys(CONTENT_INFO) as GameContentKind[]).map((k) => {
-          const Icon = k === "mods" ? Puzzle : k === "texturepacks" ? Palette : Sparkles;
-          return (
-            <div key={k} className="rounded-2xl border border-[#dfd3c7] bg-white p-4 flex flex-col gap-2">
-              <div className="flex items-center gap-2 font-semibold text-[#2c1b12]">
-                <Icon size={16} className="text-[#6f4e37]" />
-                {CONTENT_INFO[k].label}
-              </div>
-              <p className="text-xs text-[#5c3a21] leading-relaxed">{CONTENT_INFO[k].description}</p>
-              <p className="text-[11px] text-[#8d6e63] leading-relaxed flex gap-1.5">
-                {k === "mods" ? <ShieldCheck size={13} className="shrink-0 mt-0.5" /> : <Cpu size={13} className="shrink-0 mt-0.5" />}
-                {CONTENT_INFO[k].detail}
-              </p>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 };
