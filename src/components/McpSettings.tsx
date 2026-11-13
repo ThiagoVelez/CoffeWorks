@@ -46,7 +46,7 @@ export const McpSettings: React.FC<{ onNotify: (message: string, isError?: boole
       : { text: "Esperando a Claude (abre CoffeeAnimate3D)", dot: "bg-[#f9a825]" };
 
   return (
-    <div className="p-6 rounded-2xl bg-white border border-[#dfd3c7] flex flex-col gap-4 text-xs text-[#5c3a21]" data-mcp-settings>
+    <div className="p-6 rounded-2xl bg-white border border-[#dfd3c7] flex flex-col gap-4 text-xs text-[#5c3a21]" data-mcp-settings data-paper>
       <div className="flex items-center gap-2">
         <Bot size={18} className="text-[#6f4e37]" />
         <span className="font-display font-bold text-sm text-[#2c1b12]">Claude (MCP)</span>

@@ -1,5 +1,5 @@
 import React from "react";
-import { Search, Minus, Square, X } from "lucide-react";
+import { Search, Minus, Square, X, CheckCircle2, AlertTriangle } from "lucide-react";
 import { tauriBridge } from "../services/tauriBridge";
 import { APP_STAGE, APP_VERSION } from "../version";
 
@@ -7,9 +7,11 @@ interface TitleBarProps {
   onOpenCommandPalette: () => void;
   version?: string;
   stage?: string;
+  /** Notificación breve: se muestra en la barra, junto a los botones de la ventana. */
+  notice?: { message: string; isError: boolean } | null;
 }
 
-export const TitleBar: React.FC<TitleBarProps> = ({ onOpenCommandPalette, version = APP_VERSION, stage = APP_STAGE }) => {
+export const TitleBar: React.FC<TitleBarProps> = ({ onOpenCommandPalette, version = APP_VERSION, stage = APP_STAGE, notice }) => {
   return (
     <header
       data-tauri-drag-region
@@ -35,7 +37,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onOpenCommandPalette, versio
       </div>
 
       {/* Buscador global con atajo Ctrl+K en tono crema y café */}
-      <div className="flex-1 max-w-md mx-4">
+      <div className="flex-1 min-w-0 max-w-md mx-4">
         <button
           type="button"
           onClick={onOpenCommandPalette}
@@ -53,8 +55,24 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onOpenCommandPalette, versio
         </button>
       </div>
 
+      {/* Notificaciones arriba a la derecha, dentro de la barra: no tapan el contenido */}
+      <div className="flex items-center gap-2 min-w-0">
+        {notice && (
+          <div
+            role="status"
+            aria-live="polite"
+            title={notice.message}
+            data-notice
+            className={`flex items-center gap-2 h-7 px-3 rounded-lg border shadow-xs text-xs font-medium min-w-0 max-w-[420px] animate-in fade-in ${
+              notice.isError ? "bg-red-50 border-red-300 text-red-800" : "bg-[#fbf9f6] border-[#dfd3c7] text-[#2c1b12]"
+            }`}
+          >
+            {notice.isError ? <AlertTriangle size={14} className="text-red-600 shrink-0" /> : <CheckCircle2 size={14} className="text-[#107c41] shrink-0" />}
+            <span className="truncate">{notice.message}</span>
+          </div>
+        )}
       {/* Controles nativos de ventana para Windows */}
-      <div className="flex items-center gap-0.5">
+      <div className="flex items-center gap-0.5 shrink-0">
         <button
           type="button"
           onClick={() => tauriBridge.minimizeWindow()}
@@ -79,6 +97,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onOpenCommandPalette, versio
         >
           <X size={14} />
         </button>
+      </div>
       </div>
     </header>
   );
