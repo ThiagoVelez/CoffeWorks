@@ -25,7 +25,7 @@ export const CORNER_UV: [number, number][] = [
 ];
 
 /** Dos triángulos por cara, en sentido antihorario visto desde fuera. */
-export const QUAD_INDICES = [0, 3, 2, 0, 2, 3];
+export const QUAD_INDICES = [0, 3, 2, 0, 2, 1];
 
 /** Posiciones (relativas al pivote) de las 4 esquinas de una cara. */
 export function faceCorners(box: Box, face: FaceName, scale = 1): Vec3[] {

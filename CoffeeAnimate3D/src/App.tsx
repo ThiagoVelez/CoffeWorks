@@ -1,1 +1,737 @@
-export const App = () => null;
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FilePlus, FolderOpen, SaveAll, Home, Undo2, Redo2, Download, Keyboard, Info, Play, Pause, Plus, Trash2, Eye, EyeOff, Copy, FlipHorizontal2, Box as BoxIcon, Bone, Move3d, Rotate3d, Focus, Pencil, PaintBucket, Pipette, Diamond, Camera, Bot, Shapes } from "lucide-react";
+import { SuiteHeader, type MenuDefinition } from "./studio/SuiteHeader";
+import { StartScreen } from "./studio/StartScreen";
+import { CommandSearch } from "./studio/CommandSearch";
+import { DialogHost, askText, showMessage, toast } from "./studio/Dialogs";
+import { createDocStore } from "./studio/docStore";
+import { useStudioDoc } from "./studio/useStudioDoc";
+import { Button, IconButton, NumberField, STUDIO_CSS, Section, Select, Toggle, cx } from "./studio/ui";
+import { saveFileAs } from "./studio/desktop";
+import { ACCENT, ACCENT_DARK, FACES, FACE_LABEL, type Ease, type FaceName, type Model3D, type Part, type Vec3 } from "./types";
+import { addAnimation, addPart, descendants, duplicatePart, fillFace, findPart, getPixel, mirrorPart, newModel, paintPixels, parseModel, removeAnimation, removeKeyframe, removePart, samplePose, serializeModel, setKeyframe, updateAnimation, updatePart, wrapTime } from "./model";
+import { TEMPLATES } from "./templates";
+import { exportGlb } from "./gltf";
+import { Viewport, type GizmoMode, type ViewAngle } from "./viewport";
+import { useMcpBridge } from "./mcpBridge";
+
+const store = createDocStore<Model3D>({
+  appId: "coffeeanimate3d",
+  extension: "ca3d",
+  category: "Ilustración",
+  defaultTitle: "Modelo sin título",
+  kindLabel: "Modelos de CoffeeAnimate3D",
+  serialize: serializeModel,
+  parse: parseModel,
+  create: () => newModel(),
+});
+
+type Mode = "model" | "paint" | "animate";
+type PaintTool = "pencil" | "fill" | "picker";
+
+/** Paleta de SurvivalForest (tierra roja, verdes cálidos, café…). */
+const PALETTE = ["#6fb84a", "#3c8f45", "#2c6e3a", "#b5532f", "#7e3524", "#9a9389", "#e8d49b", "#d9824f", "#f3eee4", "#2f6fb3", "#c4583a", "#7a5233", "#5a3a22", "#d23a3f", "#e8822f", "#f2c230", "#2b2724", "#ffffff", "#c98f62", "#1d4472"];
+
+const ROUND = (v: number) => Math.round(v * 100) / 100;
+
+export const App: React.FC = () => {
+  const sd = useStudioDoc<Model3D>(store, { appName: "CoffeeAnimate3D", historyLimit: 120 });
+  const doc = sd.doc;
+  const docRef = sd.docRef;
+  const cur = () => docRef.current!;
+  const apply = useCallback((next: Model3D, key = "") => sd.apply(next, key), [sd]);
+
+  const [sel, setSel] = useState<string | null>(null);
+  const [mode, setMode] = useState<Mode>("model");
+  const [gizmo, setGizmoState] = useState<GizmoMode>("translate");
+  const [animId, setAnimId] = useState<string | null>(null);
+  const [time, setTimeState] = useState(0);
+  const timeRef = useRef(0);
+  const setTime = (t: number) => {
+    timeRef.current = t;
+    setTimeState(t);
+  };
+  const [playing, setPlaying] = useState(false);
+  const [color, setColor] = useState("#6fb84a");
+  const [tool, setTool] = useState<PaintTool>("pencil");
+  const [ease, setEase] = useState<Ease>("smooth");
+  const [commandOpen, setCommandOpen] = useState(false);
+
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const vpRef = useRef<Viewport | null>(null);
+  const stroke = useRef<{ id: number; points: Map<string, { part: string; face: FaceName; pts: [number, number][] }> } | null>(null);
+  const strokeCount = useRef(0);
+
+  const anim = doc && animId ? doc.animations.find((a) => a.id === animId) ?? null : null;
+  useEffect(() => {
+    if (doc && (!animId || !doc.animations.some((a) => a.id === animId))) setAnimId(doc.animations[0]?.id ?? null);
+  }, [doc, animId]);
+  useEffect(() => {
+    if (doc && sel && !doc.parts.some((p) => p.id === sel)) setSel(null);
+  }, [doc, sel]);
+  useEffect(() => {
+    setSel(null);
+    setTime(0);
+    setPlaying(false);
+  }, [sd.docId]);
+
+  const poseNow = useCallback(() => {
+    const d = docRef.current;
+    if (!d || mode !== "animate" || !animId || !d.animations.some((a) => a.id === animId)) return undefined;
+    return samplePose(d, animId, timeRef.current);
+  }, [docRef, mode, animId]);
+
+  // ---------- Visor ----------
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const handlers = useRef({
+    onSelect: (id: string | null) => setSel(id),
+    onTransform: (_id: string, _c: { pivot?: Vec3; rotation?: Vec3 }) => {},
+    onPaint: (_id: string, _f: FaceName, _x: number, _y: number, _last: boolean) => {},
+  });
+
+  useEffect(() => {
+    if (!hostRef.current || !doc) return;
+    const vp = new Viewport(hostRef.current, {
+      onSelect: (id) => handlers.current.onSelect(id),
+      onTransform: (id, c) => handlers.current.onTransform(id, c),
+      onPaint: (id, f, x, y, last) => handlers.current.onPaint(id, f, x, y, last),
+    });
+    vpRef.current = vp;
+    vp.setModel(docRef.current!, poseNow());
+    vp.frame();
+    return () => {
+      vp.dispose();
+      vpRef.current = null;
+    };
+    // El visor se crea una vez por documento abierto.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!doc, sd.docId]);
+
+  useEffect(() => {
+    if (doc) vpRef.current?.setModel(doc, poseNow());
+  }, [doc, poseNow]);
+  useEffect(() => vpRef.current?.applyPose(poseNow()), [time, poseNow]);
+  useEffect(() => vpRef.current?.select(sel), [sel]);
+  useEffect(() => vpRef.current?.setMode(mode), [mode]);
+  useEffect(() => vpRef.current?.setGizmo(gizmo), [gizmo]);
+
+  // Gizmo: en Modelar cambia el reposo; en Animar crea una clave en el instante actual.
+  handlers.current.onTransform = (id, c) => {
+    const d = cur();
+    const part = findPart(d, id);
+    if (modeRef.current === "animate" && animId) {
+      const a = d.animations.find((x) => x.id === animId)!;
+      const t = wrapTime(a, timeRef.current);
+      const v: { pos?: Vec3; rot?: Vec3; ease: Ease } = { ease };
+      if (c.pivot) v.pos = c.pivot.map((p, k) => ROUND(p - part.pivot[k])) as Vec3;
+      if (c.rotation) v.rot = c.rotation.map((r, k) => ROUND(r - part.rotation[k])) as Vec3;
+      apply(setKeyframe(d, animId, id, t, v));
+    } else apply(updatePart(d, id, c));
+  };
+
+  // Pintura: un trazo es una sola entrada del historial.
+  handlers.current.onPaint = (id, face, x, y, last) => {
+    if (last && !id) {
+      stroke.current = null;
+      return;
+    }
+    const d = cur();
+    if (tool === "picker") {
+      setColor(getPixel(d, id, face, x, y));
+      setTool("pencil");
+      return;
+    }
+    if (tool === "fill") return apply(fillFace(d, id, face, color), "");
+    if (!stroke.current) stroke.current = { id: ++strokeCount.current, points: new Map() };
+    apply(paintPixels(d, id, face, [[x, y]], color), `paint-${stroke.current.id}`);
+  };
+
+  // ---------- Reproducción ----------
+  useEffect(() => {
+    if (!playing || !anim) return;
+    let last = performance.now();
+    let raf = 0;
+    const step = (now: number) => {
+      const t = timeRef.current + (now - last) / 1000;
+      last = now;
+      setTime(anim.loop ? t % anim.length : Math.min(t, anim.length));
+      if (!anim.loop && t >= anim.length) setPlaying(false);
+      else raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [playing, anim]);
+
+  // ---------- Acciones ----------
+  const selPart = doc && sel ? doc.parts.find((p) => p.id === sel) ?? null : null;
+  const addCube = (bone = false) => {
+    const parent = selPart?.id ?? null;
+    const [m, id] = addPart(cur(), {
+      name: bone ? `hueso ${cur().parts.length + 1}` : `cubo ${cur().parts.length + 1}`,
+      parent,
+      pivot: parent ? [0, 0, 0] : [0, 4, 0],
+      box: bone ? null : { from: [-2, 0, -2], size: [4, 4, 4], color },
+    });
+    apply(m);
+    setSel(id);
+  };
+  const dup = () => {
+    if (!sel) return;
+    const [m, id] = duplicatePart(cur(), sel);
+    apply(m);
+    setSel(id);
+  };
+  const mirror = () => {
+    if (!sel) return;
+    const [m, id] = mirrorPart(cur(), sel);
+    apply(m);
+    setSel(id);
+    toast("Copia reflejada creada");
+  };
+  const del = () => {
+    if (!sel) return;
+    apply(removePart(cur(), sel));
+    setSel(null);
+  };
+  const patch = (p: Parameters<typeof updatePart>[2], key = "") => {
+    if (!sel) return;
+    try {
+      apply(updatePart(cur(), sel, p), key);
+    } catch (e) {
+      toast(String((e as Error).message), "error");
+    }
+  };
+
+  const newAnim = async () => {
+    const name = await askText({ title: "Animación nueva", label: "Nombre", defaultValue: `Animación ${cur().animations.length + 1}` });
+    if (!name) return;
+    const [m, id] = addAnimation(cur(), name, 1);
+    apply(m);
+    setAnimId(id);
+    setTime(0);
+    setMode("animate");
+  };
+  const keyHere = () => {
+    if (!sel || !anim) return toast("Elige una pieza y una animación", "info");
+    const pose = samplePose(cur(), anim.id, timeRef.current).get(sel);
+    apply(setKeyframe(cur(), anim.id, sel, wrapTime(anim, timeRef.current), { ...(pose ?? {}), ease }));
+  };
+  const unkeyHere = () => {
+    if (!sel || !anim) return;
+    const t = wrapTime(anim, timeRef.current);
+    const k = (anim.tracks[sel] ?? []).find((x) => Math.abs(x.t - t) < 0.021);
+    if (k) apply(removeKeyframe(cur(), anim.id, sel, k.t));
+  };
+
+  const fromTemplate = (name: string) => {
+    apply(TEMPLATES[name]());
+    setSel(null);
+    setTimeout(() => vpRef.current?.frame(), 50);
+    toast(`Plantilla «${name}» cargada`);
+  };
+
+  const exportModel = async () => {
+    const d = cur();
+    const path = await saveFileAs(`${(sd.title || "modelo").replace(/[\\/:*?"<>|]/g, "_")}.glb`, [{ name: "Modelo glTF binario", extensions: ["glb"] }], exportGlb(d), "Exportar a glTF");
+    if (path) toast("Modelo exportado a glTF (.glb)");
+  };
+  const exportShot = async () => {
+    const url = vpRef.current?.capture("isométrica", 1280, 960);
+    if (!url) return;
+    const bytes = Uint8Array.from(atob(url.split(",")[1]), (c) => c.charCodeAt(0));
+    if (await saveFileAs(`${sd.title || "modelo"}.png`, [{ name: "Imagen PNG", extensions: ["png"] }], bytes, "Guardar captura")) toast("Captura guardada");
+  };
+
+  // ---------- Puente MCP (Claude) ----------
+  const mcp = useMcpBridge({
+    getModel: () => docRef.current,
+    apply: (m) => apply(m, ""),
+    capture: (angle, w, h) => vpRef.current?.capture(angle, w, h) ?? null,
+    select: (id) => setSel(id),
+    setAnimation: (id, t) => {
+      setMode("animate");
+      setAnimId(id);
+      setTime(t);
+    },
+  });
+
+  // ---------- Atajos ----------
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !doc) return;
+      const k = e.key.toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && k === "z") {
+        e.preventDefault();
+        if (e.shiftKey) sd.redo();
+        else sd.undo();
+      } else if ((e.ctrlKey || e.metaKey) && k === "y") sd.redo();
+      else if ((e.ctrlKey || e.metaKey) && k === "d") {
+        e.preventDefault();
+        dup();
+      } else if ((e.ctrlKey || e.metaKey) && k === "s") {
+        e.preventDefault();
+        void sd.flush().then(() => toast("Guardado"));
+      } else if ((e.ctrlKey || e.metaKey) && k === "k") {
+        e.preventDefault();
+        setCommandOpen(true);
+      } else if (e.ctrlKey || e.metaKey || e.altKey) return;
+      else if (k === "delete" || k === "backspace") del();
+      else if (k === "g") setGizmoState("translate");
+      else if (k === "r") setGizmoState("rotate");
+      else if (k === "f") vpRef.current?.frame();
+      else if (k === "m") mirror();
+      else if (k === "1") setMode("model");
+      else if (k === "2") setMode("paint");
+      else if (k === "3") setMode("animate");
+      else if (k === " " && mode === "animate") {
+        e.preventDefault();
+        setPlaying((p) => !p);
+      } else if (k === "k" && mode === "animate") keyHere();
+      else if (k === "escape") setSel(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  const view = (a: ViewAngle) => vpRef.current?.frame(a);
+
+  const menus: MenuDefinition[] = doc
+    ? [
+        {
+          id: "file",
+          label: "Archivo",
+          items: [
+            { label: "Modelo nuevo", icon: FilePlus, action: () => void sd.newDocument() },
+            ...Object.keys(TEMPLATES).map((n) => ({ label: `Nuevo desde plantilla: ${n}`, icon: Shapes, action: () => fromTemplate(n) })),
+            { label: "Abrir…", icon: FolderOpen, shortcut: "Ctrl+O", action: () => void sd.open() },
+            { divider: true },
+            { label: "Guardar", shortcut: "Ctrl+S", action: () => void sd.flush().then(() => toast("Guardado")) },
+            { label: "Guardar como…", icon: SaveAll, action: () => void sd.saveAs() },
+            { label: "Exportar a glTF (.glb)…", icon: Download, action: () => void exportModel() },
+            { label: "Guardar captura (PNG)…", icon: Camera, action: () => void exportShot() },
+            { divider: true },
+            { label: "Pantalla de inicio", icon: Home, action: () => sd.setShowStart(true) },
+          ],
+        },
+        {
+          id: "edit",
+          label: "Edición",
+          items: [
+            { label: "Deshacer", icon: Undo2, shortcut: "Ctrl+Z", action: sd.undo, disabled: !sd.canUndo },
+            { label: "Rehacer", icon: Redo2, shortcut: "Ctrl+Mayús+Z", action: sd.redo, disabled: !sd.canRedo },
+            { divider: true },
+            { label: "Añadir cubo", icon: BoxIcon, action: () => addCube(false) },
+            { label: "Añadir hueso (sin caja)", icon: Bone, action: () => addCube(true) },
+            { label: "Duplicar", icon: Copy, shortcut: "Ctrl+D", action: dup, disabled: !sel },
+            { label: "Copia reflejada (izquierda ↔ derecha)", icon: FlipHorizontal2, shortcut: "M", action: mirror, disabled: !sel },
+            { label: "Eliminar", icon: Trash2, shortcut: "Supr", action: del, disabled: !sel },
+          ],
+        },
+        {
+          id: "view",
+          label: "Ver",
+          items: [
+            { label: "Encajar el modelo", icon: Focus, shortcut: "F", action: () => view("isométrica") },
+            { label: "Frente", action: () => view("frente") },
+            { label: "Detrás", action: () => view("detrás") },
+            { label: "Izquierda", action: () => view("izquierda") },
+            { label: "Derecha", action: () => view("derecha") },
+            { label: "Arriba", action: () => view("arriba") },
+            { divider: true },
+            { label: "Modelar", checked: mode === "model", shortcut: "1", action: () => setMode("model") },
+            { label: "Pintar", checked: mode === "paint", shortcut: "2", action: () => setMode("paint") },
+            { label: "Animar", checked: mode === "animate", shortcut: "3", action: () => setMode("animate") },
+          ],
+        },
+        {
+          id: "anim",
+          label: "Animación",
+          items: [
+            { label: "Animación nueva…", icon: Plus, action: () => void newAnim() },
+            { label: playing ? "Detener" : "Reproducir", icon: playing ? Pause : Play, shortcut: "Espacio", action: () => setPlaying(!playing), disabled: !anim },
+            { label: "Fotograma clave en la pieza", icon: Diamond, shortcut: "K", action: keyHere, disabled: !anim || !sel },
+            { label: "Quitar el fotograma clave", action: unkeyHere, disabled: !anim || !sel },
+            { divider: true },
+            { label: "Eliminar la animación", icon: Trash2, action: () => anim && apply(removeAnimation(cur(), anim.id)), disabled: !anim },
+          ],
+        },
+        {
+          id: "help",
+          label: "Ayuda",
+          items: [
+            {
+              label: "Cómo usar",
+              icon: Keyboard,
+              action: () =>
+                void showMessage(
+                  "Cómo usar CoffeeAnimate3D",
+                  "Modelar (1): añade cubos y huesos; cada pieza gira alrededor de su pivote y arrastra a sus hijas. Con el gizmo mueves (G) o giras (R); el tamaño y la posición exacta van en Propiedades. M crea la copia reflejada (por ejemplo, la pata derecha a partir de la izquierda).\n\nPintar (2): pinta píxel a píxel sobre las caras (texturas de 32×32), rellena una cara o toma un color con el cuentagotas.\n\nAnimar (3): elige una animación, coloca el tiempo, mueve o gira piezas con el gizmo (crea una clave) o pulsa K. Espacio reproduce.\n\nExporta a glTF (.glb) para SurvivalForest, Blender, Godot o Unity. 16 unidades = 1 bloque.",
+                ),
+            },
+            {
+              label: "Claude (MCP)",
+              icon: Bot,
+              action: () =>
+                void showMessage(
+                  "Modelar y animar con Claude (MCP)",
+                  mcp.status === "off"
+                    ? "Actívalo en el Launcher de CoffeeWorks › Ajustes › «Permitir que Claude controle CoffeeAnimate3D (MCP)» y copia allí la configuración para Claude. Con esta app abierta, Claude puede crear piezas, pintar, animar, mirar capturas y exportar; todo se puede deshacer con Ctrl+Z."
+                    : `El servidor MCP está activo en ${mcp.address}. ${mcp.status === "connected" ? "Claude está conectado." : "Esperando a que Claude se conecte."} Todo lo que haga Claude se puede deshacer con Ctrl+Z.`,
+                ),
+            },
+            { label: "Acerca de CoffeeAnimate3D", icon: Info, action: () => void showMessage("CoffeeAnimate3D", "Modelado y animación 3D con cubos de la suite CoffeeWorks: piezas en jerarquía con pivotes, texturas de 32×32 pintadas sobre el modelo, plantillas de criaturas, animación por fotogramas clave y exportación a glTF. Se puede controlar desde Claude por MCP.") },
+          ],
+        },
+      ]
+    : [];
+
+  const logo = <img src="/app-icon.png" alt="" className="w-8 h-8" />;
+
+  return (
+    <div className="h-screen w-screen flex flex-col bg-[#18181b] text-[#e4e4e8]" data-app="coffeeanimate3d">
+      <style>{STUDIO_CSS}</style>
+      {doc && (
+        <>
+          <SuiteHeader
+            logo={logo}
+            logoTitle="Pantalla de inicio"
+            onLogoClick={() => sd.setShowStart(true)}
+            title={sd.title}
+            titlePlaceholder="Modelo sin título"
+            onTitleChange={sd.setTitle}
+            menus={menus}
+            saveStatus={sd.saveStatus}
+            fileLocation={sd.location}
+            isStarred={sd.isStarred}
+            onToggleStar={() => void sd.toggleStar()}
+            onBeforeClose={sd.flush}
+            actions={
+              <div className="flex gap-2 items-center">
+                {mcp.status !== "off" && (
+                  <span className={cx("flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-md", mcp.status === "connected" ? "bg-[#1f3a2a] text-[#8be0a4]" : "bg-[#2a2a30] text-[#a1a1aa]")} title={`MCP en ${mcp.address}`} data-mcp-status={mcp.status}>
+                    <Bot size={13} /> {mcp.status === "connected" ? "Claude conectado" : "MCP activo"}
+                  </span>
+                )}
+                <Button primary onClick={() => void exportModel()}>
+                  <Download size={14} /> Exportar .glb
+                </Button>
+              </div>
+            }
+          />
+          <div className="flex flex-1 min-h-0">
+            {/* Árbol de piezas */}
+            <aside className="w-60 shrink-0 border-r border-[#2a2a30] bg-[#1f1f23] flex flex-col min-h-0">
+              <div className="px-3 py-2 flex items-center justify-between border-b border-[#2a2a30]">
+                <span className="text-[11px] uppercase tracking-wider text-[#8a8a92] font-semibold">Piezas</span>
+                <div className="flex gap-0.5">
+                  <IconButton icon={BoxIcon} title="Añadir cubo" onClick={() => addCube(false)} />
+                  <IconButton icon={Bone} title="Añadir hueso (sin caja)" onClick={() => addCube(true)} />
+                  <IconButton icon={Copy} title="Duplicar (Ctrl+D)" onClick={dup} disabled={!sel} />
+                  <IconButton icon={FlipHorizontal2} title="Copia reflejada (M)" onClick={mirror} disabled={!sel} />
+                  <IconButton icon={Trash2} title="Eliminar (Supr)" onClick={del} disabled={!sel} />
+                </div>
+              </div>
+              <div className="flex-1 overflow-auto py-1" data-outliner>
+                {doc.parts.length === 0 && <div className="px-3 py-4 text-[12px] text-[#8a8a92] leading-relaxed">Añade un cubo o empieza desde una plantilla (Archivo › Nuevo desde plantilla).</div>}
+                <Tree model={doc} parent={null} depth={0} sel={sel} onSelect={setSel} onToggle={(p) => apply(updatePart(cur(), p.id, { visible: !p.visible }))} anim={mode === "animate" ? anim : null} />
+              </div>
+            </aside>
+
+            {/* Visor */}
+            <main className="flex-1 min-w-0 flex flex-col">
+              <div className="h-10 shrink-0 flex items-center gap-1 px-2 border-b border-[#2a2a30] bg-[#1f1f23]">
+                {(
+                  [
+                    ["model", "Modelar", BoxIcon],
+                    ["paint", "Pintar", Pencil],
+                    ["animate", "Animar", Play],
+                  ] as const
+                ).map(([m, label, Icon]) => (
+                  <button key={m} type="button" onClick={() => setMode(m)} className={cx("px-3 h-7 rounded-md text-[12px] flex items-center gap-1.5", mode === m ? "bg-[#ff8a3d] text-[#1a1a1d] font-semibold" : "text-[#c4c4cc] hover:bg-[#2a2a30]")} data-mode={m}>
+                    <Icon size={13} /> {label}
+                  </button>
+                ))}
+                <div className="w-px h-5 bg-[#2a2a30] mx-2" />
+                {mode !== "paint" ? (
+                  <>
+                    <IconButton icon={Move3d} title="Mover (G)" active={gizmo === "translate"} onClick={() => setGizmoState("translate")} />
+                    <IconButton icon={Rotate3d} title="Rotar (R)" active={gizmo === "rotate"} onClick={() => setGizmoState("rotate")} />
+                  </>
+                ) : (
+                  <>
+                    <IconButton icon={Pencil} title="Lápiz" active={tool === "pencil"} onClick={() => setTool("pencil")} />
+                    <IconButton icon={PaintBucket} title="Rellenar la cara" active={tool === "fill"} onClick={() => setTool("fill")} />
+                    <IconButton icon={Pipette} title="Cuentagotas" active={tool === "picker"} onClick={() => setTool("picker")} />
+                    <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-7 h-7 rounded bg-transparent ml-1" title="Color" data-paint-color />
+                    <div className="flex gap-0.5 ml-1">
+                      {PALETTE.map((c) => (
+                        <button key={c} type="button" title={c} onClick={() => setColor(c)} className={cx("w-4 h-4 rounded-sm border", color === c ? "border-white" : "border-black/40")} style={{ background: c }} />
+                      ))}
+                    </div>
+                  </>
+                )}
+                <div className="flex-1" />
+                <IconButton icon={Focus} title="Encajar (F)" onClick={() => view("isométrica")} />
+                <Select value="" onChange={(v) => v && view(v as ViewAngle)} options={[{ value: "", label: "Vista…" }, ...(["frente", "detrás", "izquierda", "derecha", "arriba", "isométrica"] as const).map((v) => ({ value: v, label: v[0].toUpperCase() + v.slice(1) }))]} className="w-28" />
+              </div>
+              <div ref={hostRef} className="flex-1 min-h-0 relative" data-viewport />
+              {mode === "animate" && (
+                <Timeline
+                  model={doc}
+                  animId={animId}
+                  setAnimId={(id) => {
+                    setAnimId(id);
+                    setTime(0);
+                  }}
+                  time={time}
+                  setTime={setTime}
+                  playing={playing}
+                  setPlaying={setPlaying}
+                  sel={sel}
+                  setSel={setSel}
+                  ease={ease}
+                  setEase={setEase}
+                  onNew={() => void newAnim()}
+                  onKey={keyHere}
+                  onUnkey={unkeyHere}
+                  onChange={(m) => apply(m)}
+                />
+              )}
+            </main>
+
+            {/* Propiedades */}
+            <aside className="w-72 shrink-0 border-l border-[#2a2a30] bg-[#1f1f23] overflow-auto" data-properties>
+              {selPart ? (
+                <PartPanel key={selPart.id} model={doc} part={selPart} mode={mode} color={color} onPatch={patch} onFill={(f) => apply(fillFace(cur(), selPart.id, f, color))} />
+              ) : (
+                <div className="p-4 text-[12px] text-[#8a8a92] leading-relaxed">
+                  Selecciona una pieza en el visor o en la lista para ver sus propiedades.
+                  <div className="mt-4 flex flex-col gap-2">
+                    <span className="text-[11px] uppercase tracking-wider text-[#6e6e76] font-semibold">Empezar desde una plantilla</span>
+                    {Object.keys(TEMPLATES).map((n) => (
+                      <Button key={n} onClick={() => fromTemplate(n)}>
+                        <Shapes size={14} /> {n[0].toUpperCase() + n.slice(1)}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </aside>
+          </div>
+        </>
+      )}
+      <CommandSearch isOpen={commandOpen} onClose={() => setCommandOpen(false)} menus={menus} />
+      {sd.showStart && (
+        <StartScreen
+          appName="CoffeeAnimate3D"
+          tagline="Modelado y animación 3D con cubos • CoffeeWorks"
+          accent={ACCENT_DARK}
+          newHint="Modelo vacío (o elige una plantilla dentro)"
+          openHint="Abrir un modelo .ca3d"
+          formats={[".ca3d"]}
+          recents={sd.recents}
+          onNew={() => void sd.newDocument()}
+          onOpen={() => void sd.open()}
+          onOpenRecent={(e) => void sd.openRecent(e)}
+          onContinue={doc ? () => sd.setShowStart(false) : undefined}
+          currentTitle={sd.title}
+        />
+      )}
+      <DialogHost />
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Árbol de piezas
+// ---------------------------------------------------------------------------
+
+const Tree: React.FC<{ model: Model3D; parent: string | null; depth: number; sel: string | null; onSelect: (id: string) => void; onToggle: (p: Part) => void; anim: Model3D["animations"][number] | null }> = ({ model, parent, depth, sel, onSelect, onToggle, anim }) => (
+  <>
+    {model.parts
+      .filter((p) => p.parent === parent)
+      .map((p) => (
+        <React.Fragment key={p.id}>
+          <div
+            className={cx("flex items-center gap-1.5 pr-2 h-7 cursor-pointer text-[12px]", sel === p.id ? "bg-[#ff8a3d]/20 text-white" : "hover:bg-[#2a2a30] text-[#c4c4cc]")}
+            style={{ paddingLeft: 8 + depth * 14 }}
+            onClick={() => onSelect(p.id)}
+            data-part={p.name}
+          >
+            {p.box ? <BoxIcon size={13} className="text-[#ffb27a] shrink-0" /> : <Bone size={13} className="text-[#8ab4ff] shrink-0" />}
+            <span className="truncate flex-1">{p.name}</span>
+            {anim?.tracks[p.id]?.length ? <Diamond size={10} className="text-[#ffd166] shrink-0" /> : null}
+            <button
+              type="button"
+              title={p.visible ? "Ocultar" : "Mostrar"}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggle(p);
+              }}
+              className="text-[#8a8a92] hover:text-white"
+            >
+              {p.visible ? <Eye size={13} /> : <EyeOff size={13} />}
+            </button>
+          </div>
+          <Tree model={model} parent={p.id} depth={depth + 1} sel={sel} onSelect={onSelect} onToggle={onToggle} anim={anim} />
+        </React.Fragment>
+      ))}
+  </>
+);
+
+// ---------------------------------------------------------------------------
+// Propiedades de la pieza
+// ---------------------------------------------------------------------------
+
+const Vec3Field: React.FC<{ label: string; value: Vec3; onChange: (v: Vec3) => void; step?: number; min?: number }> = ({ label, value, onChange, step = 1, min }) => (
+  <div className="flex flex-col gap-1">
+    <span className="text-[11px] text-[#8a8a92]">{label}</span>
+    <div className="grid grid-cols-3 gap-1">
+      {(["X", "Y", "Z"] as const).map((axis, i) => (
+        <NumberField key={axis} label={axis} value={value[i]} step={step} min={min} onChange={(v) => onChange(value.map((x, k) => (k === i ? v : x)) as Vec3)} />
+      ))}
+    </div>
+  </div>
+);
+
+const PartPanel: React.FC<{ model: Model3D; part: Part; mode: Mode; color: string; onPatch: (p: Parameters<typeof updatePart>[2], key?: string) => void; onFill: (f: FaceName) => void }> = ({ model, part, mode, color, onPatch, onFill }) => {
+  const banned = new Set([part.id, ...descendants(model, part.id)]);
+  const parents = [{ value: "", label: "(ninguna: raíz)" }, ...model.parts.filter((p) => !banned.has(p.id)).map((p) => ({ value: p.id, label: p.name }))];
+  return (
+    <div className="flex flex-col">
+      <Section title="Pieza">
+        <div className="flex flex-col gap-2">
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] text-[#8a8a92]">Nombre</span>
+            <input value={part.name} onChange={(e) => onPatch({ name: e.target.value }, `name-${part.id}`)} className="h-8 rounded-md bg-[#141416] border border-[#2a2a30] px-2 text-[12px]" data-part-name />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] text-[#8a8a92]">Pieza padre</span>
+            <Select value={part.parent ?? ""} onChange={(v) => onPatch({ parent: v || null })} options={parents} />
+          </label>
+          <Vec3Field label="Pivote (centro de giro)" value={part.pivot} onChange={(v) => onPatch({ pivot: v }, `pivot-${part.id}`)} step={0.5} />
+          <Vec3Field label="Rotación de reposo (°)" value={part.rotation} onChange={(v) => onPatch({ rotation: v }, `rot-${part.id}`)} step={5} />
+          {mode === "animate" && <p className="text-[11px] text-[#8a8a92] leading-relaxed">En Animar, el gizmo crea fotogramas clave; estos valores cambian el reposo.</p>}
+        </div>
+      </Section>
+      <Section title="Caja">
+        {part.box ? (
+          <div className="flex flex-col gap-2">
+            <Vec3Field label="Desde (relativo al pivote)" value={part.box.from} onChange={(v) => onPatch({ box: { from: v } }, `from-${part.id}`)} step={0.5} />
+            <Vec3Field label="Tamaño (16 = 1 bloque)" value={part.box.size} onChange={(v) => onPatch({ box: { size: v.map((s) => Math.max(0.1, s)) as Vec3 } }, `size-${part.id}`)} step={0.5} min={0.1} />
+            <Button onClick={() => onPatch({ box: { color } })}>
+              <PaintBucket size={14} /> Pintar toda la caja del color actual
+            </Button>
+            <Button onClick={() => onPatch({ box: null })}>Quitar la caja (dejar solo el hueso)</Button>
+          </div>
+        ) : (
+          <Button onClick={() => onPatch({ box: { from: [-2, 0, -2], size: [4, 4, 4], color } })}>
+            <BoxIcon size={14} /> Añadir una caja
+          </Button>
+        )}
+      </Section>
+      {part.box && (
+        <Section title="Caras" defaultOpen={mode === "paint"}>
+          <div className="grid grid-cols-2 gap-1.5">
+            {FACES.map((f) => (
+              <button key={f} type="button" onClick={() => onFill(f)} title={`Rellenar «${FACE_LABEL[f]}» con el color actual`} className="flex items-center gap-1.5 h-7 px-2 rounded-md bg-[#141416] border border-[#2a2a30] hover:border-[#ff8a3d] text-[11px] text-left">
+                <span className="w-3 h-3 rounded-sm border border-black/40" style={{ background: part.box!.faces[f].color }} />
+                <span className="truncate">{FACE_LABEL[f]}</span>
+              </button>
+            ))}
+          </div>
+        </Section>
+      )}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Línea de tiempo
+// ---------------------------------------------------------------------------
+
+const Timeline: React.FC<{
+  model: Model3D;
+  animId: string | null;
+  setAnimId: (id: string) => void;
+  time: number;
+  setTime: (t: number) => void;
+  playing: boolean;
+  setPlaying: (p: boolean) => void;
+  sel: string | null;
+  setSel: (id: string) => void;
+  ease: Ease;
+  setEase: (e: Ease) => void;
+  onNew: () => void;
+  onKey: () => void;
+  onUnkey: () => void;
+  onChange: (m: Model3D) => void;
+}> = ({ model, animId, setAnimId, time, setTime, playing, setPlaying, sel, setSel, ease, setEase, onNew, onKey, onUnkey, onChange }) => {
+  const anim = model.animations.find((a) => a.id === animId) ?? null;
+  const barRef = useRef<HTMLDivElement | null>(null);
+  const rows = useMemo(() => model.parts.filter((p) => anim?.tracks[p.id]?.length || p.id === sel), [model, anim, sel]);
+  const scrub = (clientX: number) => {
+    if (!anim || !barRef.current) return;
+    const r = barRef.current.getBoundingClientRect();
+    const t = Math.min(1, Math.max(0, (clientX - r.left) / r.width)) * anim.length;
+    setTime(Math.round(t * 24) / 24);
+  };
+  return (
+    <div className="h-52 shrink-0 border-t border-[#2a2a30] bg-[#1b1b1f] flex flex-col" data-timeline>
+      <div className="h-10 flex items-center gap-2 px-3 border-b border-[#2a2a30]">
+        <Select value={animId ?? ""} onChange={(v) => setAnimId(v)} options={model.animations.length ? model.animations.map((a) => ({ value: a.id, label: a.name })) : [{ value: "", label: "(sin animaciones)" }]} className="w-40" />
+        <IconButton icon={Plus} title="Animación nueva" onClick={onNew} />
+        <IconButton icon={playing ? Pause : Play} title="Reproducir (Espacio)" onClick={() => setPlaying(!playing)} disabled={!anim} active={playing} />
+        <span className="font-mono text-[12px] text-[#c4c4cc] w-24">{anim ? `${time.toFixed(2)} / ${anim.length.toFixed(2)} s` : "—"}</span>
+        <IconButton icon={Diamond} title="Fotograma clave en la pieza (K)" onClick={onKey} disabled={!anim || !sel} accent="#ffd166" />
+        <IconButton icon={Trash2} title="Quitar el fotograma clave" onClick={onUnkey} disabled={!anim || !sel} />
+        <Select value={ease} onChange={(v) => setEase(v as Ease)} options={[{ value: "smooth", label: "Suave" }, { value: "linear", label: "Lineal" }, { value: "step", label: "Escalón" }]} className="w-24" title="Interpolación de las claves nuevas" />
+        {anim && (
+          <>
+            <div className="w-28">
+              <NumberField label="Duración" value={anim.length} step={0.1} min={0.1} suffix="s" onChange={(v) => onChange(updateAnimation(model, anim.id, { length: v }))} />
+            </div>
+            <Toggle checked={anim.loop} onChange={(v) => onChange(updateAnimation(model, anim.id, { loop: v }))} label="Bucle" />
+          </>
+        )}
+      </div>
+      {anim ? (
+        <div className="flex-1 min-h-0 overflow-auto flex">
+          <div className="w-44 shrink-0 border-r border-[#2a2a30]">
+            <div className="h-6 border-b border-[#2a2a30]" />
+            {rows.map((p) => (
+              <div key={p.id} onClick={() => setSel(p.id)} className={cx("h-6 px-2 text-[11px] flex items-center truncate cursor-pointer", p.id === sel ? "text-white bg-[#ff8a3d]/15" : "text-[#a1a1aa]")}>
+                {p.name}
+              </div>
+            ))}
+          </div>
+          <div className="flex-1 relative min-w-[300px]">
+            <div ref={barRef} className="h-6 border-b border-[#2a2a30] relative cursor-ew-resize" onPointerDown={(e) => { scrub(e.clientX); const move = (ev: PointerEvent) => scrub(ev.clientX); const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); }; window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); }} data-scrubber>
+              {Array.from({ length: Math.floor(anim.length * 4) + 1 }, (_, i) => (
+                <span key={i} className="absolute top-0 h-full border-l border-[#33333a] text-[9px] text-[#6e6e76] pl-0.5" style={{ left: `${((i / 4) / anim.length) * 100}%` }}>
+                  {i % 4 === 0 ? `${i / 4}s` : ""}
+                </span>
+              ))}
+            </div>
+            {rows.map((p) => (
+              <div key={p.id} className="h-6 relative border-b border-[#232328]">
+                {(anim.tracks[p.id] ?? []).map((k) => (
+                  <button key={k.t} type="button" title={`${k.t.toFixed(2)} s · ${k.ease === "smooth" ? "suave" : k.ease === "step" ? "escalón" : "lineal"}`} onClick={() => { setSel(p.id); setTime(k.t); }} className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rotate-45 bg-[#ffd166] border border-[#7a5a10] hover:scale-125" style={{ left: `${(k.t / anim.length) * 100}%` }} data-key />
+                ))}
+              </div>
+            ))}
+            <div className="absolute top-0 bottom-0 w-px bg-[#ff8a3d] pointer-events-none" style={{ left: `${(time / anim.length) * 100}%` }} />
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 flex items-center justify-center text-[12px] text-[#8a8a92] gap-2">
+          No hay animaciones. <Button onClick={onNew}><Plus size={14} /> Crear una</Button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export { ACCENT };
