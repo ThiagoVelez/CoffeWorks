@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FilePlus, FolderOpen, SaveAll, Home, Undo2, Redo2, Download, Keyboard, Info, Play, Pause, Plus, Trash2, Eye, EyeOff, Copy, FlipHorizontal2, Box as BoxIcon, Bone, Move3d, Rotate3d, Focus, Pencil, PaintBucket, Pipette, Diamond, Camera, Bot, Shapes, Scale3d, Ruler, Group, Ungroup, Minus, Cylinder, Circle, Triangle, Square, ClipboardCopy, ClipboardPaste, Layers, Spline, FileUp, FileDown, ScanEye } from "lucide-react";
+import { FilePlus, FolderOpen, SaveAll, Home, Undo2, Redo2, Download, Keyboard, Info, Play, Pause, Plus, Trash2, Eye, EyeOff, Copy, FlipHorizontal2, Box as BoxIcon, Bone, Move3d, Rotate3d, Focus, Pencil, PaintBucket, Pipette, Diamond, Camera, Bot, Shapes, Scale3d, Ruler, Group, Ungroup, Minus, Cylinder, Circle, Triangle, Square, ClipboardCopy, ClipboardPaste, Layers, Spline, FileUp, FileDown, ScanEye, Sparkles, Package } from "lucide-react";
 import { SuiteHeader, type MenuDefinition } from "./studio/SuiteHeader";
 import { StartScreen } from "./studio/StartScreen";
 import { CommandSearch } from "./studio/CommandSearch";
@@ -10,11 +10,13 @@ import { Button, IconButton, NumberField, STUDIO_CSS, Section, Select, Toggle, c
 import { bytesToText, pickOpenFile, saveFileAs } from "./studio/desktop";
 import { makeZip } from "./studio/zip";
 import { ACCENT, ACCENT_DARK, EASES, FACE_LABEL, SHAPES, SHAPE_FACES, SHAPE_LABEL, type Ease, type Shape, type FaceName, type Model3D, type Part, type Vec3 } from "./types";
-import { addAnimation, addPart, clearReference, copyPose, getReference, moveKeyframe, pastePose, setReference, type PoseClip, descendants, duplicatePart, fillFace, findPart, getPixel, groupParts, mirrorPart, newModel, paintPixels, parseModel, removeAnimation, removeKeyframe, removePart, resizeBox, rotatePartsQuat, samplePose, scaleParts, serializeModel, setKeyframe, topLevel, translateParts, ungroup, updateAnimation, updatePart, wrapTime } from "./model";
+import { addAnimation, addPart, insertPiece, clearReference, copyPose, getReference, moveKeyframe, pastePose, setReference, type PoseClip, descendants, duplicatePart, fillFace, findPart, getPixel, groupParts, mirrorPart, newModel, paintPixels, parseModel, removeAnimation, removeKeyframe, removePart, resizeBox, rotatePartsQuat, samplePose, scaleParts, serializeModel, setKeyframe, topLevel, translateParts, ungroup, updateAnimation, updatePart, wrapTime } from "./model";
 import { SNAP_OPTIONS, formatDistance, loadSnap, parseNumber, saveSnap, snapValue, type SnapPrefs, type SnapStep } from "./snap";
 import { TEMPLATES } from "./templates";
 import { exportGlb, importGlb } from "./gltf";
 import { exportObj, parseObj } from "./objfile";
+import { RenderDialog, PiecesDialog } from "./panels";
+import { canRender, loadPiece, type PieceEntry } from "./addonsLib";
 import { Viewport, type GizmoMode, type TransformChange, type ViewAngle, type ViewTool } from "./viewport";
 import { useMcpBridge } from "./mcpBridge";
 
@@ -73,6 +75,9 @@ export const App: React.FC = () => {
   const [onion, setOnion] = useState(false);
   const [refVisible, setRefVisible] = useState(true);
   const poseClip = useRef<PoseClip | null>(null);
+  const [dialog, setDialog] = useState<"render" | "pieces" | null>(null);
+  const closeDialog = useCallback(() => setDialog(null), []);
+  const getViewport = useCallback(() => vpRef.current, []);
 
   const hostRef = useRef<HTMLDivElement | null>(null);
   const vpRef = useRef<Viewport | null>(null);
@@ -363,6 +368,21 @@ export const App: React.FC = () => {
     if (await saveFileAs(`${base}-obj.zip`, [{ name: "ZIP con OBJ, MTL y PNG", extensions: ["zip"] }], zip, "Exportar a OBJ")) toast("Exportado a OBJ (.zip con .obj, .mtl y la textura)");
   };
 
+  const openRender = async () => {
+    if (await canRender()) setDialog("render");
+  };
+  const insertPieceFrom = async (entry: PieceEntry) => {
+    try {
+      const [m, id] = insertPiece(cur(), await loadPiece(entry), entry.name);
+      apply(m);
+      setSel(id);
+      setDialog(null);
+      toast(`«${entry.name}» insertada`);
+    } catch (e) {
+      toast(String((e as Error).message), "error");
+    }
+  };
+
   const fromTemplate = (name: string) => {
     apply(TEMPLATES[name]());
     setSel(null);
@@ -504,6 +524,9 @@ export const App: React.FC = () => {
             { label: "Izquierda", action: () => view("izquierda") },
             { label: "Derecha", action: () => view("derecha") },
             { label: "Arriba", action: () => view("arriba") },
+            { divider: true },
+            { label: "Render…", icon: Sparkles, action: () => void openRender() },
+            { label: "Piezas…", icon: Package, action: () => setDialog("pieces") },
             { divider: true },
             { label: refMesh ? `Referencia: ${refMesh.name}` : "Referencia (Archivo › Importar)", icon: ScanEye, checked: !!refMesh && refVisible, action: () => setRefVisible(!refVisible), disabled: !refMesh },
             { label: "Quitar la referencia", action: () => apply(clearReference(cur())), disabled: !refMesh },
@@ -739,6 +762,8 @@ export const App: React.FC = () => {
           currentTitle={sd.title}
         />
       )}
+      {dialog === "render" && <RenderDialog viewport={getViewport} title={sd.title} onClose={closeDialog} />}
+      {dialog === "pieces" && <PiecesDialog onInsert={(e) => void insertPieceFrom(e)} onClose={closeDialog} />}
       <DialogHost />
     </div>
   );

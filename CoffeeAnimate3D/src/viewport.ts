@@ -558,6 +558,26 @@ export class Viewport {
     return { center, size };
   }
 
+/** Grupo con el modelo dibujado (para el render, que lo clona). */
+  get modelRoot(): THREE.Group {
+    return this.root;
+  }
+
+  /** Dónde poner la cámara para encuadrar el modelo desde un ángulo, sin moverla. */
+  framing(angle: ViewAngle | Vec3 = "isométrica"): { position: THREE.Vector3; target: THREE.Vector3 } {
+    const { center, size } = this.target();
+    const dir: Record<ViewAngle, Vec3> = {
+      frente: [0, 0.15, 1],
+      detrás: [0, 0.15, -1],
+      izquierda: [-1, 0.15, 0],
+      derecha: [1, 0.15, 0],
+      arriba: [0, 1, 0.001],
+      isométrica: [0.7, 0.55, 0.9],
+    };
+    const v = new THREE.Vector3(...cameraDir(typeof angle === "string" ? dir[angle] : angle)).multiplyScalar(size * 1.4);
+    return { position: center.clone().add(v), target: center };
+  }
+
   /** Encaja la cámara al modelo, desde un ángulo con nombre o una dirección. */
   frame(angle: ViewAngle | Vec3 = "isométrica") {
     this.camAnim = null;
