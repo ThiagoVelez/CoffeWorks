@@ -11,7 +11,10 @@ import { exportGlb } from "./gltf";
 import { exportObj } from "./objfile";
 import { makeZip } from "./studio/zip";
 import type { Model3D, Vec3 } from "./types";
-import type { ViewAngle } from "./viewport";
+import type { ViewAngle, Viewport } from "./viewport";
+import { addonReady, loadPiece, loadPieceIndex } from "./addonsLib";
+import { insertPiece } from "./model";
+import { DEFAULT_RENDER, RenderSession } from "./render";
 
 export type McpStatus = "off" | "listening" | "connected";
 
@@ -29,6 +32,7 @@ interface Options {
   capture: (angle: ViewAngle | Vec3 | undefined, w: number, h: number) => string | null;
   select: (id: string | null) => void;
   setAnimation: (id: string, time: number) => void;
+  viewport: () => Viewport | null;
 }
 
 const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
@@ -76,6 +80,35 @@ export function useMcpBridge(options: Options): { status: McpStatus; address: st
           const url = opts.current.capture(p.direction ?? p.angle ?? "isométrica", 640, 480);
           if (!url) throw new Error("No se pudo capturar la vista.");
           content = [{ type: "image", data: url.split(",")[1], mimeType: "image/png" }];
+        } else if (r.needs && "insertPiece" in r.needs) {
+          if (!(await addonReady("ca3d-piezas"))) throw new Error("El complemento «Pack de piezas para CoffeeAnimate3D» no está instalado. Instálalo en el Launcher de CoffeeWorks › Complementos.");
+          const wanted = r.needs.insertPiece.toLowerCase();
+          const index = (await loadPieceIndex()) ?? [];
+          const entry = index.find((p) => p.name.toLowerCase() === wanted) ?? index.find((p) => p.name.toLowerCase().includes(wanted));
+          if (!entry) throw new Error(`No hay ninguna pieza «${r.needs.insertPiece}». Piezas: ${index.map((p) => p.name).join(", ")}`);
+          const [next, id] = insertPiece(opts.current.getModel()!, await loadPiece(entry), entry.name);
+          opts.current.apply(next);
+          opts.current.select(id);
+          content = [{ type: "text", text: `Pieza «${entry.name}» insertada como grupo (id ${id}). Muévela con update_part (pivot).` }];
+        } else if (r.needs && "render" in r.needs) {
+          if (!(await addonReady("ca3d-render"))) throw new Error("El complemento «Render de CoffeeAnimate3D» no está activado. Actívalo en el Launcher de CoffeeWorks › Complementos.");
+          const vp = opts.current.viewport();
+          if (!vp) throw new Error("No se pudo usar el visor.");
+          const q = r.needs.render;
+          await nextFrame();
+          const session = new RenderSession(vp, { ...DEFAULT_RENDER, width: q.width, height: q.height, transparent: q.transparent, angle: q.direction ?? q.angle });
+          const big = session.render();
+          const bytes = new Uint8Array(await (await new Promise<Blob>((ok) => big.toBlob((b) => ok(b!), "image/png"))).arrayBuffer());
+          const small = document.createElement("canvas");
+          small.width = 640;
+          small.height = Math.round((640 * q.height) / q.width);
+          small.getContext("2d")!.drawImage(big, 0, 0, small.width, small.height);
+          session.dispose();
+          const path = await invoke<string>("mcp_save_export", { fileName: `render-${Date.now()}.png`, data: toBase64(bytes) });
+          content = [
+            { type: "text", text: `Render ${q.width}×${q.height} guardado en ${path}` },
+            { type: "image", data: small.toDataURL("image/png").split(",")[1], mimeType: "image/png" },
+          ];
         } else if (r.needs && "exportObj" in r.needs) {
           const base = r.needs.exportObj;
           const { obj, mtl, png } = exportObj(opts.current.getModel()!, base);

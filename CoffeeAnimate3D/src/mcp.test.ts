@@ -113,6 +113,16 @@ test("export_obj pide a la app guardar el ZIP", () => {
   assert.deepEqual(r.needs, { exportObj: "pájaro" });
 });
 
-test("hay 20 herramientas", () => {
-  assert.equal(TOOL_NAMES.length, 20);
+
+test("insert_piece y render piden a la app (que comprueba el complemento)", () => {
+  const m = TEMPLATES["ave"]();
+  assert.deepEqual(runTool(m, "insert_piece", { name: "Roble" }).needs, { insertPiece: "Roble" });
+  assert.equal(runTool(m, "insert_piece", {}).isError, true);
+  assert.deepEqual(runTool(m, "render", { size: "1920x1080", transparent: true, angle: "frente" }).needs, { render: { width: 1920, height: 1080, transparent: true, angle: "frente" } });
+  assert.deepEqual(runTool(m, "render", {}).needs, { render: { width: 1280, height: 720, transparent: false } });
+  assert.equal(runTool(m, "render", { size: "800x600" }).isError, true);
+});
+
+test("hay 22 herramientas", () => {
+  assert.equal(TOOL_NAMES.length, 22);
 });

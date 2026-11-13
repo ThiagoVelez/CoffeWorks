@@ -52,13 +52,13 @@ fn mcp_info(bridge: State<'_, Arc<Bridge>>) -> Value {
     json!({ "enabled": cfg.enabled, "running": running, "address": address, "connected": running && coffee_core::mcp::connected(), "error": error })
 }
 
-/// Guarda el .glb o el .zip (OBJ) que pide Claude en Documentos/CoffeeWorks/Exportaciones.
+/// Guarda el .glb, el .zip (OBJ) o el .png (render) que pide Claude en Documentos/CoffeeWorks/Exportaciones.
 #[tauri::command]
 fn mcp_save_export(file_name: String, data: String) -> Result<String, String> {
     use base64::Engine;
     let name: String = std::path::Path::new(&file_name).file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
     let lower = name.to_lowercase();
-    if name.is_empty() || !(lower.ends_with(".glb") || lower.ends_with(".zip")) {
+    if name.is_empty() || ![".glb", ".zip", ".png"].iter().any(|ext| lower.ends_with(ext)) {
         return Err("Nombre de archivo no válido".into());
     }
     let bytes = base64::engine::general_purpose::STANDARD.decode(data).map_err(|e| e.to_string())?;

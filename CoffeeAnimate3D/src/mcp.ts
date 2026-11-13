@@ -16,7 +16,7 @@ export interface ToolResult {
   isError?: boolean;
   /** Qué seleccionar en la app para que se vea lo que ha hecho Claude. */
   select?: string;
-  needs?: { preview: PreviewRequest } | { export: string } | { exportObj: string };
+  needs?: { preview: PreviewRequest } | { export: string } | { exportObj: string } | { insertPiece: string } | { render: RenderRequest };
 }
 
 export interface PreviewRequest {
@@ -26,6 +26,16 @@ export interface PreviewRequest {
   animation?: string;
   time?: number;
 }
+
+export interface RenderRequest {
+  width: number;
+  height: number;
+  transparent: boolean;
+  angle?: ViewAngle;
+  direction?: Vec3;
+}
+
+const RENDER_SIZES: Record<string, [number, number]> = { "1280x720": [1280, 720], "1920x1080": [1920, 1080], "3840x2160": [3840, 2160] };
 
 class ToolError extends Error {}
 
@@ -262,6 +272,22 @@ const HANDLERS: Record<string, Handler> = {
   export_obj: (_m, a) => {
     const base = String(a.file_name ?? "modelo").split(/[\\/]/).pop()!.replace(/\.(zip|obj)$/i, "").replace(/[^\p{L}\p{N} _.-]/gu, "_").replace(/^\.+/, "") || "modelo";
     return { content: [], needs: { exportObj: base } };
+  },
+
+  insert_piece: (_m, a) => {
+    if (typeof a.name !== "string" || !a.name.trim()) throw new ToolError("Falta name: el nombre de la pieza (por ejemplo «Roble», «Roca» o «Mesa»)");
+    return { content: [], needs: { insertPiece: a.name.trim() } };
+  },
+
+  render: (_m, a) => {
+    const key = typeof a.size === "string" ? a.size.replace(/\s|×/g, "x").toLowerCase() : "1280x720";
+    const size = RENDER_SIZES[key];
+    if (!size) throw new ToolError("size debe ser 1280x720, 1920x1080 o 3840x2160");
+    const req: RenderRequest = { width: size[0], height: size[1], transparent: a.transparent === true };
+    if (typeof a.angle === "string") req.angle = a.angle as ViewAngle;
+    const dir = vec(a.direction, "direction");
+    if (dir) req.direction = dir;
+    return { content: [], needs: { render: req } };
   },
 
   export_glb: (_m, a) => {

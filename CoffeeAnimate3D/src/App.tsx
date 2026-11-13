@@ -408,6 +408,7 @@ export const App: React.FC = () => {
     apply: (m) => apply(m, ""),
     capture: (angle, w, h) => vpRef.current?.capture(angle, w, h) ?? null,
     select: (id) => setSel(id),
+    viewport: () => vpRef.current,
     setAnimation: (id, t) => {
       setMode("animate");
       setAnimId(id);

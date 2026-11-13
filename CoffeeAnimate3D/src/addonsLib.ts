@@ -47,3 +47,14 @@ export async function loadPiece(entry: PieceEntry): Promise<Model3D> {
   if (!dir) throw new Error("Instala el complemento «Pack de piezas» desde el Launcher › Complementos");
   return parseModel(await readFileText(`${dir}/${entry.file}`));
 }
+
+/** Para Claude (MCP): ¿está el complemento? Sin preguntar ni abrir diálogos. */
+export async function addonReady(id: "ca3d-render" | "ca3d-piezas"): Promise<boolean> {
+  if (devBrowser) return true;
+  if (!isTauri) return false;
+  try {
+    return (await invoke<{ installed: boolean }>("core_addon_status", { id })).installed;
+  } catch {
+    return false;
+  }
+}

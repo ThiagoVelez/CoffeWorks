@@ -215,6 +215,28 @@
     }
   },
   {
+    "name": "insert_piece",
+    "description": "Inserta una pieza lista del complemento «Pack de piezas» (árboles, plantas, rocas, bloques y muebles: Roble, Pino, Palma de cera, Frailejón, Cafeto, Cactus, Seta roja, Roca, Bloque de hierba, Mesa, Silla, Cofre, Farol, Cama…) como un grupo en la raíz del modelo. Requiere el complemento activado en el Launcher.",
+    "inputSchema": {
+      "type": "object",
+      "properties": { "name": { "type": "string" } },
+      "required": ["name"]
+    }
+  },
+  {
+    "name": "render",
+    "description": "Renderiza una imagen de calidad (sol, sombras y oclusión ambiental) y la guarda como PNG en Documentos/CoffeeWorks/Exportaciones; devuelve una vista previa. Requiere el complemento «Render de CoffeeAnimate3D».",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "size": { "type": "string", "enum": ["1280x720", "1920x1080", "3840x2160"] },
+        "transparent": { "type": "boolean" },
+        "angle": { "type": "string", "enum": ["frente", "detrás", "izquierda", "derecha", "arriba", "isométrica"] },
+        "direction": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
+      }
+    }
+  },
+  {
     "name": "export_glb",
     "description": "Exporta el modelo con sus animaciones a glTF binario (.glb) en la carpeta Documentos/CoffeeWorks/Exportaciones. Devuelve la ruta del archivo.",
     "inputSchema": { "type": "object", "properties": { "file_name": { "type": "string", "description": "Nombre del archivo sin ruta" } } }
