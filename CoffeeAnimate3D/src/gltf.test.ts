@@ -43,10 +43,10 @@ test("el atlas coloca cada cara y conserva los píxeles pintados", () => {
 
 test("GLB: nodos en jerarquía, mallas, textura y animaciones", () => {
   let m = newModel("Exportar");
-  let body: string, leg: string, bone: string, a: string;
+  let body: string, leg: string, a: string;
   [m, body] = addPart(m, { name: "cuerpo", pivot: [0, 16, 0], box: { from: [-4, 0, -4], size: [8, 8, 8] } });
   [m, leg] = addPart(m, { name: "pata", parent: body, pivot: [2, 0, 0], box: { from: [-1, -8, -1], size: [2, 8, 2] } });
-  [m, bone] = addPart(m, { name: "hueso vacío", parent: body, pivot: [0, 8, 0] });
+  [m] = addPart(m, { name: "hueso vacío", parent: body, pivot: [0, 8, 0] });
   [m, a] = addAnimation(m, "Andar", 1);
   m = setKeyframe(m, a, leg, 0, { rot: [-30, 0, 0] });
   m = setKeyframe(m, a, leg, 0.5, { rot: [30, 0, 0] });

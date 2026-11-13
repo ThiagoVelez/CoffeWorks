@@ -139,7 +139,7 @@ export function spider(): Model3D {
       parent: "tórax",
       pivot: [4, 0, -3 + i * 2] as Vec3,
       rotation: [0, -35 + i * 23, -25] as Vec3,
-      box: { from: [0, -1, -1], size: [14, 2, 2] as Vec3, color: body },
+      box: { from: [0, -1, -1] as Vec3, size: [14, 2, 2] as Vec3, color: body },
     })),
   ]);
   m = mirror(m, ids, [0, 1, 2, 3].map((i) => `pata ${i + 1} izquierda`));
