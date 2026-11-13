@@ -139,6 +139,35 @@ pub const ADDONS: &[CatalogAddon] = &[
         downloads: &["https://github.com/ThiagoVelez/CoffeWorks/releases/download/addons/coffee-puppetcompat.zip"],
         manual_hint: "Este complemento se instala desde el Launcher de CoffeeWorks.",
     },
+    CatalogAddon {
+        id: "ca3d-render",
+        name: "Render de CoffeeAnimate3D",
+        summary: "Imágenes de calidad con luces, sombras y oclusión ambiental, y vueltas de 360° en video",
+        description: "Añade a CoffeeAnimate3D el menú Ver › Render: luz de sol y cielo, sombras, oclusión ambiental, fondo de color o transparente, imágenes de hasta 3840×2160 y una vuelta de 360° alrededor del modelo en video WebM o GIF. Funciona sin conexión.",
+        apps: &["coffeeanimate3d"],
+        version: "1.0",
+        download_size: "Sin descarga",
+        publisher: "CoffeeWorks",
+        license: "MIT",
+        executable: "",
+        downloads: &[],
+        manual_hint: "",
+    },
+    CatalogAddon {
+        id: "ca3d-piezas",
+        name: "Pack de piezas para CoffeeAnimate3D",
+        summary: "Árboles, plantas, rocas, bloques y muebles listos para insertar en tus modelos",
+        description: "Más de 20 piezas con el estilo de SurvivalForest (roble, pino, palma de cera, frailejón, cafeto, setas, rocas, bloques de hierba, piedra, arena roja, nieve y madera, mesa, silla, cofre, cama, farol…) que se insertan como un grupo en el modelo abierto (Ver › Piezas) y se pueden pintar y modificar.",
+        apps: &["coffeeanimate3d"],
+        version: "1.0",
+        download_size: "35 KB",
+        publisher: "CoffeeWorks",
+        license: "CC0",
+        // Complemento de datos: el «ejecutable» es el índice que se comprueba
+        executable: "piezas.json",
+        downloads: &["https://github.com/ThiagoVelez/CoffeWorks/releases/download/addons/coffee-ca3d-piezas.zip"],
+        manual_hint: "Este complemento se instala desde el Launcher de CoffeeWorks.",
+    },
 ];
 
 /// Archivo que marca como activado un complemento de servicio.

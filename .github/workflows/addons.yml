@@ -8,6 +8,7 @@ name: Complementos
 # - coffee-raw: revelado RAW (LibRaw dcraw_emu) para CoffeeLens y CoffeePhoto.
 # - coffee-potrace: calco vectorial (Potrace) para CoffeeVector y CoffeePaint.
 # - coffee-puppetcompat: motor de seguimiento facial sin SIMD para CoffeePuppet.
+# - coffee-ca3d-piezas: pack de piezas para CoffeeAnimate3D (archivos .ca3d).
 # En las pull requests solo se compila y se prueba. En main (o a mano) se
 # publica en la versión «addons», de donde lo descarga el Launcher.
 
@@ -15,9 +16,9 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["addons/**", ".github/workflows/addons.yml"]
+    paths: ["addons/**", ".github/workflows/addons.yml", "CoffeeAnimate3D/src/pieces.ts"]
   pull_request:
-    paths: ["addons/**", ".github/workflows/addons.yml"]
+    paths: ["addons/**", ".github/workflows/addons.yml", "CoffeeAnimate3D/src/pieces.ts"]
 
 permissions:
   contents: write
@@ -332,3 +333,42 @@ jobs:
           prerelease: false
           make_latest: false
           files: coffee-puppetcompat.zip
+
+  ca3dpiezas:
+    name: Pack de piezas de CoffeeAnimate3D
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Comprobar que las piezas están al día
+        working-directory: CoffeeAnimate3D
+        run: |
+          npm ci --no-audit --no-fund
+          npx tsx --test src/pieces.test.ts
+
+      - name: Empaquetar
+        run: |
+          (cd addons/coffee-ca3d-piezas && cp README.md LEEME.md && zip -q -9 ../../coffee-ca3d-piezas.zip piezas.json LEEME.md *.ca3d && rm LEEME.md)
+          unzip -l coffee-ca3d-piezas.zip | grep -q piezas.json
+          ls -la coffee-ca3d-piezas.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coffee-ca3d-piezas
+          path: coffee-ca3d-piezas.zip
+
+      - name: Publicar en la versión «addons»
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: addons
+          name: Complementos de CoffeeWorks
+          body: Complementos opcionales que el Launcher descarga desde «Complementos». No hace falta descargarlos a mano.
+          prerelease: false
+          make_latest: false
+          files: coffee-ca3d-piezas.zip
