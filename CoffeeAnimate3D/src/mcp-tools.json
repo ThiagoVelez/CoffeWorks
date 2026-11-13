@@ -143,12 +143,34 @@
     }
   },
   {
+    "name": "group_parts",
+    "description": "Agrupa piezas que cuelgan del mismo padre en un grupo nuevo (pieza sin caja con el pivote en su centro). Las piezas no se mueven. Útil para mover o girar juntas varias piezas.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "parts": { "type": "array", "items": { "type": "string" }, "description": "Ids o nombres de las piezas" },
+        "name": { "type": "string" }
+      },
+      "required": ["parts"]
+    }
+  },
+  {
+    "name": "ungroup",
+    "description": "Deshace un grupo (pieza sin caja y sin giro): sus piezas pasan a su padre en el mismo sitio. Se borran las pistas de animación del grupo.",
+    "inputSchema": {
+      "type": "object",
+      "properties": { "part": { "type": "string" } },
+      "required": ["part"]
+    }
+  },
+  {
     "name": "preview",
-    "description": "Devuelve una captura PNG del modelo para comprobar cómo queda. Opcional: ángulo (frente, detrás, izquierda, derecha, arriba, isométrica) y una animación con su instante para ver la pose.",
+    "description": "Devuelve una captura PNG del modelo para comprobar cómo queda. Opcional: ángulo (frente, detrás, izquierda, derecha, arriba, isométrica) y una animación con su instante para ver la pose. También acepta direction [x, y, z] para mirar desde cualquier cara, arista o esquina (por ejemplo [1, 1, 1] o [0, 1, 1]); gana a angle.",
     "inputSchema": {
       "type": "object",
       "properties": {
         "angle": { "type": "string", "enum": ["frente", "detrás", "izquierda", "derecha", "arriba", "isométrica"] },
+        "direction": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
         "animation": { "type": "string" },
         "time": { "type": "number" }
       }

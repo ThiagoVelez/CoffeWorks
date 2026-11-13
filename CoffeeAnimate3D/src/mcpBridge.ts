@@ -8,7 +8,7 @@ import { listen } from "@tauri-apps/api/event";
 import { isTauri } from "./studio/desktop";
 import { runTool, type Content } from "./mcp";
 import { exportGlb } from "./gltf";
-import type { Model3D } from "./types";
+import type { Model3D, Vec3 } from "./types";
 import type { ViewAngle } from "./viewport";
 
 export type McpStatus = "off" | "listening" | "connected";
@@ -24,7 +24,7 @@ interface McpInfo {
 interface Options {
   getModel: () => Model3D | null;
   apply: (m: Model3D) => void;
-  capture: (angle: ViewAngle | undefined, w: number, h: number) => string | null;
+  capture: (angle: ViewAngle | Vec3 | undefined, w: number, h: number) => string | null;
   select: (id: string | null) => void;
   setAnimation: (id: string, time: number) => void;
 }
@@ -71,7 +71,7 @@ export function useMcpBridge(options: Options): { status: McpStatus; address: st
           const p = r.needs.preview;
           if (p.animation) opts.current.setAnimation(p.animation, p.time ?? 0);
           await nextFrame();
-          const url = opts.current.capture(p.angle ?? "isométrica", 640, 480);
+          const url = opts.current.capture(p.direction ?? p.angle ?? "isométrica", 640, 480);
           if (!url) throw new Error("No se pudo capturar la vista.");
           content = [{ type: "image", data: url.split(",")[1], mimeType: "image/png" }];
         } else if (r.needs && "export" in r.needs) {

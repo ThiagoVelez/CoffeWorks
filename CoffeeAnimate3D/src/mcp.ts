@@ -2,7 +2,7 @@
 // modelo abierto con las mismas operaciones puras que usa el editor. Las que necesitan
 // la ventana (captura y exportación) se devuelven como `needs` para que las haga la app.
 
-import { addAnimation, addPart, duplicatePart, fillFace, mirrorPart, newModel, paintPixels, removeAnimation, removeKeyframe, removePart, setKeyframe, updateAnimation, updatePart, type PartPatch } from "./model";
+import { addAnimation, addPart, duplicatePart, fillFace, groupParts, mirrorPart, ungroup, newModel, paintPixels, removeAnimation, removeKeyframe, removePart, setKeyframe, updateAnimation, updatePart, type PartPatch } from "./model";
 import { TEMPLATES } from "./templates";
 import { FACES, TEX, type Ease, type FaceName, type Model3D, type Vec3 } from "./types";
 import type { ViewAngle } from "./viewport";
@@ -16,7 +16,15 @@ export interface ToolResult {
   isError?: boolean;
   /** Qué seleccionar en la app para que se vea lo que ha hecho Claude. */
   select?: string;
-  needs?: { preview: { angle?: ViewAngle; animation?: string; time?: number } } | { export: string };
+  needs?: { preview: PreviewRequest } | { export: string };
+}
+
+export interface PreviewRequest {
+  angle?: ViewAngle;
+  /** Dirección desde la que mirar (gana a `angle`), como en el cubo de vista. */
+  direction?: Vec3;
+  animation?: string;
+  time?: number;
 }
 
 class ToolError extends Error {}
@@ -197,9 +205,27 @@ const HANDLERS: Record<string, Handler> = {
     return ok("Animación actualizada.", { model: updateAnimation(m, id, patch) });
   },
 
+  group_parts: (m, a) => {
+    if (!Array.isArray(a.parts) || !a.parts.length) throw new ToolError("parts debe ser una lista de piezas (id o nombre)");
+    const ids = a.parts.map((p) => partRef(m, p));
+    const [next, id] = groupParts(m, ids, typeof a.name === "string" && a.name.trim() ? a.name.trim() : "Grupo");
+    return ok(`Grupo «${nameOf(next, id)}» creado con ${ids.length} pieza(s) (id ${id}).`, { model: next, select: id });
+  },
+
+  ungroup: (m, a) => {
+    const id = partRef(m, a.part);
+    const name = nameOf(m, id);
+    return ok(`Grupo «${name}» deshecho; sus piezas quedan en el mismo sitio.`, { model: ungroup(m, id) });
+  },
+
   preview: (m, a) => {
-    const preview: { angle?: ViewAngle; animation?: string; time?: number } = {};
+    const preview: PreviewRequest = {};
     if (typeof a.angle === "string") preview.angle = a.angle as ViewAngle;
+    const dir = vec(a.direction, "direction");
+    if (dir) {
+      if (dir.every((v) => v === 0)) throw new ToolError("direction no puede ser [0, 0, 0]");
+      preview.direction = dir;
+    }
     if (a.animation !== undefined) {
       preview.animation = animRef(m, a.animation);
       preview.time = typeof a.time === "number" ? a.time : 0;

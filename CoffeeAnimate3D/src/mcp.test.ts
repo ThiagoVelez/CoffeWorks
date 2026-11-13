@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { newModel, getPixel, samplePose } from "./model";
 import { runTool, TOOL_NAMES } from "./mcp";
 import tools from "./mcp-tools.json";
+import { TEMPLATES } from "./templates";
 
 const text = (r: ReturnType<typeof runTool>) => r.content.map((c) => (c.type === "text" ? c.text : "")).join("\n");
 
@@ -53,4 +54,43 @@ test("plantillas, vista previa y exportación piden ayuda a la app", () => {
   assert.deepEqual(p.needs, { preview: { angle: "frente", animation: r.model!.animations.find((a) => a.name === "Andar")!.id, time: 0.25 } });
   const e = runTool(r.model!, "export_glb", { file_name: "../vaca" });
   assert.deepEqual(e.needs, { export: "vaca.glb" });
+});
+
+test("group_parts y ungroup por nombre", () => {
+  let m = TEMPLATES["cuadrúpedo"]();
+  const r = runTool(m, "group_parts", { parts: ["pata delantera izquierda", "pata delantera derecha"], name: "Delanteras" });
+  assert.ok(!r.isError, text(r));
+  m = r.model!;
+  const g = m.parts.find((p) => p.name === "Delanteras")!;
+  assert.equal(r.select, g.id);
+  assert.equal(m.parts.filter((p) => p.parent === g.id).length, 2);
+  const u = runTool(m, "ungroup", { part: "Delanteras" });
+  assert.ok(!u.model!.parts.some((p) => p.name === "Delanteras"));
+});
+
+test("group_parts con padres distintos devuelve un error claro", () => {
+  const r = runTool(TEMPLATES["cuadrúpedo"](), "group_parts", { parts: ["hocico", "cola"] });
+  assert.equal(r.isError, true);
+  assert.match(text(r), /mismo padre/);
+});
+
+test("ungroup borra las pistas del grupo", () => {
+  let m = TEMPLATES["cuadrúpedo"]();
+  m = runTool(m, "group_parts", { parts: ["cola"], name: "G" }).model!;
+  m = runTool(m, "set_keyframe", { animation: m.animations[0].id, part: "G", time: 0, rot: [0, 10, 0] }).model!;
+  const gid = m.parts.find((p) => p.name === "G")!.id;
+  const u = runTool(m, "ungroup", { part: "G" }).model!;
+  assert.ok(u.animations.every((a) => a.tracks[gid] === undefined));
+});
+
+test("preview acepta una dirección", () => {
+  const r = runTool(TEMPLATES["cuadrúpedo"](), "preview", { direction: [1, 1, 1] });
+  assert.deepEqual(r.needs, { preview: { direction: [1, 1, 1] } });
+  const bad = runTool(TEMPLATES["cuadrúpedo"](), "preview", { direction: [0, 0, 0] });
+  assert.equal(bad.isError, true);
+});
+
+test("las 15 herramientas originales siguen y hay 17 en total", () => {
+  for (const n of ["get_model", "new_model", "add_part", "update_part", "remove_part", "duplicate_part", "mirror_part", "fill_face", "paint_pixels", "add_animation", "set_keyframe", "remove_keyframe", "update_animation", "preview", "export_glb"]) assert.ok(TOOL_NAMES.includes(n), n);
+  assert.equal(TOOL_NAMES.length, 17);
 });
