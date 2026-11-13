@@ -27,6 +27,7 @@
         "rotation": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "Grados XYZ" },
         "from": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
         "size": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+        "shape": { "type": "string", "enum": ["box", "cylinder", "sphere", "ramp", "plane"], "description": "Forma (por defecto box). Cilindro: eje Y; rampa: sube hacia −Z; plano: solo la cara de arriba." },
         "color": { "type": "string", "description": "#rrggbb para todas las caras" }
       },
       "required": ["name"]
@@ -45,6 +46,7 @@
         "rotation": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
         "from": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
         "size": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+        "shape": { "type": "string", "enum": ["box", "cylinder", "sphere", "ramp", "plane"], "description": "Forma (por defecto box). Cilindro: eje Y; rampa: sube hacia −Z; plano: solo la cara de arriba." },
         "color": { "type": "string" },
         "visible": { "type": "boolean" }
       },
@@ -143,14 +145,94 @@
     }
   },
   {
+    "name": "group_parts",
+    "description": "Agrupa piezas que cuelgan del mismo padre en un grupo nuevo (pieza sin caja con el pivote en su centro). Las piezas no se mueven. Útil para mover o girar juntas varias piezas.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "parts": { "type": "array", "items": { "type": "string" }, "description": "Ids o nombres de las piezas" },
+        "name": { "type": "string" }
+      },
+      "required": ["parts"]
+    }
+  },
+  {
+    "name": "ungroup",
+    "description": "Deshace un grupo (pieza sin caja y sin giro): sus piezas pasan a su padre en el mismo sitio. Se borran las pistas de animación del grupo.",
+    "inputSchema": {
+      "type": "object",
+      "properties": { "part": { "type": "string" } },
+      "required": ["part"]
+    }
+  },
+  {
     "name": "preview",
-    "description": "Devuelve una captura PNG del modelo para comprobar cómo queda. Opcional: ángulo (frente, detrás, izquierda, derecha, arriba, isométrica) y una animación con su instante para ver la pose.",
+    "description": "Devuelve una captura PNG del modelo para comprobar cómo queda. Opcional: ángulo (frente, detrás, izquierda, derecha, arriba, isométrica) y una animación con su instante para ver la pose. También acepta direction [x, y, z] para mirar desde cualquier cara, arista o esquina (por ejemplo [1, 1, 1] o [0, 1, 1]); gana a angle.",
     "inputSchema": {
       "type": "object",
       "properties": {
         "angle": { "type": "string", "enum": ["frente", "detrás", "izquierda", "derecha", "arriba", "isométrica"] },
+        "direction": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
         "animation": { "type": "string" },
         "time": { "type": "number" }
+      }
+    }
+  },
+  {
+    "name": "copy_pose",
+    "description": "Copia la pose (posición, giro y escala animados) de unas piezas en un instante de una animación. Devuelve la pose en JSON para pasarla a paste_pose. Sin parts, copia todas las piezas.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "animation": { "type": "string" },
+        "time": { "type": "number" },
+        "parts": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["animation"]
+    }
+  },
+  {
+    "name": "paste_pose",
+    "description": "Pega como fotogramas clave una pose copiada con copy_pose en otro instante. Con mirrored: true la pega reflejada en las piezas del otro lado (izquierda ↔ derecha por el nombre), ideal para la segunda mitad de un paso.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "animation": { "type": "string" },
+        "time": { "type": "number" },
+        "pose": { "type": "array", "items": { "type": "object" } },
+        "mirrored": { "type": "boolean" },
+        "ease": { "type": "string", "enum": ["linear", "smooth", "step", "ease-in", "ease-out"] }
+      },
+      "required": ["animation", "time", "pose"]
+    }
+  },
+  {
+    "name": "export_obj",
+    "description": "Exporta el modelo a OBJ (ZIP con .obj, .mtl y la textura .png, en bloques, sin animación) en Documentos/CoffeeWorks/Exportaciones.",
+    "inputSchema": {
+      "type": "object",
+      "properties": { "file_name": { "type": "string" } }
+    }
+  },
+  {
+    "name": "insert_piece",
+    "description": "Inserta una pieza lista del complemento «Pack de piezas» (árboles, plantas, rocas, bloques y muebles: Roble, Pino, Palma de cera, Frailejón, Cafeto, Cactus, Seta roja, Roca, Bloque de hierba, Mesa, Silla, Cofre, Farol, Cama…) como un grupo en la raíz del modelo. Requiere el complemento activado en el Launcher.",
+    "inputSchema": {
+      "type": "object",
+      "properties": { "name": { "type": "string" } },
+      "required": ["name"]
+    }
+  },
+  {
+    "name": "render",
+    "description": "Renderiza una imagen de calidad (sol, sombras y oclusión ambiental) y la guarda como PNG en Documentos/CoffeeWorks/Exportaciones; devuelve una vista previa. Requiere el complemento «Render de CoffeeAnimate3D».",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "size": { "type": "string", "enum": ["1280x720", "1920x1080", "3840x2160"] },
+        "transparent": { "type": "boolean" },
+        "angle": { "type": "string", "enum": ["frente", "detrás", "izquierda", "derecha", "arriba", "isométrica"] },
+        "direction": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
       }
     }
   },

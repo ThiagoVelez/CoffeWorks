@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { newModel, getPixel, samplePose } from "./model";
 import { runTool, TOOL_NAMES } from "./mcp";
 import tools from "./mcp-tools.json";
+import { TEMPLATES } from "./templates";
 
 const text = (r: ReturnType<typeof runTool>) => r.content.map((c) => (c.type === "text" ? c.text : "")).join("\n");
 
@@ -53,4 +54,75 @@ test("plantillas, vista previa y exportación piden ayuda a la app", () => {
   assert.deepEqual(p.needs, { preview: { angle: "frente", animation: r.model!.animations.find((a) => a.name === "Andar")!.id, time: 0.25 } });
   const e = runTool(r.model!, "export_glb", { file_name: "../vaca" });
   assert.deepEqual(e.needs, { export: "vaca.glb" });
+});
+
+test("group_parts y ungroup por nombre", () => {
+  let m = TEMPLATES["cuadrúpedo"]();
+  const r = runTool(m, "group_parts", { parts: ["pata delantera izquierda", "pata delantera derecha"], name: "Delanteras" });
+  assert.ok(!r.isError, text(r));
+  m = r.model!;
+  const g = m.parts.find((p) => p.name === "Delanteras")!;
+  assert.equal(r.select, g.id);
+  assert.equal(m.parts.filter((p) => p.parent === g.id).length, 2);
+  const u = runTool(m, "ungroup", { part: "Delanteras" });
+  assert.ok(!u.model!.parts.some((p) => p.name === "Delanteras"));
+});
+
+test("group_parts con padres distintos devuelve un error claro", () => {
+  const r = runTool(TEMPLATES["cuadrúpedo"](), "group_parts", { parts: ["hocico", "cola"] });
+  assert.equal(r.isError, true);
+  assert.match(text(r), /mismo padre/);
+});
+
+test("ungroup borra las pistas del grupo", () => {
+  let m = TEMPLATES["cuadrúpedo"]();
+  m = runTool(m, "group_parts", { parts: ["cola"], name: "G" }).model!;
+  m = runTool(m, "set_keyframe", { animation: m.animations[0].id, part: "G", time: 0, rot: [0, 10, 0] }).model!;
+  const gid = m.parts.find((p) => p.name === "G")!.id;
+  const u = runTool(m, "ungroup", { part: "G" }).model!;
+  assert.ok(u.animations.every((a) => a.tracks[gid] === undefined));
+});
+
+test("preview acepta una dirección", () => {
+  const r = runTool(TEMPLATES["cuadrúpedo"](), "preview", { direction: [1, 1, 1] });
+  assert.deepEqual(r.needs, { preview: { direction: [1, 1, 1] } });
+  const bad = runTool(TEMPLATES["cuadrúpedo"](), "preview", { direction: [0, 0, 0] });
+  assert.equal(bad.isError, true);
+});
+
+test("las 15 herramientas originales siguen y hay 17 en total", () => {
+  for (const n of ["get_model", "new_model", "add_part", "update_part", "remove_part", "duplicate_part", "mirror_part", "fill_face", "paint_pixels", "add_animation", "set_keyframe", "remove_keyframe", "update_animation", "preview", "export_glb"]) assert.ok(TOOL_NAMES.includes(n), n);
+  assert.ok(TOOL_NAMES.length >= 17);
+});
+
+test("copy_pose y paste_pose reflejada", () => {
+  let m = TEMPLATES["bípedo"]();
+  const anim = m.animations.find((a) => a.name === "Andar")!.id;
+  m = runTool(m, "set_keyframe", { animation: anim, part: "brazo izquierdo", time: 0, rot: [40, 5, 10] }).model!;
+  const c = runTool(m, "copy_pose", { animation: anim, time: 0, parts: ["brazo izquierdo"] });
+  assert.ok(!c.isError, text(c));
+  const clip = JSON.parse(text(c).split("\n").slice(1).join("\n"));
+  const r = runTool(m, "paste_pose", { animation: anim, time: 0.5, pose: clip, mirrored: true });
+  assert.ok(!r.isError, text(r));
+  const right = r.model!.parts.find((p) => p.name === "brazo derecho")!.id;
+  assert.deepEqual(samplePose(r.model!, anim, 0.5).get(right)!.rot, [40, -5, -10]);
+});
+
+test("export_obj pide a la app guardar el ZIP", () => {
+  const r = runTool(TEMPLATES["ave"](), "export_obj", { file_name: "pájaro" });
+  assert.deepEqual(r.needs, { exportObj: "pájaro" });
+});
+
+
+test("insert_piece y render piden a la app (que comprueba el complemento)", () => {
+  const m = TEMPLATES["ave"]();
+  assert.deepEqual(runTool(m, "insert_piece", { name: "Roble" }).needs, { insertPiece: "Roble" });
+  assert.equal(runTool(m, "insert_piece", {}).isError, true);
+  assert.deepEqual(runTool(m, "render", { size: "1920x1080", transparent: true, angle: "frente" }).needs, { render: { width: 1920, height: 1080, transparent: true, angle: "frente" } });
+  assert.deepEqual(runTool(m, "render", {}).needs, { render: { width: 1280, height: 720, transparent: false } });
+  assert.equal(runTool(m, "render", { size: "800x600" }).isError, true);
+});
+
+test("hay 22 herramientas", () => {
+  assert.equal(TOOL_NAMES.length, 22);
 });

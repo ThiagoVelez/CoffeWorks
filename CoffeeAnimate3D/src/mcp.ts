@@ -2,9 +2,9 @@
 // modelo abierto con las mismas operaciones puras que usa el editor. Las que necesitan
 // la ventana (captura y exportación) se devuelven como `needs` para que las haga la app.
 
-import { addAnimation, addPart, duplicatePart, fillFace, mirrorPart, newModel, paintPixels, removeAnimation, removeKeyframe, removePart, setKeyframe, updateAnimation, updatePart, type PartPatch } from "./model";
+import { addAnimation, addPart, copyPose, pastePose, type PoseClip, duplicatePart, fillFace, groupParts, mirrorPart, ungroup, newModel, paintPixels, removeAnimation, removeKeyframe, removePart, setKeyframe, updateAnimation, updatePart, type PartPatch } from "./model";
 import { TEMPLATES } from "./templates";
-import { FACES, TEX, type Ease, type FaceName, type Model3D, type Vec3 } from "./types";
+import { EASES, FACES, SHAPES, TEX, type Ease, type Shape, type FaceName, type Model3D, type Vec3 } from "./types";
 import type { ViewAngle } from "./viewport";
 
 export type Content = { type: "text"; text: string } | { type: "image"; data: string; mimeType: string };
@@ -16,8 +16,28 @@ export interface ToolResult {
   isError?: boolean;
   /** Qué seleccionar en la app para que se vea lo que ha hecho Claude. */
   select?: string;
-  needs?: { preview: { angle?: ViewAngle; animation?: string; time?: number } } | { export: string };
+  needs?: { preview: PreviewRequest } | { export: string } | { exportObj: string } | { insertPiece: string } | { render: RenderRequest };
 }
+
+export interface PreviewRequest {
+  angle?: ViewAngle;
+  /** Dirección desde la que mirar (gana a `angle`), como en el cubo de vista. */
+  direction?: Vec3;
+  animation?: string;
+  time?: number;
+}
+
+export interface RenderRequest {
+  width: number;
+  height: number;
+  transparent: boolean;
+  angle?: ViewAngle;
+  direction?: Vec3;
+}
+
+const RENDER_SIZES: Record<string, [number, number]> = { "1280x720": [1280, 720], "1920x1080": [1920, 1080], "3840x2160": [3840, 2160] };
+
+const VIEW_ANGLES: ViewAngle[] = ["frente", "detrás", "izquierda", "derecha", "arriba", "isométrica"];
 
 class ToolError extends Error {}
 
@@ -49,6 +69,12 @@ function animRef(m: Model3D, ref: unknown): string {
   const a = m.animations.find((x) => x.id === ref) ?? m.animations.find((x) => x.name.toLowerCase() === ref.toLowerCase());
   if (!a) throw new ToolError(`No hay ninguna animación «${ref}»`);
   return a.id;
+}
+
+function shapeArg(v: unknown): Shape | undefined {
+  if (v === undefined || v === null) return undefined;
+  if (typeof v !== "string" || !SHAPES.includes(v as Shape)) throw new ToolError("shape debe ser box, cylinder, sphere, ramp o plane");
+  return v as Shape;
 }
 
 function faceArg(v: unknown): FaceName {
@@ -106,7 +132,7 @@ const HANDLERS: Record<string, Handler> = {
       parent: a.parent ? partRef(m, a.parent) : null,
       pivot: vec(a.pivot, "pivot"),
       rotation: vec(a.rotation, "rotation"),
-      box: from && size ? { from, size, color: a.color !== undefined ? colorArg(a.color) : undefined } : null,
+      box: from && size ? { from, size, shape: shapeArg(a.shape), color: a.color !== undefined ? colorArg(a.color) : undefined } : null,
     });
     return ok(`Pieza «${a.name}» creada (id ${id}).`, { model: next, select: id });
   },
@@ -119,8 +145,9 @@ const HANDLERS: Record<string, Handler> = {
     if (a.pivot !== undefined) patch.pivot = vec(a.pivot, "pivot");
     if (a.rotation !== undefined) patch.rotation = vec(a.rotation, "rotation");
     if (typeof a.visible === "boolean") patch.visible = a.visible;
-    if (a.from !== undefined || a.size !== undefined || a.color !== undefined) {
+    if (a.from !== undefined || a.size !== undefined || a.color !== undefined || a.shape !== undefined) {
       patch.box = {};
+      if (a.shape !== undefined) patch.box.shape = shapeArg(a.shape);
       if (a.from !== undefined) patch.box.from = vec(a.from, "from");
       if (a.size !== undefined) patch.box.size = vec(a.size, "size");
       if (a.color !== undefined) patch.box.color = colorArg(a.color);
@@ -197,14 +224,75 @@ const HANDLERS: Record<string, Handler> = {
     return ok("Animación actualizada.", { model: updateAnimation(m, id, patch) });
   },
 
+  group_parts: (m, a) => {
+    if (!Array.isArray(a.parts) || !a.parts.length) throw new ToolError("parts debe ser una lista de piezas (id o nombre)");
+    const ids = a.parts.map((p) => partRef(m, p));
+    const [next, id] = groupParts(m, ids, typeof a.name === "string" && a.name.trim() ? a.name.trim() : "Grupo");
+    return ok(`Grupo «${nameOf(next, id)}» creado con ${ids.length} pieza(s) (id ${id}).`, { model: next, select: id });
+  },
+
+  ungroup: (m, a) => {
+    const id = partRef(m, a.part);
+    const name = nameOf(m, id);
+    return ok(`Grupo «${name}» deshecho; sus piezas quedan en el mismo sitio.`, { model: ungroup(m, id) });
+  },
+
   preview: (m, a) => {
-    const preview: { angle?: ViewAngle; animation?: string; time?: number } = {};
+    const preview: PreviewRequest = {};
     if (typeof a.angle === "string") preview.angle = a.angle as ViewAngle;
+    const dir = vec(a.direction, "direction");
+    if (dir) {
+      if (dir.every((v) => v === 0)) throw new ToolError("direction no puede ser [0, 0, 0]");
+      preview.direction = dir;
+    }
     if (a.animation !== undefined) {
       preview.animation = animRef(m, a.animation);
       preview.time = typeof a.time === "number" ? a.time : 0;
     }
     return { content: [], needs: { preview } };
+  },
+
+  copy_pose: (m, a) => {
+    const anim = animRef(m, a.animation);
+    const t = typeof a.time === "number" ? a.time : 0;
+    const ids = Array.isArray(a.parts) && a.parts.length ? a.parts.map((p) => partRef(m, p)) : m.parts.map((p) => p.id);
+    const clip = copyPose(m, anim, t, ids);
+    return ok(`Pose de ${clip.length} pieza(s) en ${t} s. Pásala tal cual como «pose» a paste_pose:\n${JSON.stringify(clip)}`);
+  },
+
+  paste_pose: (m, a) => {
+    const anim = animRef(m, a.animation);
+    if (typeof a.time !== "number") throw new ToolError("Falta time (segundos)");
+    if (!Array.isArray(a.pose)) throw new ToolError("pose debe ser la lista que devuelve copy_pose");
+    const clip: PoseClip = (a.pose as any[]).map((x) => ({ name: String(x?.name ?? ""), pose: { pos: vec(x?.pose?.pos, "pose.pos") ?? [0, 0, 0], rot: vec(x?.pose?.rot, "pose.rot") ?? [0, 0, 0], scale: vec(x?.pose?.scale, "pose.scale") ?? [1, 1, 1] } }));
+    const ease: Ease = EASES.includes(a.ease as Ease) ? (a.ease as Ease) : "smooth";
+    const r = pastePose(m, anim, a.time, clip, a.mirrored === true, ease);
+    const extra = r.skipped.length ? ` Sin pareja: ${r.skipped.join(", ")}.` : "";
+    return ok(`Pose ${a.mirrored ? "reflejada " : ""}pegada en ${r.pasted} pieza(s).${extra}`, r.pasted ? { model: r.model } : {});
+  },
+
+  export_obj: (_m, a) => {
+    const base = String(a.file_name ?? "modelo").split(/[\\/]/).pop()!.replace(/\.(zip|obj)$/i, "").replace(/[^\p{L}\p{N} _.-]/gu, "_").replace(/^\.+/, "") || "modelo";
+    return { content: [], needs: { exportObj: base } };
+  },
+
+  insert_piece: (_m, a) => {
+    if (typeof a.name !== "string" || !a.name.trim()) throw new ToolError("Falta name: el nombre de la pieza (por ejemplo «Roble», «Roca» o «Mesa»)");
+    return { content: [], needs: { insertPiece: a.name.trim() } };
+  },
+
+  render: (_m, a) => {
+    const key = typeof a.size === "string" ? a.size.replace(/\s|×/g, "x").toLowerCase() : "1280x720";
+    const size = RENDER_SIZES[key];
+    if (!size) throw new ToolError("size debe ser 1280x720, 1920x1080 o 3840x2160");
+    const req: RenderRequest = { width: size[0], height: size[1], transparent: a.transparent === true };
+    if (a.angle !== undefined) {
+      if (typeof a.angle !== "string" || !VIEW_ANGLES.includes(a.angle as ViewAngle)) throw new ToolError(`angle debe ser ${VIEW_ANGLES.join(", ")}`);
+      req.angle = a.angle as ViewAngle;
+    }
+    const dir = vec(a.direction, "direction");
+    if (dir) req.direction = dir;
+    return { content: [], needs: { render: req } };
   },
 
   export_glb: (_m, a) => {

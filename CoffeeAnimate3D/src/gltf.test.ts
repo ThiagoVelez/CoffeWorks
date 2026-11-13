@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { addAnimation, addPart, newModel, paintPixel, setKeyframe } from "./model";
 import { buildAtlas, encodePng, exportGlb } from "./gltf";
 import { TEMPLATES } from "./templates";
+import { shapeGeometry } from "./geometry";
 
 function readGlb(bytes: Uint8Array) {
   const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -87,4 +88,21 @@ test("las plantillas se exportan", () => {
     assert.ok(json.animations.length >= 1, name);
     assert.ok(json.meshes.length >= 6, name);
   }
+});
+
+test("las formas nuevas se exportan con su geometría", () => {
+  let m = newModel("Formas");
+  const shapes = ["box", "cylinder", "sphere", "ramp", "plane"] as const;
+  shapes.forEach((shape, i) => {
+    [m] = addPart(m, { name: shape, pivot: [i * 10, 0, 0], box: { from: [-2, 0, -2], size: [4, 4, 4], shape } });
+  });
+  const { json } = readGlb(exportGlb(m));
+  assert.equal(json.meshes.length, 5);
+  json.meshes.forEach((mesh: any, i: number) => {
+    const g = shapeGeometry(m.parts[i].box!);
+    const idx = json.accessors[mesh.primitives[0].indices];
+    assert.equal(idx.count, g.indices.length, shapes[i]);
+    const uvAcc = json.accessors[mesh.primitives[0].attributes.TEXCOORD_0];
+    assert.equal(uvAcc.count, g.positions.length / 3);
+  });
 });

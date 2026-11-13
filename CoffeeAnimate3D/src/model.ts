@@ -2,14 +2,15 @@
 // MCP y la exportación. Todas devuelven un modelo nuevo; nunca mutan el anterior.
 
 import { newId } from "./studio/color";
-import { FACES, TEX, type Animation, type Box, type Ease, type FaceName, type FaceTex, type Keyframe, type Model3D, type Part, type Pose, type Vec3 } from "./types";
+import { eulerFromQuat, quatFromAxisAngle, quatFromEuler, quatMul, rotateVec, type Quat } from "./rotation";
+import { EASES, FACES, SHAPES, TEX, type Shape, type Animation, type Box, type Ease, type FaceName, type FaceTex, type Keyframe, type Model3D, type Part, type Pose, type Vec3 } from "./types";
 
 export const DEFAULT_COLOR = "#c8a27a";
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
 export function newModel(name = "Modelo sin título"): Model3D {
-  return { version: 1, name, parts: [], animations: [] };
+  return { version: 2, name, parts: [], animations: [] };
 }
 
 function makeFaces(color: string): Record<FaceName, FaceTex> {
@@ -19,6 +20,7 @@ function makeFaces(color: string): Record<FaceName, FaceTex> {
 }
 
 export interface BoxInput {
+  shape?: Shape;
   from: Vec3;
   size: Vec3;
   color?: string;
@@ -38,7 +40,7 @@ function toBox(b: BoxInput): Box {
   if (b.size.some((s) => !(s > 0))) throw new Error("El tamaño de la caja debe ser mayor que 0");
   const faces = makeFaces(b.color ?? DEFAULT_COLOR);
   for (const n of FACES) if (b.faces?.[n]) faces[n] = { ...b.faces[n]! };
-  return { from: [...b.from] as Vec3, size: [...b.size] as Vec3, faces };
+  return { shape: b.shape ?? "box", from: [...b.from] as Vec3, size: [...b.size] as Vec3, faces };
 }
 
 export function findPart(m: Model3D, id: string): Part {
@@ -102,6 +104,7 @@ export function updatePart(m: Model3D, id: string, patch: PartPatch): Model3D {
   if (patch.box === null) next.box = null;
   else if (patch.box) {
     const base = next.box ?? toBox({ from: [0, 0, 0], size: [4, 4, 4], color: patch.box.color });
+    if (patch.box.shape) base.shape = patch.box.shape;
     if (patch.box.from) base.from = [...patch.box.from] as Vec3;
     if (patch.box.size) {
       if (patch.box.size.some((s) => !(s > 0))) throw new Error("El tamaño de la caja debe ser mayor que 0");
@@ -218,7 +221,9 @@ export function mirrorPart(m: Model3D, id: string): [Model3D, string] {
       if (p.box) {
         const f = p.box.faces;
         p.box.from = [neg(p.box.from[0] + p.box.size[0]), p.box.from[1], p.box.from[2]];
-        p.box.faces = { px: f.nx, nx: f.px, py: flipU(f.py), ny: flipU(f.ny), pz: flipU(f.pz), nz: flipU(f.nz) };
+        // En la rampa el lado es un triángulo: al pasar al otro lado hay que voltearlo.
+        const side = p.box.shape === "ramp" ? flipU : (x: FaceTex) => x;
+        p.box.faces = { px: side(f.nx), nx: side(f.px), py: flipU(f.py), ny: flipU(f.ny), pz: flipU(f.pz), nz: flipU(f.nz) };
       }
       return p;
     },
@@ -304,6 +309,8 @@ function sampleTrack(keys: Keyframe[], t: number): Pose {
   let f = (t - a.t) / (b.t - a.t);
   if (a.ease === "step") f = 0;
   else if (a.ease === "smooth") f = f * f * (3 - 2 * f);
+  else if (a.ease === "ease-in") f = f * f;
+  else if (a.ease === "ease-out") f = 1 - (1 - f) * (1 - f);
   return { pos: lerp3(a.pos, b.pos, f), rot: lerp3(a.rot, b.rot, f), scale: lerp3(a.scale, b.scale, f) };
 }
 
@@ -373,6 +380,7 @@ export function validateModel(m: Model3D): string[] {
     while (cur && steps++ <= m.parts.length) cur = m.parts.find((x) => x.id === cur)?.parent ?? null;
     if (steps > m.parts.length) issues.push(`«${p.name}» está en un ciclo`);
     if (p.box && p.box.size.some((s) => !(s > 0))) issues.push(`«${p.name}» tiene una caja de tamaño 0`);
+    if (p.box && !SHAPES.includes(p.box.shape)) issues.push(`«${p.name}» tiene una forma desconocida`);
   }
   for (const a of m.animations) for (const pid of Object.keys(a.tracks)) if (!ids.has(pid)) issues.push(`la animación «${a.name}» anima una pieza que no existe`);
   return issues;
@@ -395,7 +403,7 @@ export function parseModel(text: string): Model3D {
   } catch {
     throw new Error("El archivo no es un modelo de CoffeeAnimate3D válido.");
   }
-  if (!raw || raw.version !== 1 || !Array.isArray(raw.parts)) throw new Error("Versión de archivo desconocida o modelo dañado.");
+  if (!raw || (raw.version !== 1 && raw.version !== 2) || !Array.isArray(raw.parts)) throw new Error("Versión de archivo desconocida o modelo dañado.");
   const parts: Part[] = raw.parts
     .filter((p: any) => p && typeof p.id === "string")
     .map((p: any): Part => {
@@ -407,7 +415,7 @@ export function parseModel(text: string): Model3D {
           faces[n] = { color: color(f?.color) };
           if (typeof f?.pixels === "string") faces[n].pixels = f.pixels;
         }
-        box = { from: vec(p.box.from, [0, 0, 0]), size: vec(p.box.size, [1, 1, 1]).map((s) => (s > 0 ? s : 1)) as Vec3, faces };
+        box = { shape: SHAPES.includes(p.box.shape) ? p.box.shape : "box", from: vec(p.box.from, [0, 0, 0]), size: vec(p.box.size, [1, 1, 1]).map((s) => (s > 0 ? s : 1)) as Vec3, faces };
       }
       return { id: p.id, name: str(p.name, "Pieza"), parent: typeof p.parent === "string" ? p.parent : null, pivot: vec(p.pivot, [0, 0, 0]), rotation: vec(p.rotation, [0, 0, 0]), box, visible: p.visible !== false };
     });
@@ -420,10 +428,252 @@ export function parseModel(text: string): Model3D {
       for (const [pid, keys] of Object.entries(a.tracks ?? {})) {
         if (!ids.has(pid) || !Array.isArray(keys)) continue;
         tracks[pid] = (keys as any[])
-          .map((k): Keyframe => ({ t: num(k?.t, 0), pos: vec(k?.pos, [0, 0, 0]), rot: vec(k?.rot, [0, 0, 0]), scale: vec(k?.scale, [1, 1, 1]), ease: k?.ease === "smooth" || k?.ease === "step" ? k.ease : "linear" }))
+          .map((k): Keyframe => ({ t: num(k?.t, 0), pos: vec(k?.pos, [0, 0, 0]), rot: vec(k?.rot, [0, 0, 0]), scale: vec(k?.scale, [1, 1, 1]), ease: EASES.includes(k?.ease) ? k.ease : "linear" }))
           .sort((x, y) => x.t - y.t);
       }
       return { id: a.id, name: str(a.name, "Animación"), length: Math.max(0.05, num(a.length, 1)), loop: a.loop !== false, tracks };
     });
-  return { version: 1, name: str(raw.name, "Modelo"), parts, animations };
+  const out: Model3D = { version: 2, name: str(raw.name, "Modelo"), parts, animations };
+  const ref = raw.reference;
+  if (ref && typeof ref.positions === "string" && typeof ref.indices === "string") out.reference = { name: str(ref.name, "Referencia"), positions: ref.positions, indices: ref.indices };
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Varias piezas: selección, grupos y transformaciones en conjunto
+// ---------------------------------------------------------------------------
+
+const r2 = (v: number) => Math.round(v * 100) / 100 + 0;
+
+/** Quita de la lista las piezas que cuelgan de otra de la lista (para no moverlas dos veces). */
+export function topLevel(m: Model3D, ids: string[]): string[] {
+  const set = new Set(ids);
+  return ids.filter((id, i) => {
+    if (ids.indexOf(id) !== i) return false;
+    let p = m.parts.find((x) => x.id === id)?.parent ?? null;
+    while (p) {
+      if (set.has(p)) return false;
+      p = m.parts.find((x) => x.id === p)?.parent ?? null;
+    }
+    return true;
+  });
+}
+
+export function sameParent(m: Model3D, ids: string[]): boolean {
+  if (!ids.length) return false;
+  const parents = new Set(ids.map((id) => findPart(m, id).parent));
+  return parents.size === 1;
+}
+
+function mapParts(m: Model3D, ids: string[], fn: (p: Part) => Part): Model3D {
+  const set = new Set(topLevel(m, ids));
+  return { ...m, parts: m.parts.map((p) => (set.has(p.id) ? fn(clone(p)) : p)) };
+}
+
+export function translateParts(m: Model3D, ids: string[], delta: Vec3): Model3D {
+  return mapParts(m, ids, (p) => ({ ...p, pivot: p.pivot.map((v, i) => r2(v + delta[i])) as Vec3 }));
+}
+
+/** Gira las piezas `deg` grados sobre un eje del padre, alrededor de `center`. */
+export function rotateParts(m: Model3D, ids: string[], axis: 0 | 1 | 2, deg: number, center: Vec3): Model3D {
+  const dir: Vec3 = [0, 0, 0];
+  dir[axis] = 1;
+  return rotatePartsQuat(m, ids, quatFromAxisAngle(dir, deg), center);
+}
+
+/**
+ * Gira las piezas con un cuaternión (en el espacio del padre) alrededor de `center`:
+ * mueve los pivotes y compone el giro con el que ya tenía cada pieza.
+ */
+export function rotatePartsQuat(m: Model3D, ids: string[], q: Quat, center: Vec3): Model3D {
+  return mapParts(m, ids, (p) => {
+    const d = rotateVec(q, p.pivot.map((x, i) => x - center[i]) as Vec3);
+    const pivot = d.map((v, i) => r2(center[i] + v)) as Vec3;
+    const rotation = eulerFromQuat(quatMul(q, quatFromEuler(p.rotation))).map(r2) as Vec3;
+    return { ...p, pivot, rotation };
+  });
+}
+
+/** Escala cajas y distancias al centro. Ningún lado queda por debajo de 1 unidad. */
+export function scaleParts(m: Model3D, ids: string[], factor: Vec3, center: Vec3): Model3D {
+  return mapParts(m, ids, (p) => {
+    const pivot = p.pivot.map((x, i) => r2(center[i] + (x - center[i]) * Math.max(0, factor[i]))) as Vec3;
+    if (!p.box) return { ...p, pivot };
+    const size = p.box.size.map((x, i) => Math.max(1, r2(x * factor[i]))) as Vec3;
+    const from = p.box.from.map((x, i) => r2(x * (size[i] / p.box!.size[i]))) as Vec3;
+    return { ...p, pivot, box: { ...p.box, from, size } };
+  });
+}
+
+/** Crea un grupo (pieza sin caja) con las piezas; deben tener el mismo padre. */
+export function groupParts(m: Model3D, ids: string[], name = "Grupo"): [Model3D, string] {
+  const list = topLevel(m, ids);
+  if (!list.length) throw new Error("Selecciona al menos una pieza");
+  if (!sameParent(m, list)) throw new Error("Solo se pueden agrupar piezas con el mismo padre");
+  const parts = list.map((id) => findPart(m, id));
+  const center = [0, 1, 2].map((i) => Math.round((parts.reduce((s, p) => s + p.pivot[i], 0) / parts.length) * 2) / 2) as Vec3;
+  const [withGroup, gid] = addPart(m, { name, parent: parts[0].parent, pivot: center });
+  const set = new Set(list);
+  return [
+    {
+      ...withGroup,
+      parts: withGroup.parts.map((p) => (set.has(p.id) ? { ...p, parent: gid, pivot: p.pivot.map((v, i) => r2(v - center[i])) as Vec3 } : p)),
+    },
+    gid,
+  ];
+}
+
+/** Deshace un grupo: sus hijos pasan al padre del grupo en el mismo sitio. */
+export function ungroup(m: Model3D, groupId: string): Model3D {
+  const g = findPart(m, groupId);
+  if (g.box) throw new Error("Solo se pueden desagrupar grupos (piezas sin caja)");
+  if (g.rotation.some((r) => r !== 0)) throw new Error("Pon a 0 el giro del grupo antes de desagrupar");
+  const moved: Model3D = {
+    ...m,
+    parts: m.parts
+      .filter((p) => p.id !== groupId)
+      .map((p) => (p.parent === groupId ? { ...p, parent: g.parent, pivot: p.pivot.map((v, i) => r2(v + g.pivot[i])) as Vec3 } : p)),
+  };
+  return {
+    ...moved,
+    animations: moved.animations.map((a) => ({ ...a, tracks: Object.fromEntries(Object.entries(a.tracks).filter(([pid]) => pid !== groupId)) })),
+  };
+}
+
+/**
+ * Cambia el tamaño de la caja. `"pivot"`: escala desde el pivote (como el gizmo);
+ * `"center"`: mantiene el centro de la caja (botones −/+). Mínimo 1 unidad por lado.
+ */
+export function resizeBox(m: Model3D, id: string, size: Vec3, anchor: "pivot" | "center"): Model3D {
+  const p = findPart(m, id);
+  if (!p.box) throw new Error("La pieza no tiene caja");
+  const old = p.box;
+  const next = size.map((s) => Math.max(1, r2(s))) as Vec3;
+  const from = old.from.map((f, i) => (anchor === "pivot" ? r2(f * (next[i] / old.size[i])) : r2(f + (old.size[i] - next[i]) / 2))) as Vec3;
+  return { ...m, parts: m.parts.map((x) => (x.id === id ? { ...x, box: { ...old, from, size: next } } : x)) };
+}
+
+// ---------------------------------------------------------------------------
+// Claves y poses
+// ---------------------------------------------------------------------------
+
+const keyTime = (a: Animation, t: number) => Math.round(Math.min(Math.max(t, 0), a.length) * 1000) / 1000;
+
+/** Mueve una clave en el tiempo y/o cambia un valor (vista de curvas). Si cae sobre otra, la sustituye. */
+export function moveKeyframe(m: Model3D, animId: string, partId: string, t: number, patch: { t?: number; channel?: { kind: "pos" | "rot" | "scale"; axis: 0 | 1 | 2; value: number } }): Model3D {
+  const a = findAnimation(m, animId);
+  const keys = (a.tracks[partId] ?? []).map((k) => clone(k));
+  const i = keys.findIndex((k) => Math.abs(k.t - t) < 1e-4);
+  if (i < 0) throw new Error("No hay ninguna clave en ese instante");
+  const k = keys[i];
+  if (patch.channel) k[patch.channel.kind][patch.channel.axis] = r2(patch.channel.value);
+  if (patch.t !== undefined) k.t = keyTime(a, patch.t);
+  const rest = keys.filter((x, j) => j !== i && Math.abs(x.t - k.t) >= 1e-4);
+  const next = [...rest, k].sort((x, y) => x.t - y.t);
+  return { ...m, animations: m.animations.map((x) => (x.id === animId ? { ...x, tracks: { ...x.tracks, [partId]: next } } : x)) };
+}
+
+export type PoseClip = { name: string; pose: Pose }[];
+
+/** Pose de las piezas en un instante (para pegarla en otro). */
+export function copyPose(m: Model3D, animId: string, t: number, ids: string[]): PoseClip {
+  const pose = samplePose(m, animId, t);
+  return ids.map((id) => ({ name: findPart(m, id).name, pose: clone(pose.get(id) ?? { pos: [0, 0, 0], rot: [0, 0, 0], scale: [1, 1, 1] }) }));
+}
+
+/**
+ * Pega una pose como claves. Empareja por nombre; `mirrored` la lleva a la pieza del otro
+ * lado (izquierda ↔ derecha) reflejada en X. Devuelve cuántas se pegaron y cuáles no tenían pareja.
+ */
+export function pastePose(m: Model3D, animId: string, t: number, clip: PoseClip, mirrored: boolean, ease: Ease): { model: Model3D; pasted: number; skipped: string[] } {
+  const a = findAnimation(m, animId);
+  let model = m;
+  let pasted = 0;
+  const skipped: string[] = [];
+  for (const { name, pose } of clip) {
+    // Reflejada: las piezas de un lado van al otro; las del centro (cuerpo, cabeza…) se reflejan sobre sí mismas.
+    const sided = /izquierd|derech/i.test(name);
+    const target = mirrored && sided ? mirrorName(name) : name;
+    const found = m.parts.filter((p) => p.name.toLowerCase() === target.toLowerCase());
+    if (found.length !== 1) {
+      skipped.push(name);
+      continue;
+    }
+    const pos: Vec3 = mirrored ? [neg(pose.pos[0]), pose.pos[1], pose.pos[2]] : pose.pos;
+    const rot: Vec3 = mirrored ? [pose.rot[0], neg(pose.rot[1]), neg(pose.rot[2])] : pose.rot;
+    model = setKeyframe(model, a.id, found[0].id, t, { pos, rot, scale: pose.scale, ease });
+    pasted++;
+  }
+  return { model, pasted, skipped };
+}
+
+// ---------------------------------------------------------------------------
+// Malla de referencia (para calcar)
+// ---------------------------------------------------------------------------
+
+export const MAX_REFERENCE_BYTES = 10 * 1024 * 1024;
+
+function toB64(bytes: Uint8Array): string {
+  let s = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
+function fromB64(text: string): Uint8Array {
+  const s = atob(text);
+  const out = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+  return out;
+}
+
+export function setReference(m: Model3D, name: string, mesh: { positions: number[]; indices: number[] }): Model3D {
+  const bytes = mesh.positions.length * 4 + mesh.indices.length * 4;
+  if (bytes > MAX_REFERENCE_BYTES) throw new Error("La referencia es demasiado grande (más de 10 MB)");
+  const pos = new Uint8Array(new Float32Array(mesh.positions).buffer);
+  const idx = new Uint8Array(new Uint32Array(mesh.indices).buffer);
+  return { ...m, reference: { name, positions: toB64(pos), indices: toB64(idx) } };
+}
+
+export function getReference(m: Model3D): { name: string; mesh: { positions: number[]; indices: number[] } } | null {
+  if (!m.reference) return null;
+  try {
+    const p = fromB64(m.reference.positions);
+    const i = fromB64(m.reference.indices);
+    const positions = Array.from(new Float32Array(p.buffer, 0, p.length >> 2));
+    const indices = Array.from(new Uint32Array(i.buffer, 0, i.length >> 2));
+    const count = positions.length / 3;
+    // Un .ca3d editado a mano podría traer índices imposibles: entonces no hay referencia.
+    if (indices.some((x) => x >= count) || positions.some((v) => !Number.isFinite(v))) return null;
+    return { name: m.reference.name, mesh: { positions, indices } };
+  } catch {
+    return null;
+  }
+}
+
+export function clearReference(m: Model3D): Model3D {
+  const { reference: _gone, ...rest } = m;
+  return rest;
+}
+
+// ---------------------------------------------------------------------------
+// Piezas listas (complemento «Pack de piezas»)
+// ---------------------------------------------------------------------------
+
+/** Ids deterministas (p1…, a1…) para que los archivos generados no cambien en cada vuelta. */
+export function normalizeIds(m: Model3D): Model3D {
+  const pmap = new Map(m.parts.map((p, i) => [p.id, `p${i + 1}`]));
+  const amap = new Map(m.animations.map((a, i) => [a.id, `a${i + 1}`]));
+  return {
+    ...m,
+    parts: m.parts.map((p) => ({ ...p, id: pmap.get(p.id)!, parent: p.parent ? pmap.get(p.parent) ?? null : null })),
+    animations: m.animations.map((a) => ({ ...a, id: amap.get(a.id)!, tracks: Object.fromEntries(Object.entries(a.tracks).map(([k, v]) => [pmap.get(k)!, v])) })),
+  };
+}
+
+/** Inserta una pieza (otro modelo) como grupo nuevo en la raíz, con ids nuevos y sin animaciones. */
+export function insertPiece(m: Model3D, piece: Model3D, name: string): [Model3D, string] {
+  const [withGroup, gid] = addPart(m, { name, pivot: [0, 0, 0] });
+  const map = new Map(piece.parts.map((p) => [p.id, newId("p")]));
+  const copies = piece.parts.map((p) => ({ ...clone(p), id: map.get(p.id)!, parent: p.parent ? map.get(p.parent) ?? gid : gid }));
+  return [{ ...withGroup, parts: [...withGroup.parts, ...copies] }, gid];
 }

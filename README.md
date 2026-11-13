@@ -30,7 +30,7 @@ Cada aplicación es un ejecutable independiente construido con **Tauri 2** (Rust
 
 ## Cómo funciona la instalación
 
-1. El instalador de Windows (`CoffeeWorks-Setup-2.11.1.exe`, hecho con **Inno Setup**) instala solo el Launcher y deja los paquetes de las veintiuna aplicaciones en su carpeta `packages`.
+1. El instalador de Windows (`CoffeeWorks-Setup-2.12.0.exe`, hecho con **Inno Setup**) instala solo el Launcher y deja los paquetes de las veintiuna aplicaciones en su carpeta `packages`.
 2. Dentro del Launcher, en la **Tienda de Apps**, cada aplicación tiene sus botones **Instalar**, **Abrir App** y **Desinstalar**:
    - *Instalar* copia la aplicación a `%LOCALAPPDATA%\CoffeeWorks\Apps\<App>`, crea su acceso directo en el menú Inicio (carpeta *CoffeeWorks*) y asocia su tipo de archivo, de modo que un doble clic sobre un `.cfd`, `.cfs`, `.csl`, `.cpg`, `.cdb`, `.ccm` o `.clv` lo abre. CoffeePDF no reemplaza tu lector de PDF predeterminado: aparece en *Abrir con* del Explorador.
    - *Desinstalar* borra la aplicación, su acceso directo y su asociación. **Los documentos no se tocan.**
@@ -44,7 +44,7 @@ Cada aplicación es un ejecutable independiente construido con **Tauri 2** (Rust
 CoffeeWorks también se publica como paquete **`.deb`** para **Ubuntu 22.04 o posterior** y **Debian 12 o posterior** (64 bits), junto al instalador de Windows en cada versión (`coffeeworks_<versión>_amd64.deb`).
 
 ```bash
-sudo apt install ./coffeeworks_2.11.1_amd64.deb
+sudo apt install ./coffeeworks_2.12.0_amd64.deb
 ```
 
 - Se instala en `/opt/coffeeworks`, con el comando `coffeeworks` y su entrada en el menú de aplicaciones. Usa la WebKitGTK del sistema (`libwebkit2gtk-4.1`), así que el paquete pesa pocos MB.
@@ -80,7 +80,7 @@ CoffeeAnimate3D incluye un servidor [MCP](https://modelcontextprotocol.io) para 
 - **Activarlo:** Launcher › *Ajustes* › *Claude (MCP)* › *Permitir que Claude use CoffeeAnimate3D*. Con CoffeeAnimate3D abierta, el estado pasa a *Esperando a Claude* y luego a *Claude conectado*.
 - **Conectar Claude:** *Copiar configuración para Claude* copia dos cosas: la orden para **Claude Code** (`claude mcp add --transport http …` con la clave) y el bloque para `claude_desktop_config.json` de **Claude Desktop** (lanza `CoffeeAnimate3D --mcp-stdio`, que hace de puente con la app abierta).
 - **Seguridad:** el servidor solo escucha en `127.0.0.1:48631`, rechaza peticiones de páginas web de otros orígenes y exige la clave (`Authorization: Bearer`). *Generar una clave nueva* invalida la anterior. La configuración vive en `mcp.json`, en la carpeta de datos locales de CoffeeWorks.
-- **Herramientas:** `get_model`, `new_model` (con plantillas), `add_part`, `update_part`, `remove_part`, `duplicate_part`, `mirror_part`, `fill_face`, `paint_pixels`, `add_animation`, `set_keyframe`, `remove_keyframe`, `update_animation`, `preview` (devuelve una imagen de la vista) y `export_glb` (guarda en `Documentos/CoffeeWorks/Exportaciones`).
+- **Herramientas:** `get_model`, `new_model` (con plantillas), `add_part` y `update_part` (con `shape`: cubo, cilindro, esfera, rampa o plano), `remove_part`, `duplicate_part`, `mirror_part`, `fill_face`, `paint_pixels`, `add_animation`, `set_keyframe`, `remove_keyframe`, `update_animation`, `group_parts`, `ungroup`, `copy_pose`, `paste_pose` (también reflejada), `export_obj`, `insert_piece` y `render` (con sus complementos), `preview` (devuelve una imagen de la vista; también desde cualquier dirección con `direction`) y `export_glb` (guarda en `Documentos/CoffeeWorks/Exportaciones`).
 - Cada cambio de Claude entra en el historial de la app: se deshace con `Ctrl+Z`.
 
 ## Complementos y plantillas
@@ -91,6 +91,8 @@ El Launcher tiene dos secciones más en la barra lateral:
   - *Compatibilidad con Access* (CoffeeDataBase, ~8 MB): exporta tablas, datos, claves y relaciones a `.accdb` y `.mdb`. Es [Jackcess](https://jackcess.sourceforge.io) compilado a un ejecutable nativo con GraalVM, así que no necesita Java (código en `addons/coffee-accdb`).
   - *Motor de video FFmpeg* (~90 MB): necesario para transmitir en directo con CoffeeLive; motor de CoffeeEncoder y de la exportación a MP4, MOV, MP3, OGG y FLAC en CoffeeMotion, CoffeeAnimate, CoffeePuppet y CoffeeSound.
   - *IA generativa* (CoffeePhoto, sin descarga): relleno generativo de una selección y «Generar imagen» como capa nueva, con un servicio compatible con la API de imágenes de OpenAI y la clave del usuario (se guarda solo en el equipo). Sin el complemento, CoffeePhoto ya trae *Relleno según el contenido*, que funciona sin internet.
+  - *Render de CoffeeAnimate3D* (sin descarga): *Ver › Render* con sol y cielo, sombras, oclusión ambiental, fondo de color o transparente, imágenes de hasta 3840×2160 y una vuelta de 360° en WebM o GIF.
+  - *Pack de piezas para CoffeeAnimate3D* (~35 KB): 23 piezas con el estilo de SurvivalForest (árboles, plantas, rocas, bloques y muebles) para insertar con *Ver › Piezas* (código en `addons/coffee-ca3d-piezas`, generado desde `CoffeeAnimate3D/src/pieces.ts`).
   - *Revelado RAW* (CoffeeLens y CoffeePhoto, ~4 MB): abre los RAW de casi cualquier cámara con [LibRaw](https://www.libraw.org) (código en `addons/coffee-raw`).
   - *Calco vectorial* (CoffeeVector y CoffeePaint, ~1 MB): convierte imágenes y dibujos en trazados con [Potrace](https://potrace.sourceforge.net), en blanco y negro o por colores (código en `addons/coffee-potrace`).
   - *Revisión del PDF original* (CoffeePDF, ~36 MB): revisa también la ortografía del texto que ya trae el PDF y, en los escaneados, lo reconoce con OCR ([Tesseract](https://github.com/tesseract-ocr/tesseract), español e inglés). Las faltas se corrigen con clic derecho: la palabra se tapa y la corrección se escribe encima (código en `addons/coffee-pdfcheck`).
@@ -107,7 +109,7 @@ No hacen falta permisos de administrador: todo se instala por usuario. El instal
 Cada vez que se sube código, el flujo **Instalador de Windows** (`.github/workflows/build-windows.yml`) compila la suite en Windows, crea el instalador, lo prueba y lo publica:
 
 1. Abre la pestaña **Actions** del repositorio y entra en la última ejecución de *Instalador de Windows*.
-2. En **Artifacts**, descarga `CoffeeWorks-Setup` y descomprímelo: dentro está `CoffeeWorks-Setup-2.11.1.exe`.
+2. En **Artifacts**, descarga `CoffeeWorks-Setup` y descomprímelo: dentro está `CoffeeWorks-Setup-2.12.0.exe`.
 
 Cuando llega a `main` una versión que aún no está publicada, el flujo crea su *Release* con el instalador (ver «Actualizaciones automáticas»). Al subir una etiqueta `v*` el instalador también se adjunta a esa *Release*.
 
@@ -128,7 +130,7 @@ Después, desde la carpeta del repositorio:
 powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 ```
 
-El script compila las quince interfaces, los quince ejecutables y el instalador. El resultado queda en `installer\Output\CoffeeWorks-Setup-2.11.1.exe`.
+El script compila las quince interfaces, los quince ejecutables y el instalador. El resultado queda en `installer\Output\CoffeeWorks-Setup-2.12.0.exe`.
 
 Si prefieres hacerlo paso a paso:
 
@@ -372,11 +374,14 @@ Las nueve apps de Ilustración comparten una interfaz oscura, autoguardado, desh
 
 **CoffeeAnimate3D** (naranja → violeta) — modelado y animación 3D por bloques:
 
-- Modelos hechos de *cubos* (16 unidades = 1 bloque) organizados en un árbol de *huesos*: cada parte gira sobre su pivote y arrastra a sus hijas.
+- Modelos hechos de *cubos, cilindros, esferas, rampas y planos* (16 unidades = 1 bloque) organizados en un árbol de *huesos*: cada parte gira sobre su pivote y arrastra a sus hijas.
 - *Texturas pixeladas de 32×32* por cara, con lápiz, relleno y cuentagotas, y la paleta del juego SurvivalForest.
-- *Animaciones* por fotogramas clave (posición, giro y escala) con suavizado lineal, suave o escalonado, en bucle o de una vez.
+- *Animaciones* por fotogramas clave (posición, giro y escala) con suavizado lineal, suave, escalonado, de entrada lenta o de salida lenta, en bucle o de una vez; *vista de curvas* para arrastrar claves, *papel cebolla* y *copiar y pegar poses* (Ctrl+Mayús+C / V; Ctrl+Mayús+B la pega reflejada en el otro lado).
 - Plantillas de *cuadrúpedo, bípedo, ave y araña* con animaciones de reposo, andar y volar; duplicar y *reflejar* partes (izquierda ↔ derecha).
-- Exportación a *glTF binario* (`.glb`, con texturas y animaciones) y captura PNG desde seis vistas.
+- Gizmo para *mover* (G), *girar* (R) y *escalar* (S, desde el pivote), con *ajuste a la cuadrícula* (1 px, 1 u, ½ bloque o 1 bloque) y giro en pasos de 15°; botones −/+ para agrandar o encoger la caja de ½ en ½ bloque.
+- *Cubo de vista* en la esquina: clic en una cara, arista o esquina para girar la cámara; la casa vuelve a la vista isométrica.
+- *Selección múltiple* (Mayús+clic, rectángulo con Mayús+arrastrar, Ctrl+A), *grupos* (Ctrl+G / Ctrl+Mayús+G) y *medir* distancias en bloques (Mayús+M).
+- Exportación a *glTF binario* (`.glb`, con texturas y animaciones; lleva el modelo dentro, así que se vuelve a importar exacto), a *OBJ* (ZIP con `.obj`, `.mtl` y la textura) y captura PNG. *Importar*: un `.glb` de CoffeeAnimate3D vuelve como modelo; cualquier otro `.glb` u `.obj` entra como *referencia* gris para calcar encima.
 - **Claude por MCP**: Claude puede crear, pintar y animar modelos en la app abierta (ver *Claude (MCP)* más abajo).
 
 **Modo claro y oscuro**: toda la suite usa el modo claro por defecto. En el Launcher (*Ajustes › Apariencia*), en el menú *Ver* de cada app o en los ajustes de CoffeeLive se cambia al modo oscuro, en negro, y el cambio vale para todas las apps. Los temas se generan a partir de los colores de cada app con `scripts/make-theme.mjs`; la hoja de los documentos, las diapositivas, las páginas PDF y los lienzos de diseño conservan sus colores. Las apps de Ilustración son siempre oscuras.

@@ -1,0 +1,117 @@
+[
+  {
+    "name": "Roble",
+    "category": "Árboles",
+    "file": "roble.ca3d"
+  },
+  {
+    "name": "Pino",
+    "category": "Árboles",
+    "file": "pino.ca3d"
+  },
+  {
+    "name": "Palma de cera",
+    "category": "Árboles",
+    "file": "palma.ca3d"
+  },
+  {
+    "name": "Árbol redondo",
+    "category": "Árboles",
+    "file": "arbol-redondo.ca3d"
+  },
+  {
+    "name": "Frailejón",
+    "category": "Plantas",
+    "file": "frailejon.ca3d"
+  },
+  {
+    "name": "Cafeto",
+    "category": "Plantas",
+    "file": "cafeto.ca3d"
+  },
+  {
+    "name": "Cactus",
+    "category": "Plantas",
+    "file": "cactus.ca3d"
+  },
+  {
+    "name": "Seta roja",
+    "category": "Plantas",
+    "file": "seta-roja.ca3d"
+  },
+  {
+    "name": "Seta café",
+    "category": "Plantas",
+    "file": "seta-cafe.ca3d"
+  },
+  {
+    "name": "Flores",
+    "category": "Plantas",
+    "file": "flores.ca3d"
+  },
+  {
+    "name": "Roca",
+    "category": "Rocas",
+    "file": "roca.ca3d"
+  },
+  {
+    "name": "Canto rodado",
+    "category": "Rocas",
+    "file": "canto-rodado.ca3d"
+  },
+  {
+    "name": "Roca de arena roja",
+    "category": "Rocas",
+    "file": "roca-roja.ca3d"
+  },
+  {
+    "name": "Bloque de hierba",
+    "category": "Bloques",
+    "file": "bloque-hierba.ca3d"
+  },
+  {
+    "name": "Bloque de piedra",
+    "category": "Bloques",
+    "file": "bloque-piedra.ca3d"
+  },
+  {
+    "name": "Bloque de arena roja",
+    "category": "Bloques",
+    "file": "bloque-arena.ca3d"
+  },
+  {
+    "name": "Bloque de nieve",
+    "category": "Bloques",
+    "file": "bloque-nieve.ca3d"
+  },
+  {
+    "name": "Bloque de madera",
+    "category": "Bloques",
+    "file": "bloque-madera.ca3d"
+  },
+  {
+    "name": "Mesa",
+    "category": "Muebles",
+    "file": "mesa.ca3d"
+  },
+  {
+    "name": "Silla",
+    "category": "Muebles",
+    "file": "silla.ca3d"
+  },
+  {
+    "name": "Cofre",
+    "category": "Muebles",
+    "file": "cofre.ca3d"
+  },
+  {
+    "name": "Farol",
+    "category": "Muebles",
+    "file": "lampara.ca3d"
+  },
+  {
+    "name": "Cama",
+    "category": "Muebles",
+    "file": "cama.ca3d"
+  }
+]
