@@ -357,7 +357,7 @@ checksum = "6e4de3bc4ea267985becf712dc6d9eed8b04c953b3fcfb339ebc87acd9804901"
 
 [[package]]
 name = "coffee-core"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "base64 0.22.1",
  "dirs 5.0.1",
@@ -372,7 +372,7 @@ dependencies = [
 
 [[package]]
 name = "coffeeanimate"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -382,7 +382,7 @@ dependencies = [
 
 [[package]]
 name = "coffeeanimate3d"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "base64 0.22.1",
  "coffee-core",
@@ -396,7 +396,7 @@ dependencies = [
 
 [[package]]
 name = "coffeebooks"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -406,7 +406,7 @@ dependencies = [
 
 [[package]]
 name = "coffeecalc"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -416,7 +416,7 @@ dependencies = [
 
 [[package]]
 name = "coffeedatabase"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -426,7 +426,7 @@ dependencies = [
 
 [[package]]
 name = "coffeedoc"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -436,7 +436,7 @@ dependencies = [
 
 [[package]]
 name = "coffeeedit"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "coffee-core",
  "dirs 5.0.1",
@@ -448,7 +448,7 @@ dependencies = [
 
 [[package]]
 name = "coffeeencoder"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -458,7 +458,7 @@ dependencies = [
 
 [[package]]
 name = "coffeelens"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -468,7 +468,7 @@ dependencies = [
 
 [[package]]
 name = "coffeelive"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "coffee-core",
  "dirs 5.0.1",
@@ -481,7 +481,7 @@ dependencies = [
 
 [[package]]
 name = "coffeemotion"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -491,7 +491,7 @@ dependencies = [
 
 [[package]]
 name = "coffeepage"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -501,7 +501,7 @@ dependencies = [
 
 [[package]]
 name = "coffeepaint"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -511,7 +511,7 @@ dependencies = [
 
 [[package]]
 name = "coffeepdf"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -521,7 +521,7 @@ dependencies = [
 
 [[package]]
 name = "coffeephoto"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -531,7 +531,7 @@ dependencies = [
 
 [[package]]
 name = "coffeepuppet"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -541,7 +541,7 @@ dependencies = [
 
 [[package]]
 name = "coffeesound"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -551,7 +551,7 @@ dependencies = [
 
 [[package]]
 name = "coffeeuiux"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -561,7 +561,7 @@ dependencies = [
 
 [[package]]
 name = "coffeeuml"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -571,7 +571,7 @@ dependencies = [
 
 [[package]]
 name = "coffeevector"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -581,7 +581,7 @@ dependencies = [
 
 [[package]]
 name = "coffeeview"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "coffee-core",
  "tauri",
@@ -591,7 +591,7 @@ dependencies = [
 
 [[package]]
 name = "coffeeworks-launcher"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "coffee-core",
  "open",
