@@ -1,0 +1,162 @@
+[
+  {
+    "name": "get_model",
+    "description": "Describe el modelo abierto en CoffeeAnimate3D: piezas (id, nombre, padre, pivote, rotación, caja y colores de las caras) y animaciones (id, nombre, duración, bucle y fotogramas clave). Unidades: 16 = 1 bloque. Ejes: +Y arriba, +Z delante, +X a la derecha del modelo (izquierda del espectador que lo mira de frente).",
+    "inputSchema": { "type": "object", "properties": {} }
+  },
+  {
+    "name": "new_model",
+    "description": "Sustituye el modelo abierto por uno vacío o por una plantilla (cuadrúpedo, bípedo, ave o araña, con animaciones de reposo y andar). Se puede deshacer con Ctrl+Z en la app.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Nombre del modelo" },
+        "template": { "type": "string", "enum": ["cuadrúpedo", "bípedo", "ave", "araña"] }
+      }
+    }
+  },
+  {
+    "name": "add_part",
+    "description": "Añade una pieza: un cubo (con from y size) o un hueso vacío (sin from/size). El pivote es el centro de giro, relativo al pivote del padre; from es la esquina mínima de la caja relativa al pivote. Devuelve el id.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "parent": { "type": "string", "description": "Id o nombre de la pieza padre" },
+        "pivot": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+        "rotation": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "Grados XYZ" },
+        "from": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+        "size": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+        "color": { "type": "string", "description": "#rrggbb para todas las caras" }
+      },
+      "required": ["name"]
+    }
+  },
+  {
+    "name": "update_part",
+    "description": "Cambia una pieza (por id o nombre): nombre, padre, pivote, rotación de reposo, caja (from, size), color de todas las caras o visibilidad.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "part": { "type": "string" },
+        "name": { "type": "string" },
+        "parent": { "type": ["string", "null"] },
+        "pivot": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+        "rotation": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+        "from": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+        "size": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+        "color": { "type": "string" },
+        "visible": { "type": "boolean" }
+      },
+      "required": ["part"]
+    }
+  },
+  {
+    "name": "remove_part",
+    "description": "Elimina una pieza y todas sus hijas (y sus fotogramas clave).",
+    "inputSchema": { "type": "object", "properties": { "part": { "type": "string" } }, "required": ["part"] }
+  },
+  {
+    "name": "duplicate_part",
+    "description": "Duplica una pieza con sus hijas. Devuelve el id de la copia.",
+    "inputSchema": { "type": "object", "properties": { "part": { "type": "string" } }, "required": ["part"] }
+  },
+  {
+    "name": "mirror_part",
+    "description": "Crea la copia reflejada (eje X) de una pieza y sus hijas, con sus animaciones: por ejemplo la pata derecha a partir de la izquierda (cambia «izquierda» por «derecha» en el nombre).",
+    "inputSchema": { "type": "object", "properties": { "part": { "type": "string" } }, "required": ["part"] }
+  },
+  {
+    "name": "fill_face",
+    "description": "Rellena una cara de la caja con un color (borra lo pintado en ella). face: px (+X), nx (−X), py (arriba), ny (abajo), pz (delante), nz (detrás), o \"all\" para las seis.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "part": { "type": "string" },
+        "face": { "type": "string", "enum": ["px", "nx", "py", "ny", "pz", "nz", "all"] },
+        "color": { "type": "string" }
+      },
+      "required": ["part", "face", "color"]
+    }
+  },
+  {
+    "name": "paint_pixels",
+    "description": "Pinta píxeles en una cara (textura de 32×32; x de izquierda a derecha, y de arriba abajo, vista la cara desde fuera). Usa pixels para puntos sueltos o rect [x, y, ancho, alto] para un rectángulo.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "part": { "type": "string" },
+        "face": { "type": "string", "enum": ["px", "nx", "py", "ny", "pz", "nz"] },
+        "color": { "type": "string" },
+        "pixels": { "type": "array", "items": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2 } },
+        "rect": { "type": "array", "items": { "type": "integer" }, "minItems": 4, "maxItems": 4 }
+      },
+      "required": ["part", "face", "color"]
+    }
+  },
+  {
+    "name": "add_animation",
+    "description": "Crea una animación (por ejemplo «Andar», «Atacar», «Comer»). Devuelve el id.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "length": { "type": "number", "description": "Duración en segundos" },
+        "loop": { "type": "boolean" }
+      },
+      "required": ["name"]
+    }
+  },
+  {
+    "name": "set_keyframe",
+    "description": "Crea o cambia un fotograma clave de una pieza en una animación (por id o nombre). pos se suma al pivote; rot (grados XYZ) se suma a la rotación de reposo; scale multiplica. ease: smooth, linear o step (cómo se llega a la clave siguiente).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "animation": { "type": "string" },
+        "part": { "type": "string" },
+        "time": { "type": "number" },
+        "pos": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+        "rot": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+        "scale": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+        "ease": { "type": "string", "enum": ["smooth", "linear", "step"] }
+      },
+      "required": ["animation", "part", "time"]
+    }
+  },
+  {
+    "name": "remove_keyframe",
+    "description": "Quita un fotograma clave de una pieza en una animación.",
+    "inputSchema": {
+      "type": "object",
+      "properties": { "animation": { "type": "string" }, "part": { "type": "string" }, "time": { "type": "number" } },
+      "required": ["animation", "part", "time"]
+    }
+  },
+  {
+    "name": "update_animation",
+    "description": "Cambia el nombre, la duración o el bucle de una animación, o la elimina (remove: true).",
+    "inputSchema": {
+      "type": "object",
+      "properties": { "animation": { "type": "string" }, "name": { "type": "string" }, "length": { "type": "number" }, "loop": { "type": "boolean" }, "remove": { "type": "boolean" } },
+      "required": ["animation"]
+    }
+  },
+  {
+    "name": "preview",
+    "description": "Devuelve una captura PNG del modelo para comprobar cómo queda. Opcional: ángulo (frente, detrás, izquierda, derecha, arriba, isométrica) y una animación con su instante para ver la pose.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "angle": { "type": "string", "enum": ["frente", "detrás", "izquierda", "derecha", "arriba", "isométrica"] },
+        "animation": { "type": "string" },
+        "time": { "type": "number" }
+      }
+    }
+  },
+  {
+    "name": "export_glb",
+    "description": "Exporta el modelo con sus animaciones a glTF binario (.glb) en la carpeta Documentos/CoffeeWorks/Exportaciones. Devuelve la ruta del archivo.",
+    "inputSchema": { "type": "object", "properties": { "file_name": { "type": "string", "description": "Nombre del archivo sin ruta" } } }
+  }
+]

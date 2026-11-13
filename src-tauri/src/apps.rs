@@ -362,6 +362,22 @@ pub const CATALOG: &[CatalogApp] = &[
         extra_extensions: &[],
         claim_default: true,
     },
+    CatalogApp {
+        id: "coffeeanimate3d",
+        aliases: &[],
+        name: "CoffeeAnimate3D",
+        stem: "CoffeeAnimate3D",
+        subtitle: "Modelado y animación 3D por bloques",
+        description: "Modelos 3D hechos de cubos con texturas pixeladas de 32×32, huesos y animación por fotogramas clave; plantillas de cuadrúpedo, bípedo, ave y araña, exporta a glTF (.glb) y Claude puede modelar y animar por MCP.",
+        version: "v1.0",
+        color_badge: "art",
+        icon_name: "box",
+        icon_url: "/icons/CoffeeAnimate3D.ico",
+        category: "Ilustración",
+        file_type: ("ca3d", "Modelo de CoffeeAnimate3D"),
+        extra_extensions: &[],
+        claim_default: true,
+    },
 ];
 
 /// Estado de una aplicación tal como lo consume la interfaz del Launcher.

@@ -163,6 +163,14 @@ export const Slider: React.FC<{
   </div>
 );
 
+const SELECT_STYLE: React.CSSProperties = {
+  colorScheme: "dark",
+  WebkitAppearance: "none",
+  backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a1a1aa' stroke-width='1.5'/%3E%3C/svg%3E\")",
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "right 6px center",
+};
+
 export const Select: React.FC<{
   value: string;
   onChange: (v: string) => void;
@@ -174,7 +182,9 @@ export const Select: React.FC<{
     value={value}
     title={title}
     onChange={(e) => onChange(e.target.value)}
-    className={cx("bg-[#141416] border border-black/50 rounded h-6 px-1 text-[11px] text-[#e4e4e8] outline-none min-w-0", className)}
+    // Sin el estilo nativo: en WebKitGTK (Linux) la lista salía blanca con letra clara.
+    style={SELECT_STYLE}
+    className={cx("appearance-none bg-[#141416] border border-black/50 rounded h-6 pl-1 pr-5 text-[11px] text-[#e4e4e8] outline-none min-w-0", className)}
   >
     {options.map((o) => (
       <option key={o.value} value={o.value}>

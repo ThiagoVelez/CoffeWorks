@@ -19,6 +19,7 @@ import {
   RefreshCw,
   Film,
   Smile,
+  Box as BoxIcon,
   Database,
   CornerDownLeft,
   X,
@@ -157,7 +158,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
               </span>
               {filteredDocs.map((doc) => {
                 const docApp = appForDocument(doc);
-                const DocIcon = docApp === "coffeecalc" ? Table : docApp === "coffeeview" ? Presentation : docApp === "coffeepdf" ? FilePen : docApp === "coffeepage" ? NotebookPen : docApp === "coffeeedit" ? Scissors : docApp === "coffeelive" ? Radio : docApp === "coffeedatabase" ? Database : docApp === "coffeeuiux" ? PenTool : docApp === "coffeeuml" ? Workflow : docApp === "coffeephoto" ? ImageIcon : docApp === "coffeevector" ? PenLine : docApp === "coffeepaint" ? Brush : docApp === "coffeelens" ? Aperture : docApp === "coffeemotion" ? WandSparkles : docApp === "coffeesound" ? AudioWaveform : docApp === "coffeeencoder" ? RefreshCw : docApp === "coffeeanimate" ? Film : docApp === "coffeepuppet" ? Smile : FileText;
+                const DocIcon = docApp === "coffeecalc" ? Table : docApp === "coffeeview" ? Presentation : docApp === "coffeepdf" ? FilePen : docApp === "coffeepage" ? NotebookPen : docApp === "coffeeedit" ? Scissors : docApp === "coffeelive" ? Radio : docApp === "coffeedatabase" ? Database : docApp === "coffeeuiux" ? PenTool : docApp === "coffeeuml" ? Workflow : docApp === "coffeephoto" ? ImageIcon : docApp === "coffeevector" ? PenLine : docApp === "coffeepaint" ? Brush : docApp === "coffeelens" ? Aperture : docApp === "coffeemotion" ? WandSparkles : docApp === "coffeesound" ? AudioWaveform : docApp === "coffeeencoder" ? RefreshCw : docApp === "coffeeanimate" ? Film : docApp === "coffeepuppet" ? Smile : docApp === "coffeeanimate3d" ? BoxIcon : FileText;
 
                 return (
                   <button

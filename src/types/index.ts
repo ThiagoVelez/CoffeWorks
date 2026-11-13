@@ -59,6 +59,14 @@ export interface AddonInfo {
   manual_hint: string;
 }
 
+/** Servidor MCP de CoffeeAnimate3D para Claude. */
+export interface McpState {
+  enabled: boolean;
+  url: string;
+  connected: boolean;
+  installed: boolean;
+}
+
 /** Estado de las actualizaciones automáticas. */
 export interface UpdateInfo {
   current: string;

@@ -11,10 +11,11 @@ import { AddonsView } from "./components/AddonsView";
 import { GamesView } from "./components/GamesView";
 import { ThemeSwitch } from "./theme/ThemeSwitch";
 import { UpdateBanner, UpdateSettings, useUpdates } from "./components/Updates";
+import { McpSettings } from "./components/McpSettings";
 import { APP_STAGE, APP_VERSION } from "./version";
 import { isTauri, tauriBridge } from "./services/tauriBridge";
 import type { RecentDocument, SuiteApp, SuiteInfo } from "./types";
-import { Settings, CheckCircle2, AlertTriangle, FolderOpen } from "lucide-react";
+import { Settings, FolderOpen } from "lucide-react";
 
 interface Toast {
   message: string;
@@ -232,6 +233,7 @@ export const App: React.FC = () => {
         onOpenCommandPalette={() => setCommandPaletteOpen(true)}
         version={suiteInfo?.version ?? APP_VERSION}
         stage={suiteInfo ? suiteInfo.stage : APP_STAGE}
+        notice={toast}
       />
 
       <div className="flex flex-1 pt-10">
@@ -324,6 +326,8 @@ export const App: React.FC = () => {
                 onNotify={showNotification}
               />
 
+              <McpSettings onNotify={showNotification} />
+
               <div className="p-6 rounded-2xl bg-white border border-[#dfd3c7] flex flex-col gap-4 text-xs text-[#5c3a21]">
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input type="checkbox" checked={focusMode} onChange={handleToggleFocus} className="mt-0.5" />
@@ -369,20 +373,6 @@ export const App: React.FC = () => {
         onCreate={(docType, title) => void handleCreateDocument(docType, title)}
       />
 
-      {toast && (
-        <div
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-white border shadow-2xl font-mono text-xs max-w-md ${
-            toast.isError ? "border-red-300 text-red-800" : "border-[#dfd3c7] text-[#2c1b12]"
-          }`}
-        >
-          {toast.isError ? (
-            <AlertTriangle size={16} className="text-red-600 shrink-0" />
-          ) : (
-            <CheckCircle2 size={16} className="text-[#6f4e37] shrink-0" />
-          )}
-          <span>{toast.message}</span>
-        </div>
-      )}
     </div>
   );
 };

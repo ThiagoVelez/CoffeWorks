@@ -2,7 +2,7 @@
 ;
 ; Instala el Launcher (CoffeeWorks.exe) y deja los paquetes de CoffeeDoc,
 ; CoffeeCalc, CoffeeView, CoffeePDF, CoffeePage, CoffeeBooks, CoffeeDataBase, CoffeeEdit,
-; CoffeeLive, CoffeeUI/UX, CoffeeUML, CoffeePhoto, CoffeeVector, CoffeePaint, CoffeeLens, CoffeeMotion, CoffeeSound, CoffeeEncoder, CoffeeAnimate y CoffeePuppet en la carpeta "packages". Las aplicaciones se instalan
+; CoffeeLive, CoffeeUI/UX, CoffeeUML, CoffeePhoto, CoffeeVector, CoffeePaint, CoffeeLens, CoffeeMotion, CoffeeSound, CoffeeEncoder, CoffeeAnimate, CoffeePuppet y CoffeeAnimate3D en la carpeta "packages". Las aplicaciones se instalan
 ; y desinstalan después desde la Tienda de Apps del propio Launcher.
 ;
 ; Antes de compilar este script hay que generar los ejecutables con
@@ -11,7 +11,7 @@
 ;   powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 
 #define AppName "CoffeeWorks"
-#define AppVersion "2.10.0"
+#define AppVersion "2.11.0"
 #define AppPublisher "CoffeeWorks OpenSource Team"
 #define AppExeName "CoffeeWorks.exe"
 

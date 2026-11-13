@@ -12,7 +12,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const GROUPS = {
   spell: ["CoffeeDoc", "CoffeeView", "CoffeePDF", "CoffeeCalc", "CoffeePage", "CoffeeDataBase"],
   theme: [".", "CoffeeDoc", "CoffeeBooks", "CoffeeCalc", "CoffeeView", "CoffeePDF", "CoffeePage", "CoffeeDataBase", "CoffeeUIUX", "CoffeeUML", "CoffeeEdit", "CoffeeLive"],
-  studio: ["CoffeePhoto", "CoffeeVector", "CoffeePaint", "CoffeeLens", "CoffeeMotion", "CoffeeSound", "CoffeeEncoder", "CoffeeAnimate", "CoffeePuppet"],
+  studio: ["CoffeePhoto", "CoffeeVector", "CoffeePaint", "CoffeeLens", "CoffeeMotion", "CoffeeSound", "CoffeeEncoder", "CoffeeAnimate", "CoffeeAnimate3D", "CoffeePuppet"],
 };
 const check = process.argv.includes("--check");
 let stale = 0;
