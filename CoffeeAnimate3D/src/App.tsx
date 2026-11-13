@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FilePlus, FolderOpen, SaveAll, Home, Undo2, Redo2, Download, Keyboard, Info, Play, Pause, Plus, Trash2, Eye, EyeOff, Copy, FlipHorizontal2, Box as BoxIcon, Bone, Move3d, Rotate3d, Focus, Pencil, PaintBucket, Pipette, Diamond, Camera, Bot, Shapes, Scale3d, Ruler, Group, Ungroup, Minus, Cylinder, Circle, Triangle, Square } from "lucide-react";
+import { FilePlus, FolderOpen, SaveAll, Home, Undo2, Redo2, Download, Keyboard, Info, Play, Pause, Plus, Trash2, Eye, EyeOff, Copy, FlipHorizontal2, Box as BoxIcon, Bone, Move3d, Rotate3d, Focus, Pencil, PaintBucket, Pipette, Diamond, Camera, Bot, Shapes, Scale3d, Ruler, Group, Ungroup, Minus, Cylinder, Circle, Triangle, Square, ClipboardCopy, ClipboardPaste, Layers, Spline, FileUp, FileDown, ScanEye } from "lucide-react";
 import { SuiteHeader, type MenuDefinition } from "./studio/SuiteHeader";
 import { StartScreen } from "./studio/StartScreen";
 import { CommandSearch } from "./studio/CommandSearch";
@@ -7,12 +7,14 @@ import { DialogHost, askText, showMessage, toast } from "./studio/Dialogs";
 import { createDocStore } from "./studio/docStore";
 import { useStudioDoc } from "./studio/useStudioDoc";
 import { Button, IconButton, NumberField, STUDIO_CSS, Section, Select, Toggle, cx } from "./studio/ui";
-import { saveFileAs } from "./studio/desktop";
-import { ACCENT, ACCENT_DARK, FACE_LABEL, SHAPES, SHAPE_FACES, SHAPE_LABEL, type Ease, type Shape, type FaceName, type Model3D, type Part, type Vec3 } from "./types";
-import { addAnimation, addPart, descendants, duplicatePart, fillFace, findPart, getPixel, groupParts, mirrorPart, newModel, paintPixels, parseModel, removeAnimation, removeKeyframe, removePart, resizeBox, rotatePartsQuat, samplePose, scaleParts, serializeModel, setKeyframe, topLevel, translateParts, ungroup, updateAnimation, updatePart, wrapTime } from "./model";
+import { bytesToText, pickOpenFile, saveFileAs } from "./studio/desktop";
+import { makeZip } from "./studio/zip";
+import { ACCENT, ACCENT_DARK, EASES, FACE_LABEL, SHAPES, SHAPE_FACES, SHAPE_LABEL, type Ease, type Shape, type FaceName, type Model3D, type Part, type Vec3 } from "./types";
+import { addAnimation, addPart, clearReference, copyPose, getReference, moveKeyframe, pastePose, setReference, type PoseClip, descendants, duplicatePart, fillFace, findPart, getPixel, groupParts, mirrorPart, newModel, paintPixels, parseModel, removeAnimation, removeKeyframe, removePart, resizeBox, rotatePartsQuat, samplePose, scaleParts, serializeModel, setKeyframe, topLevel, translateParts, ungroup, updateAnimation, updatePart, wrapTime } from "./model";
 import { SNAP_OPTIONS, formatDistance, loadSnap, parseNumber, saveSnap, snapValue, type SnapPrefs, type SnapStep } from "./snap";
 import { TEMPLATES } from "./templates";
-import { exportGlb } from "./gltf";
+import { exportGlb, importGlb } from "./gltf";
+import { exportObj, parseObj } from "./objfile";
 import { Viewport, type GizmoMode, type TransformChange, type ViewAngle, type ViewTool } from "./viewport";
 import { useMcpBridge } from "./mcpBridge";
 
@@ -68,6 +70,9 @@ export const App: React.FC = () => {
   const [tool, setTool] = useState<PaintTool>("pencil");
   const [ease, setEase] = useState<Ease>("smooth");
   const [commandOpen, setCommandOpen] = useState(false);
+  const [onion, setOnion] = useState(false);
+  const [refVisible, setRefVisible] = useState(true);
+  const poseClip = useRef<PoseClip | null>(null);
 
   const hostRef = useRef<HTMLDivElement | null>(null);
   const vpRef = useRef<Viewport | null>(null);
@@ -135,6 +140,18 @@ export const App: React.FC = () => {
     hadParts.current = has;
   }, [doc, poseNow]);
   useEffect(() => vpRef.current?.applyPose(poseNow()), [time, poseNow]);
+  // Papel cebolla: la pose de la clave anterior y la siguiente (de cualquier pieza).
+  useEffect(() => {
+    const vp = vpRef.current;
+    if (!vp) return;
+    if (!onion || mode !== "animate" || !anim || !doc) return vp.setOnion(null);
+    const times = [...new Set(Object.values(anim.tracks).flatMap((k) => k.map((x) => x.t)))].sort((a, b) => a - b);
+    const prev = [...times].reverse().find((t) => t < time - 1e-4);
+    const next = times.find((t) => t > time + 1e-4);
+    vp.setOnion([prev, next].filter((t): t is number => t !== undefined).map((t) => samplePose(doc, anim.id, t)));
+  }, [onion, mode, anim, doc, time]);
+  const refMesh = useMemo(() => (doc ? getReference(doc) : null), [doc?.reference]);
+  useEffect(() => vpRef.current?.setReference(refMesh?.mesh ?? null, refVisible), [refMesh, refVisible, !!doc, sd.docId]);
   useEffect(() => vpRef.current?.select(selection), [selection]);
   useEffect(() => vpRef.current?.setSnap(snap.step, snap.rotate), [snap, !!doc, sd.docId]);
   useEffect(() => vpRef.current?.setTool(viewTool), [viewTool]);
@@ -303,6 +320,49 @@ export const App: React.FC = () => {
     if (k) apply(removeKeyframe(cur(), anim.id, sel, k.t));
   };
 
+  const copyPoseNow = () => {
+    if (!anim) return toast("Elige una animación", "info");
+    const ids = selection.length ? selection : cur().parts.map((p) => p.id);
+    poseClip.current = copyPose(cur(), anim.id, timeRef.current, ids);
+    toast(`Pose copiada (${ids.length} pieza${ids.length === 1 ? "" : "s"})`);
+  };
+  const pastePoseNow = (mirrored: boolean) => {
+    if (!anim || !poseClip.current) return toast("Copia antes una pose (Ctrl+Mayús+C)", "info");
+    const r = pastePose(cur(), anim.id, wrapTime(anim, timeRef.current), poseClip.current, mirrored, ease);
+    if (r.pasted) apply(r.model);
+    toast(r.skipped.length ? `Pose pegada en ${r.pasted}; sin pareja: ${r.skipped.join(", ")}` : `Pose ${mirrored ? "reflejada " : ""}pegada en ${r.pasted} pieza${r.pasted === 1 ? "" : "s"}`, r.pasted ? "success" : "info");
+  };
+
+  const importFile = async () => {
+    const f = await pickOpenFile([{ name: "Modelos 3D", extensions: ["glb", "obj"] }], "Importar modelo o referencia");
+    if (!f) return;
+    try {
+      if (f.name.toLowerCase().endsWith(".obj")) {
+        apply(setReference(cur(), f.name, parseObj(bytesToText(f.bytes))));
+        setRefVisible(true);
+        return toast("Referencia cargada: calca encima con cubos (Ver › Referencia)");
+      }
+      const r = importGlb(f.bytes);
+      if ("model" in r) {
+        apply(r.model);
+        setSel(null);
+        setTimeout(() => vpRef.current?.frame(), 50);
+        return toast("Modelo de CoffeeAnimate3D importado (Ctrl+Z para volver)");
+      }
+      apply(setReference(cur(), f.name, r.reference));
+      setRefVisible(true);
+      toast("Referencia cargada: calca encima con cubos (Ver › Referencia)");
+    } catch (e) {
+      toast(String((e as Error).message), "error");
+    }
+  };
+  const exportObjZip = async () => {
+    const base = (sd.title || "modelo").replace(/[\\/:*?"<>|]/g, "_");
+    const { obj, mtl, png } = exportObj(cur(), base);
+    const zip = makeZip([{ name: `${base}.obj`, data: obj }, { name: `${base}.mtl`, data: mtl }, { name: `${base}.png`, data: png }]);
+    if (await saveFileAs(`${base}-obj.zip`, [{ name: "ZIP con OBJ, MTL y PNG", extensions: ["zip"] }], zip, "Exportar a OBJ")) toast("Exportado a OBJ (.zip con .obj, .mtl y la textura)");
+  };
+
   const fromTemplate = (name: string) => {
     apply(TEMPLATES[name]());
     setSel(null);
@@ -355,6 +415,10 @@ export const App: React.FC = () => {
       } else if ((e.ctrlKey || e.metaKey) && k === "k") {
         e.preventDefault();
         setCommandOpen(true);
+      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (k === "c" || k === "v" || k === "b")) {
+        e.preventDefault();
+        if (k === "c") copyPoseNow();
+        else pastePoseNow(k === "b");
       } else if ((e.ctrlKey || e.metaKey) && k === "a") {
         e.preventDefault();
         setSelection(cur().parts.map((p) => p.id));
@@ -400,7 +464,9 @@ export const App: React.FC = () => {
             { divider: true },
             { label: "Guardar", shortcut: "Ctrl+S", action: () => void sd.flush().then(() => toast("Guardado")) },
             { label: "Guardar como…", icon: SaveAll, action: () => void sd.saveAs() },
+            { label: "Importar .glb u .obj…", icon: FileUp, action: () => void importFile() },
             { label: "Exportar a glTF (.glb)…", icon: Download, action: () => void exportModel() },
+            { label: "Exportar a OBJ (.zip)…", icon: FileDown, action: () => void exportObjZip() },
             { label: "Guardar captura (PNG)…", icon: Camera, action: () => void exportShot() },
             { divider: true },
             { label: "Pantalla de inicio", icon: Home, action: () => sd.setShowStart(true) },
@@ -439,6 +505,9 @@ export const App: React.FC = () => {
             { label: "Derecha", action: () => view("derecha") },
             { label: "Arriba", action: () => view("arriba") },
             { divider: true },
+            { label: refMesh ? `Referencia: ${refMesh.name}` : "Referencia (Archivo › Importar)", icon: ScanEye, checked: !!refMesh && refVisible, action: () => setRefVisible(!refVisible), disabled: !refMesh },
+            { label: "Quitar la referencia", action: () => apply(clearReference(cur())), disabled: !refMesh },
+            { divider: true },
             { label: "Modelar", checked: mode === "model", shortcut: "1", action: () => setMode("model") },
             { label: "Pintar", checked: mode === "paint", shortcut: "2", action: () => setMode("paint") },
             { label: "Animar", checked: mode === "animate", shortcut: "3", action: () => setMode("animate") },
@@ -452,6 +521,11 @@ export const App: React.FC = () => {
             { label: playing ? "Detener" : "Reproducir", icon: playing ? Pause : Play, shortcut: "Espacio", action: () => setPlaying(!playing), disabled: !anim },
             { label: "Fotograma clave en la pieza", icon: Diamond, shortcut: "K", action: keyHere, disabled: !anim || !sel },
             { label: "Quitar el fotograma clave", action: unkeyHere, disabled: !anim || !sel },
+            { divider: true },
+            { label: "Copiar pose", icon: ClipboardCopy, shortcut: "Ctrl+Mayús+C", action: copyPoseNow, disabled: !anim },
+            { label: "Pegar pose", icon: ClipboardPaste, shortcut: "Ctrl+Mayús+V", action: () => pastePoseNow(false), disabled: !anim },
+            { label: "Pegar pose reflejada (izquierda ↔ derecha)", icon: FlipHorizontal2, shortcut: "Ctrl+Mayús+B", action: () => pastePoseNow(true), disabled: !anim },
+            { label: "Papel cebolla", icon: Layers, checked: onion, action: () => setOnion(!onion) },
             { divider: true },
             { label: "Eliminar la animación", icon: Trash2, action: () => anim && apply(removeAnimation(cur(), anim.id)), disabled: !anim },
           ],
@@ -618,7 +692,9 @@ export const App: React.FC = () => {
                   onNew={() => void newAnim()}
                   onKey={keyHere}
                   onUnkey={unkeyHere}
-                  onChange={(m) => apply(m)}
+                  onChange={(m, key) => apply(m, key)}
+                  onion={onion}
+                  setOnion={setOnion}
                 />
               )}
             </main>
@@ -869,8 +945,11 @@ const Timeline: React.FC<{
   onNew: () => void;
   onKey: () => void;
   onUnkey: () => void;
-  onChange: (m: Model3D) => void;
-}> = ({ model, animId, setAnimId, time, setTime, playing, setPlaying, sel, setSel, ease, setEase, onNew, onKey, onUnkey, onChange }) => {
+  onChange: (m: Model3D, key?: string) => void;
+  onion: boolean;
+  setOnion: (v: boolean) => void;
+}> = ({ model, animId, setAnimId, time, setTime, playing, setPlaying, sel, setSel, ease, setEase, onNew, onKey, onUnkey, onChange, onion, setOnion }) => {
+  const [curves, setCurves] = useState(false);
   const anim = model.animations.find((a) => a.id === animId) ?? null;
   const barRef = useRef<HTMLDivElement | null>(null);
   const rows = useMemo(() => model.parts.filter((p) => anim?.tracks[p.id]?.length || p.id === sel), [model, anim, sel]);
@@ -889,7 +968,9 @@ const Timeline: React.FC<{
         <span className="font-mono text-[12px] text-[#c4c4cc] w-24">{anim ? `${time.toFixed(2)} / ${anim.length.toFixed(2)} s` : "—"}</span>
         <IconButton icon={Diamond} title="Fotograma clave en la pieza (K)" onClick={onKey} disabled={!anim || !sel} accent="#ffd166" />
         <IconButton icon={Trash2} title="Quitar el fotograma clave" onClick={onUnkey} disabled={!anim || !sel} />
-        <Select value={ease} onChange={(v) => setEase(v as Ease)} options={[{ value: "smooth", label: "Suave" }, { value: "linear", label: "Lineal" }, { value: "step", label: "Escalón" }]} className="w-24" title="Interpolación de las claves nuevas" />
+        <Select value={ease} onChange={(v) => setEase(v as Ease)} options={EASES.map((e) => ({ value: e, label: EASE_LABEL[e] }))} className="w-28" title="Interpolación de las claves nuevas" />
+        <IconButton icon={Spline} title="Curvas de la pieza" active={curves} onClick={() => setCurves(!curves)} disabled={!anim} />
+        <IconButton icon={Layers} title="Papel cebolla (claves anterior y siguiente)" active={onion} onClick={() => setOnion(!onion)} disabled={!anim} />
         {anim && (
           <>
             <div className="w-28">
@@ -899,7 +980,9 @@ const Timeline: React.FC<{
           </>
         )}
       </div>
-      {anim ? (
+      {anim && curves ? (
+        <CurveView model={model} anim={anim} partId={sel} time={time} setTime={setTime} onChange={onChange} />
+      ) : anim ? (
         <div className="flex-1 min-h-0 overflow-auto flex">
           <div className="w-44 shrink-0 border-r border-[#2a2a30]">
             <div className="h-6 border-b border-[#2a2a30]" />
@@ -920,7 +1003,7 @@ const Timeline: React.FC<{
             {rows.map((p) => (
               <div key={p.id} className="h-6 relative border-b border-[#232328]">
                 {(anim.tracks[p.id] ?? []).map((k) => (
-                  <button key={k.t} type="button" title={`${k.t.toFixed(2)} s · ${k.ease === "smooth" ? "suave" : k.ease === "step" ? "escalón" : "lineal"}`} onClick={() => { setSel(p.id); setTime(k.t); }} className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rotate-45 bg-[#ffd166] border border-[#7a5a10] hover:scale-125" style={{ left: `${(k.t / anim.length) * 100}%` }} data-key />
+                  <button key={k.t} type="button" title={`${k.t.toFixed(2)} s · ${EASE_LABEL[k.ease].toLowerCase()}`} onClick={() => { setSel(p.id); setTime(k.t); }} className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rotate-45 bg-[#ffd166] border border-[#7a5a10] hover:scale-125" style={{ left: `${(k.t / anim.length) * 100}%` }} data-key />
                 ))}
               </div>
             ))}
@@ -932,6 +1015,92 @@ const Timeline: React.FC<{
           No hay animaciones. <Button onClick={onNew}><Plus size={14} /> Crear una</Button>
         </div>
       )}
+    </div>
+  );
+};
+
+const EASE_LABEL: Record<Ease, string> = { smooth: "Suave", linear: "Lineal", step: "Escalón", "ease-in": "Entrada lenta", "ease-out": "Salida lenta" };
+const AXIS_COLOR = ["#ff6b6b", "#7bd88f", "#6ab0ff"];
+type Channel = "pos" | "rot" | "scale";
+const CHANNEL_LABEL: Record<Channel, string> = { pos: "Posición", rot: "Giro (°)", scale: "Escala" };
+
+/** Curvas de una pieza: un color por eje; las claves se arrastran (tiempo y valor). */
+const CurveView: React.FC<{ model: Model3D; anim: Model3D["animations"][number]; partId: string | null; time: number; setTime: (t: number) => void; onChange: (m: Model3D, key?: string) => void }> = ({ model, anim, partId, time, setTime, onChange }) => {
+  const [channel, setChannel] = useState<Channel>("rot");
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const drag = useRef<{ t: number; axis: 0 | 1 | 2; n: number } | null>(null);
+  const keys = partId ? anim.tracks[partId] ?? [] : [];
+  const W = 1000;
+  const H = 120;
+  const samples = useMemo(() => {
+    if (!partId || !keys.length) return [] as number[][];
+    return Array.from({ length: 81 }, (_, i) => {
+      const t = (i / 80) * anim.length;
+      const p = samplePose(model, anim.id, Math.min(t, anim.length - 1e-6)).get(partId);
+      return p ? p[channel] : [0, 0, 0];
+    });
+  }, [model, anim, partId, channel, keys.length]);
+  const all = [...samples.flat(), ...keys.flatMap((k) => k[channel])];
+  const lo = Math.min(0, ...all);
+  const hi = Math.max(lo + 1, ...all);
+  const pad = (hi - lo) * 0.1;
+  const y = (v: number) => H - ((v - lo + pad) / (hi - lo + 2 * pad)) * H;
+  const x = (t: number) => (t / anim.length) * W;
+  const toValue = (py: number) => lo - pad + ((H - py) / H) * (hi - lo + 2 * pad);
+  const onMove = (e: React.PointerEvent) => {
+    const d = drag.current;
+    if (!d || !partId || !svgRef.current) return;
+    const r = svgRef.current.getBoundingClientRect();
+    const t = Math.round(Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) * anim.length * 24) / 24;
+    const v = Math.round(toValue(((e.clientY - r.top) / r.height) * H) * 10) / 10;
+    try {
+      const next = moveKeyframe(model, anim.id, partId, d.t, { t, channel: { kind: channel, axis: d.axis, value: v } });
+      onChange(next, `curve-${d.n}`);
+      d.t = Math.round(t * 1000) / 1000;
+      setTime(d.t);
+    } catch {
+      /* la clave ya no existe */
+    }
+  };
+  if (!partId) return <div className="flex-1 flex items-center justify-center text-[12px] text-[#8a8a92]">Elige una pieza para ver sus curvas.</div>;
+  return (
+    <div className="flex-1 min-h-0 flex flex-col px-3 py-2 gap-1" data-curves>
+      <div className="flex items-center gap-2 text-[11px] text-[#a1a1aa]">
+        {(["pos", "rot", "scale"] as Channel[]).map((c) => (
+          <button key={c} type="button" onClick={() => setChannel(c)} className={cx("px-2 h-6 rounded", channel === c ? "bg-[#ff8a3d] text-[#1a1a1d] font-semibold" : "hover:bg-[#2a2a30]")}>
+            {CHANNEL_LABEL[c]}
+          </button>
+        ))}
+        <span className="ml-2">{["X", "Y", "Z"].map((a, i) => <span key={a} className="mr-2" style={{ color: AXIS_COLOR[i] }}>■ {a}</span>)}</span>
+        {!keys.length && <span>Esta pieza no tiene claves en «{anim.name}».</span>}
+      </div>
+      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="flex-1 w-full bg-[#141416] rounded border border-[#2a2a30]" onPointerMove={onMove} onPointerUp={() => (drag.current = null)} onPointerLeave={() => (drag.current = null)}>
+        <line x1={0} x2={W} y1={y(0)} y2={y(0)} stroke="#2c2c33" />
+        <line x1={x(time)} x2={x(time)} y1={0} y2={H} stroke="#ff8a3d" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+        {[0, 1, 2].map((axis) => (
+          <polyline key={axis} fill="none" stroke={AXIS_COLOR[axis]} strokeWidth={1.5} vectorEffect="non-scaling-stroke" points={samples.map((v, i) => `${(i / 80) * W},${y(v[axis])}`).join(" ")} />
+        ))}
+        {keys.map((k) =>
+          [0, 1, 2].map((axis) => (
+            <rect
+              key={`${k.t}-${axis}`}
+              x={x(k.t) - 6}
+              y={y(k[channel][axis]) - 3}
+              width={12}
+              height={6}
+              fill={AXIS_COLOR[axis]}
+              stroke="#111"
+              className="cursor-move"
+              data-curve-key
+              onPointerDown={(e) => {
+                (e.target as Element).setPointerCapture?.(e.pointerId);
+                drag.current = { t: k.t, axis: axis as 0 | 1 | 2, n: Date.now() };
+                setTime(k.t);
+              }}
+            />
+          )),
+        )}
+      </svg>
     </div>
   );
 };

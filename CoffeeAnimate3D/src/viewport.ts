@@ -90,6 +90,8 @@ export class Viewport {
   private rect: { x: number; y: number; el: HTMLDivElement } | null = null;
   private camAnim: { from: THREE.Vector3; to: THREE.Vector3; dist: number; start: number } | null = null;
   private lastQuat = new THREE.Quaternion(2, 0, 0, 0);
+  private ghosts = new THREE.Group();
+  private reference: THREE.Mesh | null = null;
   private painting = false;
   private lastPaint = "";
   private raf = 0;
@@ -114,7 +116,7 @@ export class Viewport {
     const fine = new THREE.GridHelper(64, 64, "#2c2c33", "#2c2c33");
     const blocks = new THREE.GridHelper(64, 4, "#4a4a55", "#4a4a55");
     blocks.position.y = 0.01;
-    this.scene.add(fine, blocks, this.root);
+    this.scene.add(fine, blocks, this.root, this.ghosts);
     const el = this.renderer.domElement;
     // Antes que OrbitControls: Mayús+arrastre en vacío es un rectángulo de selección.
     el.addEventListener("pointerdown", this.onDown, { capture: true });
@@ -225,6 +227,61 @@ export class Viewport {
     }
     this.applyPose(pose);
     this.select(this.selected.filter((id) => this.groups.has(id)));
+  }
+
+  /** Papel cebolla: fantasmas translúcidos del modelo en otras poses (o null para quitarlos). */
+  setOnion(poses: Map<string, Pose>[] | null) {
+    for (const c of [...this.ghosts.children]) {
+      c.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (mesh.isMesh) {
+          mesh.geometry.dispose();
+          (mesh.material as THREE.Material).dispose();
+        }
+      });
+      this.ghosts.remove(c);
+    }
+    if (!poses || !this.model) return;
+    const colors = ["#8ab4ff", "#ffb27a"];
+    poses.forEach((pose, i) => {
+      const groups = new Map<string, THREE.Group>();
+      const top = new THREE.Group();
+      for (const p of this.model!.parts) {
+        const g = new THREE.Group();
+        groups.set(p.id, g);
+        const ps = pose.get(p.id);
+        g.position.set(p.pivot[0] + (ps?.pos[0] ?? 0), p.pivot[1] + (ps?.pos[1] ?? 0), p.pivot[2] + (ps?.pos[2] ?? 0));
+        g.rotation.set((p.rotation[0] + (ps?.rot[0] ?? 0)) * DEG, (p.rotation[1] + (ps?.rot[1] ?? 0)) * DEG, (p.rotation[2] + (ps?.rot[2] ?? 0)) * DEG, "XYZ");
+        g.scale.set(ps?.scale[0] ?? 1, ps?.scale[1] ?? 1, ps?.scale[2] ?? 1);
+        if (p.box && p.visible) {
+          const mesh = new THREE.Mesh(partGeometry(p.box), new THREE.MeshBasicMaterial({ color: colors[i % 2], transparent: true, opacity: 0.22, depthWrite: false }));
+          mesh.raycast = () => {};
+          g.add(mesh);
+        }
+      }
+      for (const p of this.model!.parts) (p.parent ? groups.get(p.parent) ?? top : top).add(groups.get(p.id)!);
+      this.ghosts.add(top);
+    });
+  }
+
+  /** Malla de referencia para calcar (gris, semitransparente, no se puede tocar). */
+  setReference(mesh: { positions: number[]; indices: number[] } | null, visible = true) {
+    if (this.reference) {
+      this.scene.remove(this.reference);
+      this.reference.geometry.dispose();
+      (this.reference.material as THREE.Material).dispose();
+      this.reference = null;
+    }
+    if (!mesh) return;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(mesh.positions, 3));
+    geo.setIndex(mesh.indices);
+    geo.computeVertexNormals();
+    this.reference = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: "#9a9aa6", transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false }));
+    this.reference.raycast = () => {};
+    this.reference.visible = visible;
+    this.reference.userData.reference = true;
+    this.scene.add(this.reference);
   }
 
   /** Coloca cada pieza con su pivote, su rotación de reposo y la pose animada. */
@@ -555,6 +612,10 @@ export class Viewport {
     const hadHelper = helper.visible;
     helper.visible = false;
     for (const o of this.outlines) o.visible = false;
+    const hadRef = this.reference?.visible ?? false;
+    if (this.reference) this.reference.visible = false;
+    const hadGhosts = this.ghosts.visible;
+    this.ghosts.visible = false;
     const oldSize = this.renderer.getSize(new THREE.Vector2());
     this.renderer.setSize(width, height, false);
     this.camera.aspect = width / height;
@@ -564,6 +625,8 @@ export class Viewport {
     const url = this.renderer.domElement.toDataURL("image/png");
     helper.visible = hadHelper;
     for (const o of this.outlines) o.visible = true;
+    if (this.reference) this.reference.visible = hadRef;
+    this.ghosts.visible = hadGhosts;
     this.renderer.setSize(oldSize.x, oldSize.y, false);
     this.camera.aspect = prev.aspect;
     this.camera.updateProjectionMatrix();
