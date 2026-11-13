@@ -4,7 +4,7 @@
 
 import { addAnimation, addPart, duplicatePart, fillFace, groupParts, mirrorPart, ungroup, newModel, paintPixels, removeAnimation, removeKeyframe, removePart, setKeyframe, updateAnimation, updatePart, type PartPatch } from "./model";
 import { TEMPLATES } from "./templates";
-import { FACES, TEX, type Ease, type FaceName, type Model3D, type Vec3 } from "./types";
+import { FACES, SHAPES, TEX, type Ease, type Shape, type FaceName, type Model3D, type Vec3 } from "./types";
 import type { ViewAngle } from "./viewport";
 
 export type Content = { type: "text"; text: string } | { type: "image"; data: string; mimeType: string };
@@ -57,6 +57,12 @@ function animRef(m: Model3D, ref: unknown): string {
   const a = m.animations.find((x) => x.id === ref) ?? m.animations.find((x) => x.name.toLowerCase() === ref.toLowerCase());
   if (!a) throw new ToolError(`No hay ninguna animación «${ref}»`);
   return a.id;
+}
+
+function shapeArg(v: unknown): Shape | undefined {
+  if (v === undefined || v === null) return undefined;
+  if (typeof v !== "string" || !SHAPES.includes(v as Shape)) throw new ToolError("shape debe ser box, cylinder, sphere, ramp o plane");
+  return v as Shape;
 }
 
 function faceArg(v: unknown): FaceName {
@@ -114,7 +120,7 @@ const HANDLERS: Record<string, Handler> = {
       parent: a.parent ? partRef(m, a.parent) : null,
       pivot: vec(a.pivot, "pivot"),
       rotation: vec(a.rotation, "rotation"),
-      box: from && size ? { from, size, color: a.color !== undefined ? colorArg(a.color) : undefined } : null,
+      box: from && size ? { from, size, shape: shapeArg(a.shape), color: a.color !== undefined ? colorArg(a.color) : undefined } : null,
     });
     return ok(`Pieza «${a.name}» creada (id ${id}).`, { model: next, select: id });
   },
@@ -127,8 +133,9 @@ const HANDLERS: Record<string, Handler> = {
     if (a.pivot !== undefined) patch.pivot = vec(a.pivot, "pivot");
     if (a.rotation !== undefined) patch.rotation = vec(a.rotation, "rotation");
     if (typeof a.visible === "boolean") patch.visible = a.visible;
-    if (a.from !== undefined || a.size !== undefined || a.color !== undefined) {
+    if (a.from !== undefined || a.size !== undefined || a.color !== undefined || a.shape !== undefined) {
       patch.box = {};
+      if (a.shape !== undefined) patch.box.shape = shapeArg(a.shape);
       if (a.from !== undefined) patch.box.from = vec(a.from, "from");
       if (a.size !== undefined) patch.box.size = vec(a.size, "size");
       if (a.color !== undefined) patch.box.color = colorArg(a.color);

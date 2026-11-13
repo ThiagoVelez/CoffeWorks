@@ -27,6 +27,7 @@
         "rotation": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "Grados XYZ" },
         "from": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
         "size": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+        "shape": { "type": "string", "enum": ["box", "cylinder", "sphere", "ramp", "plane"], "description": "Forma (por defecto box). Cilindro: eje Y; rampa: sube hacia −Z; plano: solo la cara de arriba." },
         "color": { "type": "string", "description": "#rrggbb para todas las caras" }
       },
       "required": ["name"]
@@ -45,6 +46,7 @@
         "rotation": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
         "from": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
         "size": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+        "shape": { "type": "string", "enum": ["box", "cylinder", "sphere", "ramp", "plane"], "description": "Forma (por defecto box). Cilindro: eje Y; rampa: sube hacia −Z; plano: solo la cara de arriba." },
         "color": { "type": "string" },
         "visible": { "type": "boolean" }
       },

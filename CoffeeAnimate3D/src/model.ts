@@ -3,14 +3,14 @@
 
 import { newId } from "./studio/color";
 import { eulerFromQuat, quatFromAxisAngle, quatFromEuler, quatMul, rotateVec, type Quat } from "./rotation";
-import { FACES, TEX, type Animation, type Box, type Ease, type FaceName, type FaceTex, type Keyframe, type Model3D, type Part, type Pose, type Vec3 } from "./types";
+import { FACES, SHAPES, TEX, type Shape, type Animation, type Box, type Ease, type FaceName, type FaceTex, type Keyframe, type Model3D, type Part, type Pose, type Vec3 } from "./types";
 
 export const DEFAULT_COLOR = "#c8a27a";
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
 export function newModel(name = "Modelo sin título"): Model3D {
-  return { version: 1, name, parts: [], animations: [] };
+  return { version: 2, name, parts: [], animations: [] };
 }
 
 function makeFaces(color: string): Record<FaceName, FaceTex> {
@@ -20,6 +20,7 @@ function makeFaces(color: string): Record<FaceName, FaceTex> {
 }
 
 export interface BoxInput {
+  shape?: Shape;
   from: Vec3;
   size: Vec3;
   color?: string;
@@ -39,7 +40,7 @@ function toBox(b: BoxInput): Box {
   if (b.size.some((s) => !(s > 0))) throw new Error("El tamaño de la caja debe ser mayor que 0");
   const faces = makeFaces(b.color ?? DEFAULT_COLOR);
   for (const n of FACES) if (b.faces?.[n]) faces[n] = { ...b.faces[n]! };
-  return { from: [...b.from] as Vec3, size: [...b.size] as Vec3, faces };
+  return { shape: b.shape ?? "box", from: [...b.from] as Vec3, size: [...b.size] as Vec3, faces };
 }
 
 export function findPart(m: Model3D, id: string): Part {
@@ -103,6 +104,7 @@ export function updatePart(m: Model3D, id: string, patch: PartPatch): Model3D {
   if (patch.box === null) next.box = null;
   else if (patch.box) {
     const base = next.box ?? toBox({ from: [0, 0, 0], size: [4, 4, 4], color: patch.box.color });
+    if (patch.box.shape) base.shape = patch.box.shape;
     if (patch.box.from) base.from = [...patch.box.from] as Vec3;
     if (patch.box.size) {
       if (patch.box.size.some((s) => !(s > 0))) throw new Error("El tamaño de la caja debe ser mayor que 0");
@@ -374,6 +376,7 @@ export function validateModel(m: Model3D): string[] {
     while (cur && steps++ <= m.parts.length) cur = m.parts.find((x) => x.id === cur)?.parent ?? null;
     if (steps > m.parts.length) issues.push(`«${p.name}» está en un ciclo`);
     if (p.box && p.box.size.some((s) => !(s > 0))) issues.push(`«${p.name}» tiene una caja de tamaño 0`);
+    if (p.box && !SHAPES.includes(p.box.shape)) issues.push(`«${p.name}» tiene una forma desconocida`);
   }
   for (const a of m.animations) for (const pid of Object.keys(a.tracks)) if (!ids.has(pid)) issues.push(`la animación «${a.name}» anima una pieza que no existe`);
   return issues;
@@ -396,7 +399,7 @@ export function parseModel(text: string): Model3D {
   } catch {
     throw new Error("El archivo no es un modelo de CoffeeAnimate3D válido.");
   }
-  if (!raw || raw.version !== 1 || !Array.isArray(raw.parts)) throw new Error("Versión de archivo desconocida o modelo dañado.");
+  if (!raw || (raw.version !== 1 && raw.version !== 2) || !Array.isArray(raw.parts)) throw new Error("Versión de archivo desconocida o modelo dañado.");
   const parts: Part[] = raw.parts
     .filter((p: any) => p && typeof p.id === "string")
     .map((p: any): Part => {
@@ -408,7 +411,7 @@ export function parseModel(text: string): Model3D {
           faces[n] = { color: color(f?.color) };
           if (typeof f?.pixels === "string") faces[n].pixels = f.pixels;
         }
-        box = { from: vec(p.box.from, [0, 0, 0]), size: vec(p.box.size, [1, 1, 1]).map((s) => (s > 0 ? s : 1)) as Vec3, faces };
+        box = { shape: SHAPES.includes(p.box.shape) ? p.box.shape : "box", from: vec(p.box.from, [0, 0, 0]), size: vec(p.box.size, [1, 1, 1]).map((s) => (s > 0 ? s : 1)) as Vec3, faces };
       }
       return { id: p.id, name: str(p.name, "Pieza"), parent: typeof p.parent === "string" ? p.parent : null, pivot: vec(p.pivot, [0, 0, 0]), rotation: vec(p.rotation, [0, 0, 0]), box, visible: p.visible !== false };
     });
@@ -426,7 +429,7 @@ export function parseModel(text: string): Model3D {
       }
       return { id: a.id, name: str(a.name, "Animación"), length: Math.max(0.05, num(a.length, 1)), loop: a.loop !== false, tracks };
     });
-  return { version: 1, name: str(raw.name, "Modelo"), parts, animations };
+  return { version: 2, name: str(raw.name, "Modelo"), parts, animations };
 }
 
 // ---------------------------------------------------------------------------

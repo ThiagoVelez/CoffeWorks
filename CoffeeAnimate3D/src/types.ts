@@ -26,7 +26,21 @@ export interface FaceTex {
   pixels?: string;
 }
 
+/** Forma de la pieza. Todas usan las caras del cubo (cada forma decide cuáles). */
+export type Shape = "box" | "cylinder" | "sphere" | "ramp" | "plane";
+export const SHAPES: Shape[] = ["box", "cylinder", "sphere", "ramp", "plane"];
+export const SHAPE_LABEL: Record<Shape, string> = { box: "Cubo", cylinder: "Cilindro", sphere: "Esfera", ramp: "Rampa", plane: "Plano" };
+/** Caras con textura de cada forma (cilindro: tapas y 4 cuartos del lateral; rampa: `py` es la pendiente). */
+export const SHAPE_FACES: Record<Shape, FaceName[]> = {
+  box: FACES,
+  cylinder: FACES,
+  sphere: FACES,
+  ramp: ["px", "nx", "py", "ny", "nz"],
+  plane: ["py"],
+};
+
 export interface Box {
+  shape: Shape;
   /** Esquina mínima relativa al pivote de la pieza. */
   from: Vec3;
   size: Vec3;
@@ -69,7 +83,7 @@ export interface Animation {
 }
 
 export interface Model3D {
-  version: 1;
+  version: 2;
   name: string;
   parts: Part[];
   animations: Animation[];
