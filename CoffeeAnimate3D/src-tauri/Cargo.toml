@@ -1,0 +1,22 @@
+[package]
+name = "coffeeanimate3d"
+description = "Modelado y animación 3D de la suite CoffeeWorks"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "CoffeeAnimate3D"
+path = "src/main.rs"
+
+[features]
+# Activa el modo de producción (frontend embebido en el ejecutable).
+custom-protocol = ["tauri/custom-protocol"]
+
+[build-dependencies]
+tauri-build = { workspace = true }
+
+[dependencies]
+tauri = { workspace = true }
+tauri-plugin-dialog = { workspace = true }
+coffee-core = { workspace = true }
