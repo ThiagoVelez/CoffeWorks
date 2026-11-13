@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FilePlus, FolderOpen, SaveAll, Home, Undo2, Redo2, Download, Keyboard, Info, Play, Pause, Plus, Trash2, Eye, EyeOff, Copy, FlipHorizontal2, Box as BoxIcon, Bone, Move3d, Rotate3d, Focus, Pencil, PaintBucket, Pipette, Diamond, Camera, Bot, Shapes } from "lucide-react";
+import { FilePlus, FolderOpen, SaveAll, Home, Undo2, Redo2, Download, Keyboard, Info, Play, Pause, Plus, Trash2, Eye, EyeOff, Copy, FlipHorizontal2, Box as BoxIcon, Bone, Move3d, Rotate3d, Focus, Pencil, PaintBucket, Pipette, Diamond, Camera, Bot, Shapes, Scale3d, Ruler, Group, Ungroup, Minus } from "lucide-react";
 import { SuiteHeader, type MenuDefinition } from "./studio/SuiteHeader";
 import { StartScreen } from "./studio/StartScreen";
 import { CommandSearch } from "./studio/CommandSearch";
@@ -9,10 +9,11 @@ import { useStudioDoc } from "./studio/useStudioDoc";
 import { Button, IconButton, NumberField, STUDIO_CSS, Section, Select, Toggle, cx } from "./studio/ui";
 import { saveFileAs } from "./studio/desktop";
 import { ACCENT, ACCENT_DARK, FACES, FACE_LABEL, type Ease, type FaceName, type Model3D, type Part, type Vec3 } from "./types";
-import { addAnimation, addPart, descendants, duplicatePart, fillFace, findPart, getPixel, mirrorPart, newModel, paintPixels, parseModel, removeAnimation, removeKeyframe, removePart, samplePose, serializeModel, setKeyframe, updateAnimation, updatePart, wrapTime } from "./model";
+import { addAnimation, addPart, descendants, duplicatePart, fillFace, findPart, getPixel, groupParts, mirrorPart, newModel, paintPixels, parseModel, removeAnimation, removeKeyframe, removePart, resizeBox, rotateParts, samplePose, scaleParts, serializeModel, setKeyframe, topLevel, translateParts, ungroup, updateAnimation, updatePart, wrapTime } from "./model";
+import { SNAP_OPTIONS, formatDistance, loadSnap, saveSnap, snapValue, type SnapPrefs, type SnapStep } from "./snap";
 import { TEMPLATES } from "./templates";
 import { exportGlb } from "./gltf";
-import { Viewport, type GizmoMode, type ViewAngle } from "./viewport";
+import { Viewport, type GizmoMode, type TransformChange, type ViewAngle, type ViewTool } from "./viewport";
 import { useMcpBridge } from "./mcpBridge";
 
 const store = createDocStore<Model3D>({
@@ -41,7 +42,18 @@ export const App: React.FC = () => {
   const cur = () => docRef.current!;
   const apply = useCallback((next: Model3D, key = "") => sd.apply(next, key), [sd]);
 
-  const [sel, setSel] = useState<string | null>(null);
+  // Selección: la última pieza es la principal (propiedades, línea de tiempo, gizmo).
+  const [selection, setSelection] = useState<string[]>([]);
+  const sel = selection.at(-1) ?? null;
+  const setSel = useCallback((id: string | null) => setSelection(id ? [id] : []), []);
+  const toggleSel = (id: string) => setSelection((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  const [snap, setSnapState] = useState<SnapPrefs>(() => loadSnap());
+  const setSnap = (next: SnapPrefs) => {
+    setSnapState(next);
+    saveSnap(next);
+  };
+  const [viewTool, setViewTool] = useState<ViewTool>("select");
+  const [measured, setMeasured] = useState<number | null>(null);
   const [mode, setMode] = useState<Mode>("model");
   const [gizmo, setGizmoState] = useState<GizmoMode>("translate");
   const [animId, setAnimId] = useState<string | null>(null);
@@ -67,8 +79,8 @@ export const App: React.FC = () => {
     if (doc && (!animId || !doc.animations.some((a) => a.id === animId))) setAnimId(doc.animations[0]?.id ?? null);
   }, [doc, animId]);
   useEffect(() => {
-    if (doc && sel && !doc.parts.some((p) => p.id === sel)) setSel(null);
-  }, [doc, sel]);
+    if (doc && selection.some((id) => !doc.parts.some((p) => p.id === id))) setSelection((s) => s.filter((id) => doc.parts.some((p) => p.id === id)));
+  }, [doc, selection]);
   useEffect(() => {
     setSel(null);
     setTime(0);
@@ -85,16 +97,19 @@ export const App: React.FC = () => {
   const modeRef = useRef(mode);
   modeRef.current = mode;
   const handlers = useRef({
-    onSelect: (id: string | null) => setSel(id),
-    onTransform: (_id: string, _c: { pivot?: Vec3; rotation?: Vec3 }) => {},
+    onSelect: (_id: string | null, _additive: boolean) => {},
+    onSelectRect: (_ids: string[], _additive: boolean) => {},
+    onTransform: (_c: TransformChange) => {},
     onPaint: (_id: string, _f: FaceName, _x: number, _y: number, _last: boolean) => {},
   });
 
   useEffect(() => {
     if (!hostRef.current || !doc) return;
     const vp = new Viewport(hostRef.current, {
-      onSelect: (id) => handlers.current.onSelect(id),
-      onTransform: (id, c) => handlers.current.onTransform(id, c),
+      onSelect: (id, additive) => handlers.current.onSelect(id, additive),
+      onSelectRect: (ids, additive) => handlers.current.onSelectRect(ids, additive),
+      onTransform: (c) => handlers.current.onTransform(c),
+      onMeasure: (d) => setMeasured(d),
       onPaint: (id, f, x, y, last) => handlers.current.onPaint(id, f, x, y, last),
     });
     vpRef.current = vp;
@@ -120,22 +135,47 @@ export const App: React.FC = () => {
     hadParts.current = has;
   }, [doc, poseNow]);
   useEffect(() => vpRef.current?.applyPose(poseNow()), [time, poseNow]);
-  useEffect(() => vpRef.current?.select(sel), [sel]);
+  useEffect(() => vpRef.current?.select(selection), [selection]);
+  useEffect(() => vpRef.current?.setSnap(snap.step, snap.rotate), [snap, !!doc, sd.docId]);
+  useEffect(() => vpRef.current?.setTool(viewTool), [viewTool]);
   useEffect(() => vpRef.current?.setMode(mode), [mode]);
   useEffect(() => vpRef.current?.setGizmo(gizmo), [gizmo]);
 
+  handlers.current.onSelect = (id, additive) => {
+    if (!id) return additive ? undefined : setSel(null);
+    if (additive) toggleSel(id);
+    else setSel(id);
+  };
+  handlers.current.onSelectRect = (ids, additive) => setSelection((s) => (additive ? [...s.filter((x) => !ids.includes(x)), ...ids] : ids));
+
   // Gizmo: en Modelar cambia el reposo; en Animar crea una clave en el instante actual.
-  handlers.current.onTransform = (id, c) => {
+  handlers.current.onTransform = (c) => {
     const d = cur();
-    const part = findPart(d, id);
-    if (modeRef.current === "animate" && animId) {
-      const a = d.animations.find((x) => x.id === animId)!;
-      const t = wrapTime(a, timeRef.current);
-      const v: { pos?: Vec3; rot?: Vec3; ease: Ease } = { ease };
-      if (c.pivot) v.pos = c.pivot.map((p, k) => ROUND(p - part.pivot[k])) as Vec3;
-      if (c.rotation) v.rot = c.rotation.map((r, k) => ROUND(r - part.rotation[k])) as Vec3;
-      apply(setKeyframe(d, animId, id, t, v));
-    } else apply(updatePart(d, id, c));
+    try {
+      if (c.delta) return apply(translateParts(d, c.ids, c.delta));
+      if (c.rotate) return apply(rotateParts(d, c.ids, c.rotate.axis, c.rotate.deg, c.rotate.center));
+      const id = c.ids[0];
+      const part = findPart(d, id);
+      if (modeRef.current === "animate" && animId) {
+        const a = d.animations.find((x) => x.id === animId)!;
+        const t = wrapTime(a, timeRef.current);
+        const v: { pos?: Vec3; rot?: Vec3; scale?: Vec3; ease: Ease } = { ease };
+        if (c.pivot) v.pos = c.pivot.map((p, k) => ROUND(p - part.pivot[k])) as Vec3;
+        if (c.rotation) v.rot = c.rotation.map((r, k) => ROUND(r - part.rotation[k])) as Vec3;
+        if (c.scale) v.scale = c.scale.factor.map((f) => Math.max(0.05, ROUND(f))) as Vec3;
+        return apply(setKeyframe(d, animId, id, t, v));
+      }
+      if (c.scale && c.ids.length > 1) return apply(scaleParts(d, c.ids, c.scale.factor, c.scale.center));
+      if (c.scale) {
+        if (!part.box) return;
+        const size = part.box.size.map((v, k) => snapValue(v * c.scale!.factor[k], snap.step)) as Vec3;
+        return apply(resizeBox(d, id, size, "pivot"));
+      }
+      apply(updatePart(d, id, { pivot: c.pivot, rotation: c.rotation }));
+    } catch (e) {
+      toast(String((e as Error).message), "error");
+      vpRef.current?.setModel(d, poseNow());
+    }
   };
 
   // Pintura: un trazo es una sola entrada del historial.
@@ -198,9 +238,40 @@ export const App: React.FC = () => {
     toast("Copia reflejada creada");
   };
   const del = () => {
-    if (!sel) return;
-    apply(removePart(cur(), sel));
+    if (!selection.length) return;
+    let m = cur();
+    for (const id of topLevel(m, selection)) m = removePart(m, id);
+    apply(m);
     setSel(null);
+  };
+  const group = () => {
+    if (!selection.length) return;
+    try {
+      const [m, id] = groupParts(cur(), selection);
+      apply(m);
+      setSel(id);
+      toast("Grupo creado");
+    } catch (e) {
+      toast(String((e as Error).message), "error");
+    }
+  };
+  const doUngroup = () => {
+    if (!sel) return;
+    try {
+      const kids = cur().parts.filter((p) => p.parent === sel).map((p) => p.id);
+      apply(ungroup(cur(), sel));
+      setSelection(kids);
+    } catch (e) {
+      toast(String((e as Error).message), "error");
+    }
+  };
+  const isGroup = !!(doc && sel && doc.parts.find((p) => p.id === sel)?.box === null);
+  /** Botones −/+ del panel: cambia un eje de la caja desde el centro. */
+  const grow = (axis: 0 | 1 | 2, amount: number) => {
+    if (!selPart?.box) return;
+    const size = [...selPart.box.size] as Vec3;
+    size[axis] += amount;
+    apply(resizeBox(cur(), selPart.id, size, "center"));
   };
   const patch = (p: Parameters<typeof updatePart>[2], key = "") => {
     if (!sel) return;
@@ -284,11 +355,20 @@ export const App: React.FC = () => {
       } else if ((e.ctrlKey || e.metaKey) && k === "k") {
         e.preventDefault();
         setCommandOpen(true);
+      } else if ((e.ctrlKey || e.metaKey) && k === "a") {
+        e.preventDefault();
+        setSelection(cur().parts.map((p) => p.id));
+      } else if ((e.ctrlKey || e.metaKey) && k === "g") {
+        e.preventDefault();
+        if (e.shiftKey) doUngroup();
+        else group();
       } else if (e.ctrlKey || e.metaKey || e.altKey) return;
       else if (k === "delete" || k === "backspace") del();
       else if (k === "g") setGizmoState("translate");
       else if (k === "r") setGizmoState("rotate");
+      else if (k === "s") setGizmoState("scale");
       else if (k === "f") vpRef.current?.frame();
+      else if (k === "m" && e.shiftKey) setViewTool((t) => (t === "measure" ? "select" : "measure"));
       else if (k === "m") mirror();
       else if (k === "1") setMode("model");
       else if (k === "2") setMode("paint");
@@ -297,7 +377,10 @@ export const App: React.FC = () => {
         e.preventDefault();
         setPlaying((p) => !p);
       } else if (k === "k" && mode === "animate") keyHere();
-      else if (k === "escape") setSel(null);
+      else if (k === "escape") {
+        if (viewTool === "measure") setViewTool("select");
+        else setSel(null);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -335,6 +418,10 @@ export const App: React.FC = () => {
             { label: "Duplicar", icon: Copy, shortcut: "Ctrl+D", action: dup, disabled: !sel },
             { label: "Copia reflejada (izquierda ↔ derecha)", icon: FlipHorizontal2, shortcut: "M", action: mirror, disabled: !sel },
             { label: "Eliminar", icon: Trash2, shortcut: "Supr", action: del, disabled: !sel },
+            { divider: true },
+            { label: "Seleccionar todo", shortcut: "Ctrl+A", action: () => setSelection(cur().parts.map((p) => p.id)) },
+            { label: "Agrupar", icon: Group, shortcut: "Ctrl+G", action: group, disabled: !sel },
+            { label: "Desagrupar", icon: Ungroup, shortcut: "Ctrl+Mayús+G", action: doUngroup, disabled: !isGroup },
           ],
         },
         {
@@ -375,7 +462,7 @@ export const App: React.FC = () => {
               action: () =>
                 void showMessage(
                   "Cómo usar CoffeeAnimate3D",
-                  "Modelar (1): añade cubos y huesos; cada pieza gira alrededor de su pivote y arrastra a sus hijas. Con el gizmo mueves (G) o giras (R); el tamaño y la posición exacta van en Propiedades. M crea la copia reflejada (por ejemplo, la pata derecha a partir de la izquierda).\n\nPintar (2): pinta píxel a píxel sobre las caras (texturas de 32×32), rellena una cara o toma un color con el cuentagotas.\n\nAnimar (3): elige una animación, coloca el tiempo, mueve o gira piezas con el gizmo (crea una clave) o pulsa K. Espacio reproduce.\n\nExporta a glTF (.glb) para SurvivalForest, Blender, Godot o Unity. 16 unidades = 1 bloque.",
+                  "Modelar (1): añade cubos y huesos; cada pieza gira alrededor de su pivote y arrastra a sus hijas. Con el gizmo mueves (G), giras (R) o escalas (S, desde el pivote); el tamaño exacto y los botones −/+ van en Propiedades. M crea la copia reflejada (por ejemplo, la pata derecha a partir de la izquierda). Mayús+clic añade piezas a la selección (Mayús+arrastrar en vacío: rectángulo; Ctrl+A: todas); Ctrl+G agrupa y Ctrl+Mayús+G desagrupa. El ajuste a la cuadrícula está en la barra (Ctrl invierte el paso de giro de 15°). Mayús+M mide distancias. El cubo de vista (arriba a la derecha) gira la cámara hacia la cara, arista o esquina que pulses.\n\nPintar (2): pinta píxel a píxel sobre las caras (texturas de 32×32), rellena una cara o toma un color con el cuentagotas.\n\nAnimar (3): elige una animación, coloca el tiempo, mueve o gira piezas con el gizmo (crea una clave) o pulsa K. Espacio reproduce.\n\nExporta a glTF (.glb) para SurvivalForest, Blender, Godot o Unity. 16 unidades = 1 bloque.",
                 ),
             },
             {
@@ -443,7 +530,7 @@ export const App: React.FC = () => {
               </div>
               <div className="flex-1 overflow-auto py-1" data-outliner>
                 {doc.parts.length === 0 && <div className="px-3 py-4 text-[12px] text-[#8a8a92] leading-relaxed">Añade un cubo o empieza desde una plantilla (Archivo › Nuevo desde plantilla).</div>}
-                <Tree model={doc} parent={null} depth={0} sel={sel} onSelect={setSel} onToggle={(p) => apply(updatePart(cur(), p.id, { visible: !p.visible }))} anim={mode === "animate" ? anim : null} />
+                <Tree model={doc} parent={null} depth={0} selection={selection} onSelect={(id, additive) => (additive ? toggleSel(id) : setSel(id))} onToggle={(p) => apply(updatePart(cur(), p.id, { visible: !p.visible }))} anim={mode === "animate" ? anim : null} />
               </div>
             </aside>
 
@@ -466,6 +553,21 @@ export const App: React.FC = () => {
                   <>
                     <IconButton icon={Move3d} title="Mover (G)" active={gizmo === "translate"} onClick={() => setGizmoState("translate")} />
                     <IconButton icon={Rotate3d} title="Rotar (R)" active={gizmo === "rotate"} onClick={() => setGizmoState("rotate")} />
+                    <IconButton icon={Scale3d} title="Escalar (S)" active={gizmo === "scale"} onClick={() => setGizmoState("scale")} />
+                    <Select
+                      value={String(snap.step)}
+                      onChange={(v) => setSnap({ ...snap, step: Number(v) as SnapStep })}
+                      options={SNAP_OPTIONS.map((o) => ({ value: String(o.step), label: `Ajuste: ${o.label}` }))}
+                      className="w-32 ml-1"
+                      title="Ajuste a la cuadrícula al mover y escalar"
+                    />
+                    <Toggle checked={snap.rotate} onChange={(v) => setSnap({ ...snap, rotate: v })} label="Giro 15°" />
+                    <IconButton icon={Ruler} title="Medir (Mayús+M)" active={viewTool === "measure"} onClick={() => setViewTool(viewTool === "measure" ? "select" : "measure")} />
+                    {viewTool === "measure" && (
+                      <span className="text-[11px] text-[#ffb27a] ml-1" data-measure>
+                        {measured == null ? "Haz clic en dos puntos" : formatDistance(measured)}
+                      </span>
+                    )}
                   </>
                 ) : (
                   <>
@@ -511,8 +613,10 @@ export const App: React.FC = () => {
 
             {/* Propiedades */}
             <aside className="w-72 shrink-0 border-l border-[#2a2a30] bg-[#1f1f23] overflow-auto" data-properties>
-              {selPart ? (
-                <PartPanel key={selPart.id} model={doc} part={selPart} mode={mode} color={color} onPatch={patch} onFill={(f) => apply(fillFace(cur(), selPart.id, f, color))} />
+              {selection.length > 1 ? (
+                <MultiPanel model={doc} ids={selection} onGroup={group} onDelete={del} onMove={(delta) => apply(translateParts(cur(), selection, delta))} />
+              ) : selPart ? (
+                <PartPanel key={selPart.id} model={doc} part={selPart} mode={mode} color={color} onPatch={patch} onFill={(f) => apply(fillFace(cur(), selPart.id, f, color))} onGrow={grow} onUngroup={isGroup ? doUngroup : undefined} />
               ) : (
                 <div className="p-4 text-[12px] text-[#8a8a92] leading-relaxed">
                   Selecciona una pieza en el visor o en la lista para ver sus propiedades.
@@ -556,16 +660,16 @@ export const App: React.FC = () => {
 // Árbol de piezas
 // ---------------------------------------------------------------------------
 
-const Tree: React.FC<{ model: Model3D; parent: string | null; depth: number; sel: string | null; onSelect: (id: string) => void; onToggle: (p: Part) => void; anim: Model3D["animations"][number] | null }> = ({ model, parent, depth, sel, onSelect, onToggle, anim }) => (
+const Tree: React.FC<{ model: Model3D; parent: string | null; depth: number; selection: string[]; onSelect: (id: string, additive: boolean) => void; onToggle: (p: Part) => void; anim: Model3D["animations"][number] | null }> = ({ model, parent, depth, selection, onSelect, onToggle, anim }) => (
   <>
     {model.parts
       .filter((p) => p.parent === parent)
       .map((p) => (
         <React.Fragment key={p.id}>
           <div
-            className={cx("flex items-center gap-1.5 pr-2 h-7 cursor-pointer text-[12px]", sel === p.id ? "bg-[#ff8a3d]/20 text-white" : "hover:bg-[#2a2a30] text-[#c4c4cc]")}
+            className={cx("flex items-center gap-1.5 pr-2 h-7 cursor-pointer text-[12px]", selection.includes(p.id) ? (selection.at(-1) === p.id ? "bg-[#ff8a3d]/25 text-white" : "bg-[#ff8a3d]/12 text-white") : "hover:bg-[#2a2a30] text-[#c4c4cc]")}
             style={{ paddingLeft: 8 + depth * 14 }}
-            onClick={() => onSelect(p.id)}
+            onClick={(e) => onSelect(p.id, e.shiftKey)}
             data-part={p.name}
           >
             {p.box ? <BoxIcon size={13} className="text-[#ffb27a] shrink-0" /> : <Bone size={13} className="text-[#8ab4ff] shrink-0" />}
@@ -583,7 +687,7 @@ const Tree: React.FC<{ model: Model3D; parent: string | null; depth: number; sel
               {p.visible ? <Eye size={13} /> : <EyeOff size={13} />}
             </button>
           </div>
-          <Tree model={model} parent={p.id} depth={depth + 1} sel={sel} onSelect={onSelect} onToggle={onToggle} anim={anim} />
+          <Tree model={model} parent={p.id} depth={depth + 1} selection={selection} onSelect={onSelect} onToggle={onToggle} anim={anim} />
         </React.Fragment>
       ))}
   </>
@@ -604,7 +708,7 @@ const Vec3Field: React.FC<{ label: string; value: Vec3; onChange: (v: Vec3) => v
   </div>
 );
 
-const PartPanel: React.FC<{ model: Model3D; part: Part; mode: Mode; color: string; onPatch: (p: Parameters<typeof updatePart>[2], key?: string) => void; onFill: (f: FaceName) => void }> = ({ model, part, mode, color, onPatch, onFill }) => {
+const PartPanel: React.FC<{ model: Model3D; part: Part; mode: Mode; color: string; onPatch: (p: Parameters<typeof updatePart>[2], key?: string) => void; onFill: (f: FaceName) => void; onGrow: (axis: 0 | 1 | 2, amount: number) => void; onUngroup?: () => void }> = ({ model, part, mode, color, onPatch, onFill, onGrow, onUngroup }) => {
   const banned = new Set([part.id, ...descendants(model, part.id)]);
   const parents = [{ value: "", label: "(ninguna: raíz)" }, ...model.parts.filter((p) => !banned.has(p.id)).map((p) => ({ value: p.id, label: p.name }))];
   return (
@@ -629,15 +733,36 @@ const PartPanel: React.FC<{ model: Model3D; part: Part; mode: Mode; color: strin
           <div className="flex flex-col gap-2">
             <Vec3Field label="Desde (relativo al pivote)" value={part.box.from} onChange={(v) => onPatch({ box: { from: v } }, `from-${part.id}`)} step={0.5} />
             <Vec3Field label="Tamaño (16 = 1 bloque)" value={part.box.size} onChange={(v) => onPatch({ box: { size: v.map((s) => Math.max(0.1, s)) as Vec3 } }, `size-${part.id}`)} step={0.5} min={0.1} />
+            <div className="flex flex-col gap-1" data-grow>
+              <span className="text-[11px] text-[#8a8a92]">Agrandar o encoger (desde el centro)</span>
+              {(["X", "Y", "Z"] as const).map((axis, i) => (
+                <div key={axis} className="flex items-center gap-1">
+                  <span className="w-4 text-[11px] text-[#8a8a92]">{axis}</span>
+                  {[-16, -8, 8, 16].map((d) => (
+                    <button key={d} type="button" onClick={() => onGrow(i as 0 | 1 | 2, d)} className="flex-1 h-6 rounded bg-[#141416] border border-[#2a2a30] hover:border-[#ff8a3d] text-[10px] flex items-center justify-center gap-0.5" title={`${d > 0 ? "Agrandar" : "Encoger"} ${Math.abs(d) === 16 ? "1 bloque" : "½ bloque"} en ${axis}`} data-grow-btn={`${axis}${d > 0 ? "+" : ""}${d}`}>
+                      {d > 0 ? <Plus size={10} /> : <Minus size={10} />}
+                      {Math.abs(d) === 16 ? "1" : "½"}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
             <Button onClick={() => onPatch({ box: { color } })}>
               <PaintBucket size={14} /> Pintar toda la caja del color actual
             </Button>
             <Button onClick={() => onPatch({ box: null })}>Quitar la caja (dejar solo el hueso)</Button>
           </div>
         ) : (
-          <Button onClick={() => onPatch({ box: { from: [-2, 0, -2], size: [4, 4, 4], color } })}>
-            <BoxIcon size={14} /> Añadir una caja
-          </Button>
+          <div className="flex flex-col gap-2">
+            <Button onClick={() => onPatch({ box: { from: [-2, 0, -2], size: [4, 4, 4], color } })}>
+              <BoxIcon size={14} /> Añadir una caja
+            </Button>
+            {onUngroup && (
+              <Button onClick={onUngroup}>
+                <Ungroup size={14} /> Desagrupar (Ctrl+Mayús+G)
+              </Button>
+            )}
+          </div>
         )}
       </Section>
       {part.box && (
@@ -652,6 +777,53 @@ const PartPanel: React.FC<{ model: Model3D; part: Part; mode: Mode; color: strin
           </div>
         </Section>
       )}
+    </div>
+  );
+};
+
+/** Valor común a todas (o null si difieren). */
+const common = (values: number[]) => (values.every((v) => v === values[0]) ? values[0] : null);
+
+const MultiPanel: React.FC<{ model: Model3D; ids: string[]; onGroup: () => void; onDelete: () => void; onMove: (delta: Vec3) => void }> = ({ model, ids, onGroup, onDelete, onMove }) => {
+  const parts = ids.map((id) => model.parts.find((p) => p.id === id)).filter((p): p is Part => !!p);
+  return (
+    <div className="flex flex-col" data-multi-panel>
+      <Section title={`${parts.length} piezas seleccionadas`}>
+        <div className="flex flex-col gap-2">
+          <span className="text-[11px] text-[#8a8a92]">Pivote (vacío si difieren; al escribir se mueven todas lo mismo)</span>
+          <div className="grid grid-cols-3 gap-1">
+            {(["X", "Y", "Z"] as const).map((axis, i) => {
+              const v = common(parts.map((p) => p.pivot[i]));
+              return (
+                <label key={axis} className="flex items-center gap-1 h-8 rounded-md bg-[#141416] border border-[#2a2a30] px-2 text-[12px]">
+                  <span className="text-[#8a8a92]">{axis}</span>
+                  <input
+                    key={`${axis}-${v}`}
+                    defaultValue={v ?? ""}
+                    placeholder="—"
+                    className="w-full bg-transparent outline-none"
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter") return;
+                      const n = Number((e.target as HTMLInputElement).value.replace(",", "."));
+                      if (!Number.isFinite(n)) return;
+                      const delta: Vec3 = [0, 0, 0];
+                      delta[i] = v == null ? n : n - v;
+                      onMove(delta);
+                    }}
+                  />
+                </label>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-[#8a8a92] leading-relaxed">Con el gizmo (G, R, S) se transforman juntas si cuelgan de la misma pieza.</p>
+          <Button onClick={onGroup}>
+            <Group size={14} /> Agrupar (Ctrl+G)
+          </Button>
+          <Button onClick={onDelete}>
+            <Trash2 size={14} /> Eliminar las {parts.length} piezas
+          </Button>
+        </div>
+      </Section>
     </div>
   );
 };

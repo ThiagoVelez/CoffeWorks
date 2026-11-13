@@ -52,3 +52,11 @@ export function saveSnap(s: SnapPrefs) {
     /* sin almacenamiento: solo dura esta sesión */
   }
 }
+
+const num = (v: number) => String(Math.round(v * 100) / 100).replace(".", ",");
+
+/** «2,5 bloques (40 u)»: distancia medida para mostrar. */
+export function formatDistance(units: number): string {
+  const blocks = units / 16;
+  return `${num(blocks)} ${Math.round(blocks * 100) === 100 ? "bloque" : "bloques"} (${num(units)} u)`;
+}
