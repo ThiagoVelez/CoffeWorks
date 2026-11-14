@@ -43,6 +43,12 @@ jobs:
       - name: Pruebas del núcleo y del Launcher
         run: cargo test -p coffee-core -p coffeeworks-launcher -p coffeeanimate3d
 
+      - name: Pruebas de CoffeeView (importar PowerPoint)
+        working-directory: CoffeeView
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+
       - name: Pruebas de CoffeeAnimate3D (modelo, glTF y herramientas MCP)
         working-directory: CoffeeAnimate3D
         run: |

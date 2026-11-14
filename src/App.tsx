@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { TitleBar } from "./components/TitleBar";
-import { Sidebar, type NavTab } from "./components/Sidebar";
+import { INSTALLED_FILTER, Sidebar, type NavTab } from "./components/Sidebar";
 import { WelcomeBanner } from "./components/WelcomeBanner";
 import { AppGrid } from "./components/AppGrid";
 import { RecentDocuments } from "./components/RecentDocuments";
@@ -55,7 +55,9 @@ export const App: React.FC = () => {
   const [toast, setToast] = useState<Toast | null>(null);
   const updates = useUpdates();
 
-  const filteredApps = selectedCategory
+  const filteredApps = selectedCategory === INSTALLED_FILTER
+    ? apps.filter((app) => app.installed)
+    : selectedCategory
     ? apps.filter((app) => (app.category || "Office").toLowerCase() === selectedCategory.toLowerCase())
     : apps;
 

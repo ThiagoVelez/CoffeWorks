@@ -164,7 +164,7 @@ export const AppGrid: React.FC<AppGridProps> = ({
           </span>
           {selectedCategory && (
             <span className="inline-flex items-center gap-1.5 font-mono text-[11px] px-2.5 py-0.5 rounded-full bg-[#eeddd0] text-[#3e2723] font-bold border border-[#dfd3c7]">
-              <span>Categoría: {selectedCategory}</span>
+              <span>{selectedCategory === "Instaladas" ? "Solo las instaladas" : `Categoría: ${selectedCategory}`}</span>
               {onClearCategory && (
                 <button
                   type="button"
@@ -190,6 +190,17 @@ export const AppGrid: React.FC<AppGridProps> = ({
           </button>
         )}
       </div>
+
+      {apps.length === 0 && selectedCategory === "Instaladas" && (
+        <div className="rounded-2xl border border-dashed border-[#dfd3c7] bg-white/60 p-8 text-center text-sm text-[#795548]" data-empty-installed>
+          Todavía no tienes ninguna app instalada. Elige una en la tienda y pulsa «Instalar».
+          {onClearCategory && (
+            <button type="button" onClick={onClearCategory} className="block mx-auto mt-3 text-xs font-semibold text-[#6f4e37] hover:text-[#3e2723]">
+              Ver todas las apps
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Cuadrícula de aplicaciones de 2 columnas estrictas (2 arriba, 2 abajo) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
