@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { groupLines, toParagraphs, toTable, type TextItem } from "./pdftext";
+import { groupLines, readingOrder, toParagraphs, toTable, type TextItem } from "./pdftext";
 
 const it = (str: string, x: number, y: number, size = 12, bold = false): TextItem => ({ str, x, y, w: str.length * size * 0.5, size, bold });
 
@@ -22,5 +22,21 @@ test("toParagraphs une palabras cortadas con guion al final de línea", () => {
 
 test("toTable reparte el texto en columnas por posición", () => {
   const items = [it("Nombre", 20, 700), it("Edad", 200, 700), it("Ana", 20, 685), it("30", 200, 685), it("Luis", 20, 670), it("41", 201, 670)];
-  assert.deepEqual(toTable(groupLines(items)), [["Nombre", "Edad"], ["Ana", "30"], ["Luis", "41"]]);
+  assert.deepEqual(toTable(groupLines(items, false)), [["Nombre", "Edad"], ["Ana", "30"], ["Luis", "41"]]);
+});
+
+test("groupLines no junta columnas distintas a la misma altura", () => {
+  const lines = groupLines([it("Izquierda", 20, 700), it("Derecha", 400, 700)]);
+  assert.deepEqual(lines.map((l) => l.text), ["Izquierda", "Derecha"]);
+});
+
+test("readingOrder lee por columnas: toda la izquierda y luego la derecha", () => {
+  const items = [
+    it("Cabecera de la página", 20, 760, 18),
+    it("izq uno", 20, 700), it("der uno", 320, 700),
+    it("izq dos", 20, 685), it("der dos", 320, 685),
+    it("izq tres", 20, 670), it("der tres", 320, 670),
+  ];
+  const order = readingOrder(items).map((b) => toParagraphs(groupLines(b)).map((p) => p.text).join(" | "));
+  assert.deepEqual(order, ["Cabecera de la página", "izq uno izq dos izq tres", "der uno der dos der tres"]);
 });

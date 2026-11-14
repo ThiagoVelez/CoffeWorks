@@ -415,6 +415,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "coffeeconvert"
+version = "2.12.0"
+dependencies = [
+ "base64 0.22.1",
+ "coffee-core",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+]
+
+[[package]]
 name = "coffeedatabase"
 version = "2.12.0"
 dependencies = [

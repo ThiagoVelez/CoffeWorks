@@ -11,6 +11,9 @@ export interface TextItem {
   /** Tamaño de letra en puntos. */
   size: number;
   bold?: boolean;
+  italic?: boolean;
+  /** Color del texto (#rrggbb), si se conoce. */
+  color?: string;
 }
 
 export interface Line {
@@ -35,8 +38,12 @@ const median = (v: number[]) => {
   return s[Math.floor(s.length / 2)];
 };
 
-/** Agrupa los fragmentos que comparten altura en líneas (de arriba abajo). */
-export function groupLines(items: TextItem[]): Line[] {
+/**
+ * Agrupa los fragmentos que comparten altura en líneas (de arriba abajo). Con
+ * `splitColumns`, un hueco grande separa la línea en trozos (columnas distintas); para
+ * tablas se deja en `false` y la fila queda entera.
+ */
+export function groupLines(items: TextItem[], splitColumns = true): Line[] {
   const sorted = items.filter((i) => i.str.trim()).sort((a, b) => b.y - a.y || a.x - b.x);
   const groups: TextItem[][] = [];
   for (const item of sorted) {
@@ -44,9 +51,23 @@ export function groupLines(items: TextItem[]): Line[] {
     if (g) g.push(item);
     else groups.push([item]);
   }
-  return groups
+  // Una «línea» se corta donde hay un hueco grande: son columnas distintas a la misma altura.
+  const segments: TextItem[][] = [];
+  for (const g of groups) {
+    g.sort((a, b) => a.x - b.x);
+    let cur: TextItem[] = [];
+    for (const item of g) {
+      const prev = cur[cur.length - 1];
+      if (splitColumns && prev && item.x - (prev.x + prev.w) > Math.max(12, Math.min(prev.size, item.size) * 1.5)) {
+        segments.push(cur);
+        cur = [];
+      }
+      cur.push(item);
+    }
+    if (cur.length) segments.push(cur);
+  }
+  return segments
     .map((g) => {
-      g.sort((a, b) => a.x - b.x);
       let text = "";
       g.forEach((item, i) => {
         if (i > 0) {
@@ -65,13 +86,63 @@ export function groupLines(items: TextItem[]): Line[] {
         items: g,
       };
     })
-    .sort((a, b) => b.y - a.y);
+    .sort((a, b) => b.y - a.y || a.x - b.x);
 }
 
-/** Une líneas en párrafos: un hueco grande o un cambio de tamaño empieza otro. */
-export function toParagraphs(lines: Line[]): Paragraph[] {
+/**
+ * Orden de lectura por bloques (corte X-Y): primero las franjas horizontales separadas
+ * por un hueco que cruza todo el ancho; dentro de cada franja, las columnas de izquierda a
+ * derecha. Así un póster o un texto a dos columnas se lee columna por columna.
+ */
+export function readingOrder(items: TextItem[]): TextItem[][] {
+  const visible = items.filter((i) => i.str.trim());
+  if (!visible.length) return [];
+  const size = median(visible.map((i) => i.size)) || 10;
+  const out: TextItem[][] = [];
+  const gaps = (spans: [number, number][], min: number): [number, number][] => {
+    const sorted = [...spans].sort((a, b) => a[0] - b[0]);
+    const found: [number, number][] = [];
+    let end = sorted[0][1];
+    for (const [a, b] of sorted.slice(1)) {
+      if (a - end >= min) found.push([end, a]);
+      end = Math.max(end, b);
+    }
+    return found;
+  };
+  const cut = (set: TextItem[], depth: number) => {
+    if (set.length < 2 || depth > 40) {
+      out.push(set);
+      return;
+    }
+    // Franjas: huecos en la vertical (y crece hacia arriba, se lee de arriba abajo).
+    const rows = gaps(set.map((i) => [-(i.y + i.size), -i.y] as [number, number]), size * 0.8);
+    if (rows.length) {
+      const [, at] = rows.reduce((best, g) => (g[1] - g[0] > best[1] - best[0] ? g : best));
+      cut(set.filter((i) => -(i.y + i.size) < at), depth + 1);
+      cut(set.filter((i) => -(i.y + i.size) >= at), depth + 1);
+      return;
+    }
+    const cols = gaps(set.map((i) => [i.x, i.x + i.w] as [number, number]), Math.max(10, size * 1.2));
+    if (cols.length) {
+      const [, at] = cols.reduce((best, g) => (g[1] - g[0] > best[1] - best[0] ? g : best));
+      cut(set.filter((i) => i.x < at), depth + 1);
+      cut(set.filter((i) => i.x >= at), depth + 1);
+      return;
+    }
+    out.push(set);
+  };
+  cut(visible, 0);
+  return out;
+}
+
+/**
+ * Une líneas en párrafos: un hueco grande o un cambio de tamaño empieza otro. `bodySize` es
+ * el tamaño del texto normal de la página (si no, el de estas líneas): lo que es bastante
+ * más grande es un título.
+ */
+export function toParagraphs(lines: Line[], bodySize?: number): Paragraph[] {
   if (!lines.length) return [];
-  const body = median(lines.map((l) => l.size));
+  const body = bodySize || median(lines.map((l) => l.size));
   const gaps = lines.slice(1).map((l, i) => lines[i].y - l.y).filter((g) => g > 0);
   const step = median(gaps.filter((g) => g < body * 3)) || body * 1.2;
   const out: Paragraph[] = [];

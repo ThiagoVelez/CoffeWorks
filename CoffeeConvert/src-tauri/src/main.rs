@@ -60,3 +60,25 @@ fn main() {
         .run(tauri::generate_context!())
         .expect("Error al iniciar CoffeeConvert");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Solo si hay LibreOffice en el equipo (en CI de Linux se instala aparte).
+    #[test]
+    fn convierte_un_documento_con_libreoffice() {
+        if coffee_core::addons::addon_executable("officeconv").is_none() {
+            eprintln!("LibreOffice no está instalado: se omite");
+            return;
+        }
+        let txt = base64::engine::general_purpose::STANDARD.encode("Hola, café y ñandú\nSegunda línea");
+        let pdf = base64::engine::general_purpose::STANDARD.decode(convert("nota.txt", &txt).expect("convierte")).unwrap();
+        assert!(pdf.starts_with(b"%PDF"));
+    }
+
+    #[test]
+    fn sin_extension_da_error() {
+        assert!(convert("sinextension", "AAAA").is_err() || coffee_core::addons::addon_executable("officeconv").is_none());
+    }
+}
