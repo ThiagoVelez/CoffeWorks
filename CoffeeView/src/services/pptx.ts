@@ -4,7 +4,8 @@
 // líneas, fondos y notas del orador) e importación básica leyendo el XML del
 // paquete con JSZip (textos, imágenes, tablas, fondos y notas).
 
-import type { Presentation, ShapeType, Slide, SlideElement } from "../types";
+import { SLIDE_SIZE, type Presentation, type ShapeType, type Slide, type SlideElement } from "../types";
+import { dominantRun, fontPx, type RunInfo } from "./pptxText";
 import { bytesToBase64 } from "./desktop";
 import { createBlankPresentation, isDarkColor, newId, themeById } from "./presentationVault";
 
@@ -221,6 +222,7 @@ export async function importPptx(bytes: Uint8Array, title: string): Promise<Pres
 
   const presentation = createBlankPresentation(title);
   presentation.metadata.aspectRatio = cx / cy < 1.5 ? "4:3" : "16:9";
+  const canvasWidth = SLIDE_SIZE[presentation.metadata.aspectRatio].width;
   const slides: Slide[] = [];
 
   const colorOf = (node: Element | null): string | undefined => {
@@ -264,8 +266,23 @@ export async function importPptx(bytes: Uint8Array, title: string): Promise<Pres
         const fill = shapeProps ? colorOf(Array.from(shapeProps.children).find((c) => c.localName === "solidFill") || null) : undefined;
         if (!text && !fill) continue;
 
-        const runProps = firstChild(node, "rPr");
-        const size = Number(runProps?.getAttribute("sz")) || 0;
+        // Formato de la caja: el del fragmento con más texto (no el primero, que suele ser
+        // un título corto), con el tamaño heredado si el fragmento no lo trae.
+        const runs: RunInfo[] = children(node, "r").map((run) => {
+          const props = firstChild(run, "rPr");
+          return {
+            text: children(run, "t").map((t) => t.textContent || "").join(""),
+            sz: Number(props?.getAttribute("sz")) || undefined,
+            b: props?.getAttribute("b") === "1" || undefined,
+            i: props?.getAttribute("i") === "1" || undefined,
+            color: colorOf(props),
+          };
+        });
+        const main = dominantRun(runs);
+        const inheritedSize = Number(firstChild(node, "endParaRPr")?.getAttribute("sz")) || Number(firstChild(node, "defRPr")?.getAttribute("sz")) || 0;
+        const size = main?.sz || inheritedSize;
+        // «Ajustar texto al cuadro» de PowerPoint: reduce la letra en ese porcentaje.
+        const fontScale = Number(firstChild(node, "normAutofit")?.getAttribute("fontScale")) || 100000;
         const type: SlideElement["type"] =
           phType === "title" || phType === "ctrTitle" ? "title" : phType === "subTitle" ? "subtitle" : fill && !placeholder ? "shape" : "text";
         // Los marcadores sin posición propia la heredan del patrón: se colocan por tipo
@@ -286,10 +303,12 @@ export async function importPptx(bytes: Uint8Array, title: string): Promise<Pres
           width: box[2],
           height: box[3],
           content: text,
-          fontSize: size ? Math.round((size / 100) * (4 / 3)) : type === "title" ? 36 : 20,
-          fontWeight: runProps?.getAttribute("b") === "1" || type === "title" ? "bold" : "normal",
-          fontStyle: runProps?.getAttribute("i") === "1" ? "italic" : "normal",
-          color: colorOf(runProps),
+          // La letra se escala con la diapositiva, igual que las cajas (los pósteres de 20" de
+          // iLovePDF salían al doble de tamaño y se desbordaban).
+          fontSize: fontPx(size || (type === "title" ? 2700 : 1500), cx, canvasWidth, fontScale),
+          fontWeight: main?.b || type === "title" ? "bold" : "normal",
+          fontStyle: main?.i ? "italic" : "normal",
+          color: main?.color,
           bg: fill,
           align: algn === "ctr" ? "center" : algn === "r" ? "right" : algn === "just" ? "justify" : type === "shape" ? "center" : "left",
           valign: type === "text" ? "top" : "middle",
