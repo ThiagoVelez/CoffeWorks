@@ -117,16 +117,8 @@ import { toggleTheme } from "./theme/theme";
 
 const HISTORY_LIMIT = 100;
 
-const SheetsLogo = (
-  <svg viewBox="0 0 40 40" fill="none" className="w-full h-full">
-    <path
-      d="M24.5 4H10C8.34315 4 7 5.34315 7 7V33C7 34.6569 8.34315 36 10 36H30C31.6569 36 33 34.6569 33 33V12.5L24.5 4Z"
-      fill="#0F9D58"
-    />
-    <path d="M24 4V13H33L24 4Z" fill="#87CEAC" />
-    <path d="M12 18H28V30H12V18ZM14 20V23H19V20H14ZM21 20V23H26V20H21ZM14 25V28H19V25H14ZM21 25V28H26V25H21Z" fill="white" />
-  </svg>
-);
+/** Logo de CoffeeCalc (el mismo icono que en el Launcher y en Windows). */
+const SheetsLogo = <img src="/app-icon.png" alt="" className="w-full h-full object-contain" draggable={false} />;
 
 const EXPORT_OPTIONS: ExportOption[] = [
   {

@@ -131,18 +131,8 @@ const HISTORY_LIMIT = 100;
  */
 const HISTORY_MAX_CHARS = 24_000_000;
 
-const DocsLogo = (
-  <svg viewBox="0 0 40 40" fill="none" className="w-full h-full">
-    <path
-      d="M24.5 4H10C8.34315 4 7 5.34315 7 7V33C7 34.6569 8.34315 36 10 36H30C31.6569 36 33 34.6569 33 33V12.5L24.5 4Z"
-      fill="#4285F4"
-    />
-    <path d="M24 4V13H33L24 4Z" fill="#A1C2FA" />
-    <rect x="12" y="17" width="16" height="2" rx="1" fill="white" />
-    <rect x="12" y="22" width="16" height="2" rx="1" fill="white" />
-    <rect x="12" y="27" width="11" height="2" rx="1" fill="white" />
-  </svg>
-);
+/** Logo de CoffeeDoc (el mismo icono que en el Launcher y en Windows). */
+const DocsLogo = <img src="/app-icon.png" alt="" className="w-full h-full object-contain" draggable={false} />;
 
 /**
  * Analiza el HTML en un documento inerte: a diferencia de un <div> del propio
