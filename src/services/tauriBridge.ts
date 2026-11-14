@@ -23,7 +23,7 @@ const INSTALLED_KEY = "coffeeworks_installed_apps";
 const FOCUS_KEY = "coffeeworks_focus_mode";
 
 /** Puertos de los servidores de desarrollo de cada aplicación. */
-const DEV_PORTS: Record<string, number> = { coffeedoc: 1421, coffeebooks: 1440, coffeecalc: 1422, coffeeview: 1423, coffeepdf: 1424, coffeepage: 1425, coffeeedit: 1426, coffeelive: 1427, coffeedatabase: 1428, coffeeuiux: 1429, coffeeuml: 1430, coffeephoto: 1431, coffeevector: 1432, coffeepaint: 1433, coffeelens: 1434, coffeemotion: 1435, coffeesound: 1436, coffeeencoder: 1437, coffeeanimate: 1438, coffeepuppet: 1439, coffeeanimate3d: 1441 };
+const DEV_PORTS: Record<string, number> = { coffeedoc: 1421, coffeebooks: 1440, coffeecalc: 1422, coffeeview: 1423, coffeepdf: 1424, coffeepage: 1425, coffeeedit: 1426, coffeelive: 1427, coffeedatabase: 1428, coffeeuiux: 1429, coffeeuml: 1430, coffeephoto: 1431, coffeevector: 1432, coffeepaint: 1433, coffeelens: 1434, coffeemotion: 1435, coffeesound: 1436, coffeeencoder: 1437, coffeeanimate: 1438, coffeepuppet: 1439, coffeeanimate3d: 1441, coffeeconvert: 1442 };
 
 const ALIASES: Record<string, string> = { coffeesheet: "coffeecalc", coffeeslides: "coffeeview", coffeecams: "coffeeedit" };
 
@@ -289,6 +289,22 @@ const WEB_CATALOG: SuiteApp[] = [
     color_badge: "error",
     icon_name: "file-pen",
     icon_url: "/icons/CoffeePDF.ico",
+    category: "Office",
+  },
+  {
+    id: "coffeeconvert",
+    name: "CoffeeConvert",
+    subtitle: "Convertir y organizar documentos",
+    description:
+      "Convierte PDF a Word, Excel, PowerPoint (editable sobre el diseño), imagen y texto; imágenes, Markdown, HTML, CSV y documentos de Office a PDF; une, divide, rota, comprime, numera y añade marca de agua; y reconoce texto escaneado. Todo en tu equipo.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "success",
+    icon_name: "arrow-left-right",
+    icon_url: "/icons/CoffeeConvert.ico",
     category: "Office",
   },
   {

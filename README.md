@@ -1,6 +1,6 @@
 # CoffeeWorks
 
-Suite ofimática de escritorio para Windows, de código abierto y sin conexión. Se compone de un **Launcher** que instala y gestiona las aplicaciones y de veintiuna aplicaciones, en cuatro categorías (**Office**, **Multimedia**, **Desarrollador** e **Ilustración**):
+Suite ofimática de escritorio para Windows, de código abierto y sin conexión. Se compone de un **Launcher** que instala y gestiona las aplicaciones y de veintidós aplicaciones, en cuatro categorías (**Office**, **Multimedia**, **Desarrollador** e **Ilustración**):
 
 | Aplicación | Qué es | Formato propio | Abre | Exporta |
 | :--- | :--- | :--- | :--- | :--- |
@@ -9,6 +9,7 @@ Suite ofimática de escritorio para Windows, de código abierto y sin conexión.
 | **CoffeeCalc** | Hoja de cálculo | `.cfs` | Excel (`.xlsx`, `.xls`), CSV | Excel (`.xlsx`) con formato, CSV, PDF |
 | **CoffeeView** | Presentaciones | `.csl` | PowerPoint (`.pptx`) | PowerPoint (`.pptx`), HTML, PDF |
 | **CoffeePDF** | Editor de PDF | `.pdf` | PDF | PDF, páginas sueltas, PNG |
+| **CoffeeConvert** *(Office)* | Convertir y organizar documentos (como una caja de herramientas de PDF) | — | PDF, imágenes, TXT, Markdown, HTML, CSV, Word, Excel, PowerPoint, OpenDocument, RTF, EPUB | PDF, Word, Excel, PowerPoint, PNG, JPG, TXT |
 | **CoffeePage** | Cuaderno de notas | `.cpg` | Cuadernos `.cpg`; imágenes y texto para insertar | HTML, Markdown, PDF (imprimir) |
 | **CoffeeDataBase** | Bases de datos | `.cdb` (SQLite) | SQLite (`.db`, `.sqlite`); importa Excel, CSV y `.accdb`/`.mdb` | Excel, CSV, script SQL, informes, Access (`.accdb`/`.mdb`, con complemento) |
 | **CoffeeEdit** *(Multimedia)* | Editor de video | `.ccm` | Video (MP4, WebM, MOV, MKV), audio e imágenes | Video MP4/WebM |
@@ -30,7 +31,7 @@ Cada aplicación es un ejecutable independiente construido con **Tauri 2** (Rust
 
 ## Cómo funciona la instalación
 
-1. El instalador de Windows (`CoffeeWorks-Setup-2.12.0.exe`, hecho con **Inno Setup**) instala solo el Launcher y deja los paquetes de las veintiuna aplicaciones en su carpeta `packages`.
+1. El instalador de Windows (`CoffeeWorks-Setup-2.13.0.exe`, hecho con **Inno Setup**) instala solo el Launcher y deja los paquetes de las veintidós aplicaciones en su carpeta `packages`.
 2. Dentro del Launcher, en la **Tienda de Apps**, cada aplicación tiene sus botones **Instalar**, **Abrir App** y **Desinstalar**:
    - *Instalar* copia la aplicación a `%LOCALAPPDATA%\CoffeeWorks\Apps\<App>`, crea su acceso directo en el menú Inicio (carpeta *CoffeeWorks*) y asocia su tipo de archivo, de modo que un doble clic sobre un `.cfd`, `.cfs`, `.csl`, `.cpg`, `.cdb`, `.ccm` o `.clv` lo abre. CoffeePDF no reemplaza tu lector de PDF predeterminado: aparece en *Abrir con* del Explorador.
    - *Desinstalar* borra la aplicación, su acceso directo y su asociación. **Los documentos no se tocan.**
@@ -44,7 +45,7 @@ Cada aplicación es un ejecutable independiente construido con **Tauri 2** (Rust
 CoffeeWorks también se publica como paquete **`.deb`** para **Ubuntu 22.04 o posterior** y **Debian 12 o posterior** (64 bits), junto al instalador de Windows en cada versión (`coffeeworks_<versión>_amd64.deb`).
 
 ```bash
-sudo apt install ./coffeeworks_2.12.0_amd64.deb
+sudo apt install ./coffeeworks_2.13.0_amd64.deb
 ```
 
 - Se instala en `/opt/coffeeworks`, con el comando `coffeeworks` y su entrada en el menú de aplicaciones. Usa la WebKitGTK del sistema (`libwebkit2gtk-4.1`), así que el paquete pesa pocos MB.
@@ -92,6 +93,7 @@ El Launcher tiene dos secciones más en la barra lateral:
   - *Motor de video FFmpeg* (~90 MB): necesario para transmitir en directo con CoffeeLive; motor de CoffeeEncoder y de la exportación a MP4, MOV, MP3, OGG y FLAC en CoffeeMotion, CoffeeAnimate, CoffeePuppet y CoffeeSound.
   - *IA generativa* (CoffeePhoto, sin descarga): relleno generativo de una selección y «Generar imagen» como capa nueva, con un servicio compatible con la API de imágenes de OpenAI y la clave del usuario (se guarda solo en el equipo). Sin el complemento, CoffeePhoto ya trae *Relleno según el contenido*, que funciona sin internet.
   - *Render de CoffeeAnimate3D* (sin descarga): *Ver › Render* con sol y cielo, sombras, oclusión ambiental, fondo de color o transparente, imágenes de hasta 3840×2160 y una vuelta de 360° en WebM o GIF.
+  - *Motor de conversión (LibreOffice)* (CoffeeConvert): pasa a PDF documentos de Word, Excel, PowerPoint, OpenDocument, RTF y EPUB con su formato. En Linux se instala con apt; en Windows se usa el LibreOffice instalado en el equipo (se detecta solo).
   - *Pack de piezas para CoffeeAnimate3D* (~35 KB): 23 piezas con el estilo de SurvivalForest (árboles, plantas, rocas, bloques y muebles) para insertar con *Ver › Piezas* (código en `addons/coffee-ca3d-piezas`, generado desde `CoffeeAnimate3D/src/pieces.ts`).
   - *Revelado RAW* (CoffeeLens y CoffeePhoto, ~4 MB): abre los RAW de casi cualquier cámara con [LibRaw](https://www.libraw.org) (código en `addons/coffee-raw`).
   - *Calco vectorial* (CoffeeVector y CoffeePaint, ~1 MB): convierte imágenes y dibujos en trazados con [Potrace](https://potrace.sourceforge.net), en blanco y negro o por colores (código en `addons/coffee-potrace`).
@@ -109,7 +111,7 @@ No hacen falta permisos de administrador: todo se instala por usuario. El instal
 Cada vez que se sube código, el flujo **Instalador de Windows** (`.github/workflows/build-windows.yml`) compila la suite en Windows, crea el instalador, lo prueba y lo publica:
 
 1. Abre la pestaña **Actions** del repositorio y entra en la última ejecución de *Instalador de Windows*.
-2. En **Artifacts**, descarga `CoffeeWorks-Setup` y descomprímelo: dentro está `CoffeeWorks-Setup-2.12.0.exe`.
+2. En **Artifacts**, descarga `CoffeeWorks-Setup` y descomprímelo: dentro está `CoffeeWorks-Setup-2.13.0.exe`.
 
 Cuando llega a `main` una versión que aún no está publicada, el flujo crea su *Release* con el instalador (ver «Actualizaciones automáticas»). Al subir una etiqueta `v*` el instalador también se adjunta a esa *Release*.
 
@@ -130,7 +132,7 @@ Después, desde la carpeta del repositorio:
 powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 ```
 
-El script compila las quince interfaces, los quince ejecutables y el instalador. El resultado queda en `installer\Output\CoffeeWorks-Setup-2.12.0.exe`.
+El script compila las quince interfaces, los quince ejecutables y el instalador. El resultado queda en `installer\Output\CoffeeWorks-Setup-2.13.0.exe`.
 
 Si prefieres hacerlo paso a paso:
 
@@ -156,7 +158,7 @@ npm install
 npm run dev:all
 ```
 
-Antes de la primera vez, instala también las dependencias de cada aplicación (`npm install` dentro de `CoffeeDoc`, `CoffeeCalc`, `CoffeeView`, `CoffeePDF`, `CoffeePage`, `CoffeeBooks`, `CoffeeDataBase`, `CoffeeEdit`, `CoffeeLive`, `CoffeeUIUX`, `CoffeeUML`, `CoffeePhoto`, `CoffeeVector`, `CoffeePaint`, `CoffeeLens`, `CoffeeMotion`, `CoffeeSound`, `CoffeeEncoder`, `CoffeeAnimate`, `CoffeePuppet` y `CoffeeAnimate3D`). Los servidores quedan en:
+Antes de la primera vez, instala también las dependencias de cada aplicación (`npm install` dentro de `CoffeeDoc`, `CoffeeCalc`, `CoffeeView`, `CoffeePDF`, `CoffeePage`, `CoffeeBooks`, `CoffeeDataBase`, `CoffeeEdit`, `CoffeeLive`, `CoffeeUIUX`, `CoffeeUML`, `CoffeePhoto`, `CoffeeVector`, `CoffeePaint`, `CoffeeLens`, `CoffeeMotion`, `CoffeeSound`, `CoffeeEncoder`, `CoffeeAnimate`, `CoffeePuppet`, `CoffeeAnimate3D` y `CoffeeConvert`). Los servidores quedan en:
 
 | Aplicación | Launcher | CoffeeDoc | CoffeeCalc | CoffeeView | CoffeePDF | CoffeePage | CoffeeEdit | CoffeeLive | CoffeeDataBase |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -170,9 +172,9 @@ Antes de la primera vez, instala también las dependencias de cada aplicación (
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | Puerto | 1435 | 1436 | 1437 | 1438 | 1439 |
 
-| Aplicación | CoffeeBooks | CoffeeAnimate3D |
-| :--- | :--- | :--- |
-| Puerto | 1440 | 1441 |
+| Aplicación | CoffeeBooks | CoffeeAnimate3D | CoffeeConvert |
+| :--- | :--- | :--- | :--- |
+| Puerto | 1440 | 1441 | 1442 |
 
 En el navegador los documentos se guardan en `localStorage` y el Launcher abre las aplicaciones en pestañas; en el ejecutable se usan archivos reales y ventanas nativas.
 
@@ -211,6 +213,7 @@ CoffeeWorks/
 ├── CoffeeAnimate/           Animación 2D (src/ + src-tauri/)
 ├── CoffeePuppet/            Personajes en tiempo real (src/ + src-tauri/)
 ├── CoffeeAnimate3D/         Modelado y animación 3D por bloques, con servidor MCP (src/ + src-tauri/)
+├── CoffeeConvert/           Conversión y organización de documentos (src/ + src-tauri/)
 ├── crates/coffee-core/      Código Rust compartido: bóveda, recientes, archivos, diálogos, complementos y diccionarios
 ├── shared/spell/            Corrector ortográfico compartido (se copia a cada app con scripts/sync-shared.mjs)
 ├── shared/studio/           Base de las apps de Ilustración: encabezado, controles oscuros, guardado, historial y complementos
@@ -248,6 +251,14 @@ También existen `--install-all` y `--uninstall-all`.
 **CoffeeCalc** — más de 90 funciones en español e inglés (`SUMA`, `SI`, `BUSCARV`, `CONTAR.SI`, `PAGO`…), referencias absolutas y entre hojas, formatos numéricos, moneda y fecha, bordes, celdas combinadas, formato condicional, filtros por columna, ordenar, quitar duplicados, texto en columnas, paneles inmovilizados, tirador de relleno, gráficos de columnas, líneas, áreas y circulares, comentarios y enlaces.
 
 **CoffeeView** — diseños y temas, cuadros de texto, formas, líneas, tablas, imágenes y vídeos que se mueven y redimensionan con el ratón, notas del orador, transiciones, ensayo de intervalos con avance automático, vista de cuadrícula y modo presentación a pantalla completa.
+
+**CoffeeConvert** (verde azulado) — convertir y organizar documentos, sin subir nada a internet:
+
+- *Desde PDF*: a **PowerPoint** (editable: el texto en cajas sobre el diseño de la página, con sus colores, negritas y tamaños; o fiel, cada página como imagen), a **Word** (párrafos en orden de lectura, columna por columna, con títulos), a **Excel** (filas y columnas por posición), a imagen (PNG o JPG) y a texto.
+- *Hacia PDF*: imágenes (PNG, JPG, WebP, GIF, BMP, SVG), texto, Markdown, HTML y CSV maquetados en A4; y Word, Excel, PowerPoint, OpenDocument, RTF y EPUB con el complemento *Motor de conversión (LibreOffice)*.
+- *Organizar PDF*: unir, dividir por rangos («1-3, 5, 8-»), rotar, quitar o reordenar páginas, comprimir (básica o fuerte), numerar páginas y marca de agua.
+- *OCR*: texto de PDF escaneados o fotos, con el complemento de revisión del PDF original (Tesseract).
+- Aparece en «Abrir con» para los PDF (CoffeePDF sigue abriéndolos por defecto) y, abierta con un PDF, muestra directamente las herramientas que lo aceptan.
 
 **CoffeePDF** — añadir y editar texto, reemplazar texto existente, resaltar, tachar con corrector blanco, rectángulos, elipses, líneas, flechas, dibujo a mano, imágenes y firmas (dibujadas o escritas); rellenar formularios; buscar texto y resaltar los resultados; reordenar, girar, duplicar, eliminar e insertar páginas; unir otros PDF, extraer páginas, exportar páginas a PNG, imprimir y editar las propiedades del documento.
 

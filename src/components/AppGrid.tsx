@@ -30,6 +30,7 @@ import {
   Film,
   Smile,
   Box as BoxIcon,
+  ArrowLeftRight,
 } from "lucide-react";
 import type { SuiteApp } from "../types";
 
@@ -143,6 +144,8 @@ export const AppGrid: React.FC<AppGridProps> = ({
         return Smile;
       case "box":
         return BoxIcon;
+      case "arrow-left-right":
+        return ArrowLeftRight;
       default:
         return FileText;
     }

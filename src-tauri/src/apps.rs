@@ -122,6 +122,23 @@ pub const CATALOG: &[CatalogApp] = &[
         claim_default: false,
     },
     CatalogApp {
+        id: "coffeeconvert",
+        aliases: &[],
+        name: "CoffeeConvert",
+        stem: "CoffeeConvert",
+        subtitle: "Convertir y organizar documentos",
+        description: "Convierte PDF a Word, Excel, PowerPoint (editable sobre el diseño), imagen y texto; imágenes, Markdown, HTML, CSV y documentos de Office a PDF; une, divide, rota, comprime, numera y añade marca de agua; y reconoce texto escaneado. Todo en tu equipo.",
+        version: "v1.0",
+        color_badge: "success",
+        icon_name: "arrow-left-right",
+        icon_url: "/icons/CoffeeConvert.ico",
+        category: "Office",
+        // Aparece en «Abrir con» para los PDF; CoffeePDF sigue siendo quien los abre.
+        file_type: ("pdf", "Documento PDF"),
+        extra_extensions: &[],
+        claim_default: false,
+    },
+    CatalogApp {
         id: "coffeepage",
         aliases: &[],
         name: "CoffeePage",
