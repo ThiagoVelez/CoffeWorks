@@ -4,12 +4,12 @@ import { addPart, findPart, mirrorPart, newModel, paintPixel, parseModel, serial
 import { runTool } from "./mcp";
 import { SHAPES, SHAPE_FACES } from "./types";
 
-test("un .ca3d v1 se abre como v2 con cajas", () => {
+test("un .ca3d v1 se abre como v3 con cajas", () => {
   const v1 = JSON.stringify({ version: 1, name: "Viejo", parts: [{ id: "p1", name: "a", parent: null, pivot: [0, 0, 0], rotation: [0, 0, 0], visible: true, box: { from: [0, 0, 0], size: [2, 2, 2], faces: {} } }], animations: [] });
   const m = parseModel(v1);
-  assert.equal(m.version, 2);
+  assert.equal(m.version, 3);
   assert.equal(m.parts[0].box!.shape, "box");
-  assert.equal(JSON.parse(serializeModel(m)).version, 2);
+  assert.equal(JSON.parse(serializeModel(m)).version, 3);
   assert.equal(parseModel(serializeModel(m)).parts[0].box!.shape, "box");
 });
 

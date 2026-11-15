@@ -2,8 +2,9 @@
 // una malla por caja, un atlas PNG con todas las caras (muestreo sin suavizar) y las
 // animaciones muestreadas a 24 fps. 16 unidades del editor = 1 metro (1 bloque).
 
-import { clearReference, facePixels, findAnimation, parseModel, samplePose, serializeModel } from "./model";
+import { clearReference, facePixels, findAnimation, hexToRgb, meshTexturePixels, parseModel, samplePose, serializePortable } from "./model";
 import { shapeGeometry } from "./geometry";
+import { meshGeometry } from "./meshgeo";
 import { FACES, TEX, UNITS_PER_BLOCK, type FaceName, type Model3D, type Vec3 } from "./types";
 
 export const FPS = 24;
@@ -154,6 +155,9 @@ class BinWriter {
 
 const f32 = (a: number[]) => new Uint8Array(new Float32Array(a).buffer);
 const u16 = (a: number[]) => new Uint8Array(new Uint16Array(a).buffer);
+const u32 = (a: number[]) => new Uint8Array(new Uint32Array(a).buffer);
+/** Color #rrggbb a factor lineal de glTF. */
+const linear = (hex: string) => [...hexToRgb(hex).map((c) => round(Math.pow(c / 255, 2.2))), 1];
 
 // ---------- Exportación ----------
 
@@ -162,8 +166,9 @@ export function exportGlb(m: Model3D): Uint8Array {
   const accessors: any[] = [];
   const addAccessor = (data: number[], type: "SCALAR" | "VEC2" | "VEC3" | "VEC4", opts: { indices?: boolean; minmax?: boolean; target?: number } = {}) => {
     const comps = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 }[type];
-    const view = bin.add(opts.indices ? u16(data) : f32(data), opts.target);
-    const acc: any = { bufferView: view, componentType: opts.indices ? 5123 : 5126, count: data.length / comps, type };
+    const big = opts.indices && data.some((x) => x > 65535);
+    const view = bin.add(opts.indices ? (big ? u32(data) : u16(data)) : f32(data), opts.target);
+    const acc: any = { bufferView: view, componentType: opts.indices ? (big ? 5125 : 5123) : 5126, count: data.length / comps, type };
     if (opts.minmax) {
       const min = Array(comps).fill(Infinity);
       const max = Array(comps).fill(-Infinity);
@@ -182,6 +187,10 @@ export function exportGlb(m: Model3D): Uint8Array {
   const imageView = bin.add(encodePng(atlas.width, atlas.height, atlas.rgba));
   const nodeIndex = new Map(m.parts.map((p, i) => [p.id, i]));
   const meshes: any[] = [];
+  // Material 0: el atlas de las cajas. Las mallas añaden su imagen (con UV) o un color.
+  const materials: any[] = [{ name: "Textura", pbrMetallicRoughness: { baseColorTexture: { index: 0 }, metallicFactor: 0, roughnessFactor: 1 } }];
+  const textures: any[] = [{ source: 0, sampler: 0 }];
+  const images: any[] = [{ bufferView: imageView, mimeType: "image/png" }];
   const nodes = m.parts.map((p) => {
     const node: any = { name: p.name, translation: r3(p.pivot.map((v) => v * S) as Vec3) };
     if (p.rotation.some((r) => r !== 0)) node.rotation = quatFromEuler(p.rotation).map(round);
@@ -216,6 +225,27 @@ export function exportGlb(m: Model3D): Uint8Array {
         ],
       });
       node.mesh = meshes.length - 1;
+    }
+    if (p.mesh && p.visible) {
+      const g = meshGeometry(p.mesh, S);
+      if (g.indices.length) {
+        const textured = p.mesh.uvs.length > 0;
+        let material: number;
+        if (textured) {
+          const t = p.mesh.texture;
+          images.push({ bufferView: bin.add(encodePng(t.size, t.size, meshTexturePixels(t))), mimeType: "image/png" });
+          textures.push({ source: images.length - 1, sampler: 0 });
+          materials.push({ name: p.name, pbrMetallicRoughness: { baseColorTexture: { index: textures.length - 1 }, metallicFactor: 0, roughnessFactor: 1 } });
+        } else materials.push({ name: p.name, pbrMetallicRoughness: { baseColorFactor: linear(p.mesh.texture.color), metallicFactor: 0, roughnessFactor: 1 } });
+        material = materials.length - 1;
+        const attributes: any = {
+          POSITION: addAccessor(g.positions.map(round), "VEC3", { minmax: true, target: 34962 }),
+          NORMAL: addAccessor(g.normals.map(round), "VEC3", { target: 34962 }),
+        };
+        if (textured) attributes.TEXCOORD_0 = addAccessor(g.uvs, "VEC2", { target: 34962 });
+        meshes.push({ name: p.name, primitives: [{ attributes, indices: addAccessor(g.indices, "SCALAR", { indices: true, target: 34963 }), material }] });
+        node.mesh = meshes.length - 1;
+      }
     }
     return node;
   });
@@ -255,15 +285,15 @@ export function exportGlb(m: Model3D): Uint8Array {
   const json: any = {
     // El modelo completo viaja dentro: al importar este .glb vuelve exacto.
     // (sin la referencia para calcar, que no se exporta).
-    asset: { version: "2.0", generator: "CoffeeAnimate3D (CoffeeWorks)", extras: { ca3d: serializeModel(clearReference(m)) } },
+    asset: { version: "2.0", generator: "CoffeeAnimate3D (CoffeeWorks)", extras: { ca3d: serializePortable(clearReference(m)) } },
     scene: 0,
     scenes: [{ name: m.name, nodes: m.parts.filter((p) => !p.parent).map((p) => nodeIndex.get(p.id)!) }],
     nodes,
     meshes,
-    materials: [{ name: "Textura", pbrMetallicRoughness: { baseColorTexture: { index: 0 }, metallicFactor: 0, roughnessFactor: 1 } }],
-    textures: [{ source: 0, sampler: 0 }],
+    materials,
+    textures,
     samplers: [{ magFilter: 9728, minFilter: 9728, wrapS: 33071, wrapT: 33071 }],
-    images: [{ bufferView: imageView, mimeType: "image/png" }],
+    images,
     accessors,
     bufferViews: bin.views,
     buffers: [{ byteLength: binBytes.length }],

@@ -126,3 +126,18 @@ test("insert_piece y render piden a la app (que comprueba el complemento)", () =
 test("hay 22 herramientas", () => {
   assert.equal(TOOL_NAMES.length, 22);
 });
+
+test("get_model describe las mallas y update_part no cambia su forma", async () => {
+  const { addMeshPart } = await import("./model");
+  const { primitiveMesh } = await import("./mesh");
+  const [m] = addMeshPart(newModel("m"), { name: "Cuerpo", mesh: { ...primitiveMesh("sphere"), mirrorX: false, subdivision: 1 } });
+  const info = JSON.parse(text(runTool(m, "get_model", {})));
+  assert.deepEqual(info.parts[0].mesh, { vertices: 98, faces: 96, mirrorX: false, subdivision: 1, smooth: false, unwrapped: false });
+  assert.equal(info.parts[0].box, null);
+  const r = runTool(m, "update_part", { part: "Cuerpo", size: [2, 2, 2] });
+  assert.equal(r.isError, true);
+  assert.match(text(r), /«Cuerpo» es una malla: edítala en el modo Editar malla/);
+  const moved = runTool(m, "update_part", { part: "Cuerpo", pivot: [0, 4, 0] });
+  assert.equal(moved.isError, undefined);
+  assert.deepEqual(moved.model!.parts[0].pivot, [0, 4, 0]);
+});

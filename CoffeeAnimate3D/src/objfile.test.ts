@@ -9,7 +9,8 @@ test("exportObj: vértices, UV y caras de todas las piezas visibles", () => {
   [m] = addPart(m, { name: "cubo", pivot: [0, 16, 0], box: { from: [-8, 0, -8], size: [16, 16, 16] } });
   [m] = addPart(m, { name: "rueda", pivot: [16, 0, 0], box: { from: [-2, 0, -4], size: [4, 8, 8], shape: "cylinder" } });
   [m] = addPart(m, { name: "oculta", visible: false, box: { from: [0, 0, 0], size: [1, 1, 1] } });
-  const { obj, mtl, png } = exportObj(m, "cosa");
+  const { obj, mtl, pngs } = exportObj(m, "cosa");
+  const png = pngs[0].data;
   const lines = obj.split("\n");
   const count = (p: string) => lines.filter((l) => l.startsWith(p)).length;
   const verts = m.parts.filter((p) => p.visible).reduce((s, p) => s + shapeGeometry(p.box!).positions.length / 3, 0);

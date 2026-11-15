@@ -96,6 +96,7 @@ function describe(m: Model3D) {
       rotation: p.rotation,
       visible: p.visible,
       box: p.box ? { from: p.box.from, size: p.box.size, faces: Object.fromEntries(FACES.map((f) => [f, p.box!.faces[f].pixels ? `${p.box!.faces[f].color} (pintada)` : p.box!.faces[f].color])) } : null,
+      ...(p.mesh ? { mesh: { vertices: p.mesh.vertices.length, faces: p.mesh.faces.length, mirrorX: p.mesh.mirrorX, subdivision: p.mesh.subdivision, smooth: p.mesh.smooth, unwrapped: p.mesh.uvs.length > 0 } } : {}),
     })),
     animations: m.animations.map((a) => ({
       id: a.id,
@@ -146,6 +147,7 @@ const HANDLERS: Record<string, Handler> = {
     if (a.rotation !== undefined) patch.rotation = vec(a.rotation, "rotation");
     if (typeof a.visible === "boolean") patch.visible = a.visible;
     if (a.from !== undefined || a.size !== undefined || a.color !== undefined || a.shape !== undefined) {
+      if (m.parts.find((p) => p.id === id)?.mesh) throw new Error(`«${nameOf(m, id)}» es una malla: edítala en el modo Editar malla`);
       patch.box = {};
       if (a.shape !== undefined) patch.box.shape = shapeArg(a.shape);
       if (a.from !== undefined) patch.box.from = vec(a.from, "from");
