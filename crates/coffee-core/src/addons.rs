@@ -140,6 +140,20 @@ pub const ADDONS: &[CatalogAddon] = &[
         manual_hint: "Este complemento se instala desde el Launcher de CoffeeWorks.",
     },
     CatalogAddon {
+        id: "ca3d-modelado",
+        name: "Modelado libre de CoffeeAnimate3D",
+        summary: "Modela criaturas y personajes con formas libres: vértices, aristas, caras, simetría y suavizado",
+        description: "Añade a CoffeeAnimate3D las piezas de tipo Malla para modelar formas libres y orgánicas: edición de vértices, aristas y caras (extruir, insertar cara, corte en bucle, biselar, unir, borrar, crear cara), edición proporcional, simetría en X y suavizado. También convierte piezas en malla conservando su pintura e importa .obj y .glb como mallas editables. Funciona sin conexión.",
+        apps: &["coffeeanimate3d"],
+        version: "1.0",
+        download_size: "Sin descarga",
+        publisher: "CoffeeWorks",
+        license: "MIT",
+        executable: "",
+        downloads: &[],
+        manual_hint: "",
+    },
+    CatalogAddon {
         id: "ca3d-render",
         name: "Render de CoffeeAnimate3D",
         summary: "Imágenes de calidad con luces, sombras y oclusión ambiental, y vueltas de 360° en video",
@@ -562,5 +576,21 @@ pub fn run_addon_with(id: &str, args: &[String], input: Option<&[u8]>, extension
         let _ = fs::remove_file(&output_path);
         let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
         Err(if err.is_empty() { format!("«{}» terminó con un error.", addon.name) } else { err })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn catalogo_modelado_libre_es_de_servicio() {
+        let a = find_addon("ca3d-modelado").expect("ca3d-modelado en el catálogo");
+        assert_eq!(a.name, "Modelado libre de CoffeeAnimate3D");
+        assert_eq!(a.executable, "");
+        assert_eq!(a.download_size, "Sin descarga");
+        assert_eq!(a.apps, &["coffeeanimate3d"]);
+        assert_eq!(a.license, "MIT");
+        assert!(addon_info(a).can_install);
     }
 }

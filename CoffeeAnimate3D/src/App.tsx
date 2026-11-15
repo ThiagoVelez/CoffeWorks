@@ -363,8 +363,8 @@ export const App: React.FC = () => {
   };
   const exportObjZip = async () => {
     const base = objFileBase((sd.title || "modelo").replace(/[\\/:*?"<>|]/g, "_"));
-    const { obj, mtl, png } = exportObj(cur(), base);
-    const zip = makeZip([{ name: `${base}.obj`, data: obj }, { name: `${base}.mtl`, data: mtl }, { name: `${base}.png`, data: png }]);
+    const { obj, mtl, pngs } = exportObj(cur(), base);
+    const zip = makeZip([{ name: `${base}.obj`, data: obj }, { name: `${base}.mtl`, data: mtl }, ...pngs]);
     if (await saveFileAs(`${base}-obj.zip`, [{ name: "ZIP con OBJ, MTL y PNG", extensions: ["zip"] }], zip, "Exportar a OBJ")) toast("Exportado a OBJ (.zip con .obj, .mtl y la textura)");
   };
 

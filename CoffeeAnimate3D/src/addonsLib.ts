@@ -14,10 +14,17 @@ export interface PieceEntry {
   file: string;
 }
 
-const devBrowser = !isTauri && import.meta.env.DEV;
+/** En desarrollo, en el navegador, los complementos cuentan como instalados (salvo con `?sinComplementos`, para probar sin ellos). */
+const noAddons = typeof location !== "undefined" && new URLSearchParams(location.search).has("sinComplementos");
+const devBrowser = !isTauri && import.meta.env.DEV && !noAddons;
 
 export async function canRender(): Promise<boolean> {
   return devBrowser || ensureAddon("ca3d-render", "CoffeeAnimate3D");
+}
+
+/** Complemento «Modelado libre»: crear y editar mallas. Si no está, ofrece instalarlo. */
+export async function canModel(): Promise<boolean> {
+  return devBrowser || ensureAddon("ca3d-modelado", "CoffeeAnimate3D");
 }
 
 async function piecesDir(): Promise<string | null> {
@@ -49,7 +56,7 @@ export async function loadPiece(entry: PieceEntry): Promise<Model3D> {
 }
 
 /** Para Claude (MCP): ¿está el complemento? Sin preguntar ni abrir diálogos. */
-export async function addonReady(id: "ca3d-render" | "ca3d-piezas"): Promise<boolean> {
+export async function addonReady(id: "ca3d-render" | "ca3d-piezas" | "ca3d-modelado"): Promise<boolean> {
   if (devBrowser) return true;
   if (!isTauri) return false;
   try {

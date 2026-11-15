@@ -176,6 +176,22 @@ const WEB_ADDONS: AddonInfo[] = [
     manual_hint: "Los complementos se instalan en la aplicación de escritorio de CoffeeWorks.",
   },
   {
+    id: "ca3d-modelado",
+    name: "Modelado libre de CoffeeAnimate3D",
+    summary: "Modela criaturas y personajes con formas libres: vértices, aristas, caras, simetría y suavizado",
+    description:
+      "Añade a CoffeeAnimate3D las piezas de tipo Malla para modelar formas libres y orgánicas: edición de vértices, aristas y caras (extruir, insertar cara, corte en bucle, biselar, unir, borrar, crear cara), edición proporcional, simetría en X y suavizado. También convierte piezas en malla conservando su pintura e importa .obj y .glb como mallas editables. Funciona sin conexión.",
+    apps: ["coffeeanimate3d"],
+    version: "1.0",
+    download_size: "Sin descarga",
+    publisher: "CoffeeWorks",
+    license: "MIT",
+    installed: false,
+    installed_bytes: 0,
+    can_install: false,
+    manual_hint: "Los complementos se instalan en la aplicación de escritorio de CoffeeWorks.",
+  },
+  {
     id: "ca3d-render",
     name: "Render de CoffeeAnimate3D",
     summary: "Imágenes de calidad con luces, sombras y oclusión ambiental, y vueltas de 360° en video",

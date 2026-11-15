@@ -2,6 +2,8 @@
 // leer OBJ ajenos como malla de referencia para calcar encima.
 
 import { buildAtlas, encodePng } from "./gltf";
+import { meshGeometry } from "./meshgeo";
+import { hexToRgb, meshTexturePixels } from "./model";
 import { shapeGeometry } from "./geometry";
 import { quatFromEuler, rotateVec } from "./rotation";
 import { TEX, UNITS_PER_BLOCK, type FaceName, type Model3D, type Part, type Vec3 } from "./types";
@@ -26,7 +28,7 @@ export function objFileBase(name: string): string {
   return name.trim().replace(/\s+/g, "_") || "modelo";
 }
 
-export function exportObj(m: Model3D, name: string): { obj: string; mtl: string; png: Uint8Array } {
+export function exportObj(m: Model3D, name: string): { obj: string; mtl: string; pngs: { name: string; data: Uint8Array }[] } {
   const baseName = objFileBase(name);
   const atlas = buildAtlas(m);
   const out = [`# CoffeeAnimate3D (CoffeeWorks): ${m.name}`, `# 1 unidad = 1 bloque`, `mtllib ${baseName}.mtl`];
@@ -53,8 +55,34 @@ export function exportObj(m: Model3D, name: string): { obj: string; mtl: string;
     }
     base += g.positions.length / 3;
   }
-  const mtl = [`# CoffeeAnimate3D`, `newmtl atlas`, `Kd 1 1 1`, `d 1`, `illum 1`, `map_Kd ${baseName}.png`, ""].join("\n");
-  return { obj: out.join("\n") + "\n", mtl, png: encodePng(atlas.width, atlas.height, atlas.rgba) };
+  // Mallas libres: en reposo, con simetría y suavizado aplicados; cada una con su material.
+  const mtlLines = [`# CoffeeAnimate3D`, `newmtl atlas`, `Kd 1 1 1`, `d 1`, `illum 1`, `map_Kd ${baseName}.png`, ""];
+  const pngs = [{ name: `${baseName}.png`, data: encodePng(atlas.width, atlas.height, atlas.rgba) }];
+  const usedNames = new Set<string>();
+  for (const p of m.parts) {
+    if (!p.mesh || !p.visible) continue;
+    const g = meshGeometry(p.mesh);
+    if (!g.indices.length) continue;
+    let mat = `${baseName}_${objFileBase(p.name)}`;
+    for (let k = 2; usedNames.has(mat); k++) mat = `${baseName}_${objFileBase(p.name)}_${k}`;
+    usedNames.add(mat);
+    if (p.mesh.uvs.length) {
+      mtlLines.push(`newmtl ${mat}`, `Kd 1 1 1`, `d 1`, `illum 1`, `map_Kd ${mat}.png`, "");
+      pngs.push({ name: `${mat}.png`, data: encodePng(p.mesh.texture.size, p.mesh.texture.size, meshTexturePixels(p.mesh.texture)) });
+    } else mtlLines.push(`newmtl ${mat}`, `Kd ${hexToRgb(p.mesh.texture.color).map((c) => fmt(c / 255)).join(" ")}`, `d 1`, `illum 1`, "");
+    out.push(`o ${p.name.replace(/\s+/g, " ")}`, `usemtl ${mat}`);
+    for (let i = 0; i < g.positions.length; i += 3) {
+      const w = toWorld(m, p, [g.positions[i], g.positions[i + 1], g.positions[i + 2]]);
+      out.push(`v ${w.map((x) => fmt(x / UNITS_PER_BLOCK)).join(" ")}`);
+    }
+    for (let i = 0; i < g.uvs.length; i += 2) out.push(`vt ${fmt(g.uvs[i])} ${fmt(1 - g.uvs[i + 1])}`);
+    for (let i = 0; i < g.indices.length; i += 3) {
+      const [a, b, c] = [g.indices[i], g.indices[i + 1], g.indices[i + 2]].map((x) => x + base);
+      out.push(`f ${a}/${a} ${b}/${b} ${c}/${c}`);
+    }
+    base += g.positions.length / 3;
+  }
+  return { obj: out.join("\n") + "\n", mtl: mtlLines.join("\n"), pngs };
 }
 
 /** Lee un OBJ: posiciones y triángulos (los polígonos se dividen en abanico). */

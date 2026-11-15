@@ -115,8 +115,8 @@ export function useMcpBridge(options: Options): { status: McpStatus; address: st
           ];
         } else if (r.needs && "exportObj" in r.needs) {
           const base = objFileBase(r.needs.exportObj);
-          const { obj, mtl, png } = exportObj(opts.current.getModel()!, base);
-          const zip = new Uint8Array(await makeZip([{ name: `${base}.obj`, data: obj }, { name: `${base}.mtl`, data: mtl }, { name: `${base}.png`, data: png }]).arrayBuffer());
+          const { obj, mtl, pngs } = exportObj(opts.current.getModel()!, base);
+          const zip = new Uint8Array(await makeZip([{ name: `${base}.obj`, data: obj }, { name: `${base}.mtl`, data: mtl }, ...pngs]).arrayBuffer());
           const path = await invoke<string>("mcp_save_export", { fileName: `${base}-obj.zip`, data: toBase64(zip) });
           content = [{ type: "text", text: `Exportado a ${path} (.obj, .mtl y la textura .png)` }];
         } else if (r.needs && "export" in r.needs) {
