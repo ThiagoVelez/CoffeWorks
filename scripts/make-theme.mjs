@@ -23,6 +23,7 @@ export const THEMED_APPS = {
   CoffeeCalc: "light",
   CoffeeView: "light",
   CoffeePDF: "light",
+  CoffeeConvert: "light",
   CoffeePage: "light",
   CoffeeDataBase: "light",
   CoffeeUIUX: "light",

@@ -15,7 +15,11 @@ import {
   Gamepad2,
   PanelLeftClose,
   PanelLeftOpen,
+  CheckCircle2,
 } from "lucide-react";
+
+/** Filtro especial de la tienda: solo las apps instaladas. */
+export const INSTALLED_FILTER = "Instaladas";
 
 export type NavTab = "launcher" | "games" | "templates" | "addons" | "settings";
 
@@ -117,6 +121,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {!collapsed && <span>Inicio / Launcher</span>}
           </button>
 
+          {/* Instaladas: solo las apps que hay en este equipo */}
+          <button
+            type="button"
+            onClick={() => {
+              onSelectTab("launcher");
+              onSelectCategory(INSTALLED_FILTER);
+            }}
+            title={collapsed ? `Instaladas (${installedCount})` : undefined}
+            data-nav="installed"
+            className={`flex items-center ${collapsed ? "justify-center px-0" : "justify-between px-3"} py-2 rounded-xl text-xs font-medium transition-all text-left ${
+              currentTab === "launcher" && selectedCategory === INSTALLED_FILTER
+                ? "bg-[#eeddd0] text-[#3e2723] font-bold shadow-xs border-l-4 border-[#6f4e37]"
+                : "text-[#5c3a21] hover:bg-[#f3eae1] hover:text-[#2c1b12]"
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 size={17} className={currentTab === "launcher" && selectedCategory === INSTALLED_FILTER ? "text-[#6f4e37]" : "text-[#8d6e63]"} />
+              {!collapsed && <span>Instaladas</span>}
+            </div>
+            {!collapsed && (
+              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded-full bg-[#eeddd0] text-[#6f4e37] font-semibold border border-[#dfd3c7]">
+                {installedCount}
+              </span>
+            )}
+          </button>
+
           {/* Acordeón Coffee Apps */}
           <div className="flex flex-col">
             <button
@@ -131,13 +161,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }}
               title={collapsed ? "Coffee Apps" : undefined}
               className={`flex items-center ${collapsed ? "justify-center px-0" : "justify-between px-3"} py-2 rounded-xl text-xs font-medium transition-all text-left ${
-                selectedCategory !== null
+                selectedCategory !== null && selectedCategory !== INSTALLED_FILTER
                   ? "bg-[#eeddd0]/60 text-[#3e2723] font-bold"
                   : "text-[#5c3a21] hover:bg-[#f3eae1] hover:text-[#2c1b12]"
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <Package size={17} className={selectedCategory ? "text-[#6f4e37]" : "text-[#8d6e63]"} />
+                <Package size={17} className={selectedCategory && selectedCategory !== INSTALLED_FILTER ? "text-[#6f4e37]" : "text-[#8d6e63]"} />
                 {!collapsed && <span>Coffee Apps</span>}
               </div>
               {!collapsed && <ChevronDown

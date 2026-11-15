@@ -133,6 +133,7 @@ export default defineConfig({
         "**/CoffeeAnimate/dist/**",
         "**/CoffeePuppet/dist/**",
         "**/CoffeeAnimate3D/dist/**",
+        "**/CoffeeConvert/dist/**",
         "**/data/vault.json",
       ],
     },

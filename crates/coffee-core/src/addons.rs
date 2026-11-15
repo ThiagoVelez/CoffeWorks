@@ -168,7 +168,31 @@ pub const ADDONS: &[CatalogAddon] = &[
         downloads: &["https://github.com/ThiagoVelez/CoffeWorks/releases/download/addons/coffee-ca3d-piezas.zip"],
         manual_hint: "Este complemento se instala desde el Launcher de CoffeeWorks.",
     },
+    CatalogAddon {
+        id: "officeconv",
+        name: "Motor de conversión (LibreOffice)",
+        summary: "Convierte Word, Excel, PowerPoint, OpenDocument, RTF y EPUB a PDF en CoffeeConvert",
+        description: "CoffeeConvert usa LibreOffice para pasar a PDF documentos de Word (.docx, .doc), Excel (.xlsx, .xls), PowerPoint (.pptx, .ppt), OpenDocument (.odt, .ods, .odp), RTF y EPUB con su formato. En Linux se instala aquí; en Windows se usa el LibreOffice que tengas instalado.",
+        apps: &["coffeeconvert"],
+        version: "24.x",
+        download_size: "~300 MB",
+        publisher: "The Document Foundation",
+        license: "MPL 2.0",
+        executable: "soffice",
+        downloads: &[],
+        manual_hint: "Instala LibreOffice desde https://www.libreoffice.org/download (gratis) y vuelve a CoffeeConvert: se detecta solo.",
+    },
 ];
+
+/// Dónde está LibreOffice en Windows (se usa el instalado en el equipo).
+fn windows_soffice() -> Option<PathBuf> {
+    let mut roots: Vec<PathBuf> = ["ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"]
+        .iter()
+        .filter_map(|v| std::env::var_os(v).map(PathBuf::from))
+        .collect();
+    roots.push(PathBuf::from(r"C:\Program Files"));
+    roots.into_iter().map(|r| r.join("LibreOffice").join("program").join("soffice.exe")).find(|p| p.is_file())
+}
 
 /// Archivo que marca como activado un complemento de servicio.
 const SERVICE_MARKER: &str = "activado.txt";
@@ -203,6 +227,9 @@ pub fn addon_executable(id: &str) -> Option<PathBuf> {
     if addon.executable.is_empty() {
         let marker = addons_dir().join(addon.id).join(SERVICE_MARKER);
         return marker.is_file().then_some(marker);
+    }
+    if addon.id == "officeconv" && cfg!(windows) {
+        return windows_soffice();
     }
     let path = addons_dir().join(addon.id).join(exe_name(addon.executable));
     if path.is_file() {
@@ -271,7 +298,7 @@ pub fn addon_info(addon: &CatalogAddon) -> AddonInfo {
         license: addon.license.into(),
         installed,
         installed_bytes: if installed { dir_size(&addons_dir().join(addon.id)) } else { 0 },
-        can_install: cfg!(windows) || addon.executable.is_empty() || is_data_file(addon.executable) || !linux_packages(addon.id).is_empty(),
+        can_install: (cfg!(windows) && !addon.downloads.is_empty()) || addon.executable.is_empty() || is_data_file(addon.executable) || !linux_packages(addon.id).is_empty(),
         manual_hint: addon.manual_hint.into(),
     }
 }
@@ -324,6 +351,7 @@ pub fn linux_packages(id: &str) -> &'static [&'static str] {
         "pdfcheck" => &["tesseract-ocr", "tesseract-ocr-spa", "tesseract-ocr-eng"],
         "raw" => &["libraw-bin"],
         "potrace" => &["potrace"],
+        "officeconv" => &["libreoffice-writer", "libreoffice-calc", "libreoffice-impress"],
         _ => &[],
     }
 }
@@ -382,6 +410,10 @@ pub fn install_addon(id: &str) -> Result<AddonInfo, String> {
         fs::write(dir.join(SERVICE_MARKER), addon.description)
             .map_err(|e| format!("No se pudo activar «{}»: {e}", addon.name))?;
         return Ok(addon_info(addon));
+    }
+    // Programas que se usan ya instalados en Windows (LibreOffice): solo se comprueban.
+    if cfg!(windows) && addon.downloads.is_empty() {
+        return if addon_executable(addon.id).is_some() { Ok(addon_info(addon)) } else { Err(addon.manual_hint.to_string()) };
     }
     if !cfg!(windows) {
         // Linux: los programas vienen de apt; los complementos de datos se descargan

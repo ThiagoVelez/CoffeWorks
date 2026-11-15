@@ -47,6 +47,7 @@ html[data-theme="dark"] .bg-\[\#fff6d6\]:not([data-paper] *):not([data-paper]) {
 html[data-theme="dark"] .bg-\[\#fff8e1\]:not([data-paper] *):not([data-paper]) { background-color: hsl(46.0 22.0% 6.4%) !important; }
 html[data-theme="dark"] .bg-white:not([data-paper] *):not([data-paper]) { background-color: hsl(0.0 0.0% 4.5%) !important; }
 html[data-theme="dark"] .bg-white\/10:not([data-paper] *):not([data-paper]) { background-color: hsl(0.0 0.0% 4.5% / 0.1) !important; }
+html[data-theme="dark"] .bg-white\/60:not([data-paper] *):not([data-paper]) { background-color: hsl(0.0 0.0% 4.5% / 0.6) !important; }
 html[data-theme="dark"] .bg-white\/70:not([data-paper] *):not([data-paper]) { background-color: hsl(0.0 0.0% 4.5% / 0.7) !important; }
 html[data-theme="dark"] .bg-white\/95:not([data-paper] *):not([data-paper]) { background-color: hsl(0.0 0.0% 4.5% / 0.95) !important; }
 html[data-theme="dark"] .border-\[\#b2e2b0\]:not([data-paper] *):not([data-paper]) { border-color: hsl(117.6 9.3% 20.4%) !important; }
