@@ -3,14 +3,15 @@
 
 import { newId } from "./studio/color";
 import { eulerFromQuat, quatFromAxisAngle, quatFromEuler, quatMul, rotateVec, type Quat } from "./rotation";
-import { EASES, FACES, SHAPES, TEX, type Shape, type Animation, type Box, type Ease, type FaceName, type FaceTex, type Keyframe, type Model3D, type Part, type Pose, type Vec3 } from "./types";
+import { cloneMesh, validateMesh } from "./mesh";
+import { EASES, FACES, MESH_TEXTURE_SIZES, SHAPES, TEX, type MeshData, type Shape, type Animation, type Box, type Ease, type FaceName, type FaceTex, type Keyframe, type Model3D, type Part, type Pose, type Vec3 } from "./types";
 
 export const DEFAULT_COLOR = "#c8a27a";
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
 export function newModel(name = "Modelo sin título"): Model3D {
-  return { version: 2, name, parts: [], animations: [] };
+  return { version: 3, name, parts: [], animations: [] };
 }
 
 function makeFaces(color: string): Record<FaceName, FaceTex> {
@@ -78,6 +79,23 @@ export function addPart(m: Model3D, input: PartInput): [Model3D, string] {
     visible: input.visible ?? true,
   };
   return [{ ...m, parts: [...m.parts, part] }, id];
+}
+
+/** Añade una pieza de malla libre. */
+export function addMeshPart(m: Model3D, input: { name?: string; parent?: string | null; pivot?: Vec3; mesh: MeshData }): [Model3D, string] {
+  const issues = validateMesh(input.mesh);
+  if (issues.length) throw new Error(issues[0]);
+  const [next, id] = addPart(m, { name: input.name || "Malla", parent: input.parent ?? null, pivot: input.pivot });
+  return [{ ...next, parts: next.parts.map((p) => (p.id === id ? { ...p, mesh: cloneMesh(input.mesh) } : p)) }, id];
+}
+
+/** Sustituye la malla de una pieza (rechaza mallas no válidas). */
+export function updateMesh(m: Model3D, id: string, mesh: MeshData): Model3D {
+  const p = findPart(m, id);
+  if (!p.mesh) throw new Error(`La pieza «${p.name}» no es una malla`);
+  const issues = validateMesh(mesh);
+  if (issues.length) throw new Error(issues[0]);
+  return { ...m, parts: m.parts.map((x) => (x.id === id ? { ...x, mesh } : x)) };
 }
 
 export interface PartPatch {
@@ -224,6 +242,11 @@ export function mirrorPart(m: Model3D, id: string): [Model3D, string] {
         // En la rampa el lado es un triángulo: al pasar al otro lado hay que voltearlo.
         const side = p.box.shape === "ramp" ? flipU : (x: FaceTex) => x;
         p.box.faces = { px: side(f.nx), nx: side(f.px), py: flipU(f.py), ny: flipU(f.ny), pz: flipU(f.pz), nz: flipU(f.nz) };
+      }
+      if (p.mesh) {
+        p.mesh.vertices = p.mesh.vertices.map((v) => [neg(v[0]), v[1], v[2]]);
+        p.mesh.faces = p.mesh.faces.map((f) => [...f].reverse());
+        p.mesh.uvs = p.mesh.uvs.map((u) => [...u].reverse());
       }
       return p;
     },
@@ -381,6 +404,8 @@ export function validateModel(m: Model3D): string[] {
     if (steps > m.parts.length) issues.push(`«${p.name}» está en un ciclo`);
     if (p.box && p.box.size.some((s) => !(s > 0))) issues.push(`«${p.name}» tiene una caja de tamaño 0`);
     if (p.box && !SHAPES.includes(p.box.shape)) issues.push(`«${p.name}» tiene una forma desconocida`);
+    if (p.box && p.mesh) issues.push(`«${p.name}» tiene caja y malla`);
+    if (p.mesh) for (const s of validateMesh(p.mesh)) issues.push(`«${p.name}»: ${s}`);
   }
   for (const a of m.animations) for (const pid of Object.keys(a.tracks)) if (!ids.has(pid)) issues.push(`la animación «${a.name}» anima una pieza que no existe`);
   return issues;
@@ -390,10 +415,38 @@ export function serializeModel(m: Model3D): string {
   return JSON.stringify(m);
 }
 
+/** Como `serializeModel`, pero sin mallas escribe la versión 2 para que lo abran las versiones anteriores de la app. */
+export function serializePortable(m: Model3D): string {
+  return m.parts.some((p) => p.mesh) ? serializeModel(m) : JSON.stringify({ ...m, version: 2 });
+}
+
 const num = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? v : d);
 const vec = (v: unknown, d: Vec3): Vec3 => (Array.isArray(v) && v.length === 3 ? [num(v[0], d[0]), num(v[1], d[1]), num(v[2], d[2])] : ([...d] as Vec3));
 const str = (v: unknown, d: string) => (typeof v === "string" ? v : d);
 const color = (v: unknown) => (typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v) ? v.toLowerCase() : DEFAULT_COLOR);
+
+const int = (v: unknown) => (typeof v === "number" && Number.isInteger(v) ? v : -1);
+
+function readMesh(r: any): MeshData {
+  const vertices: Vec3[] = (Array.isArray(r.vertices) ? r.vertices : []).map((v: unknown) => vec(v, [0, 0, 0]));
+  const faces: number[][] = (Array.isArray(r.faces) ? r.faces : []).map((f: unknown) => (Array.isArray(f) ? f.map(int) : []));
+  const uvs: [number, number][][] = Array.isArray(r.uvs) ? r.uvs.map((u: unknown) => (Array.isArray(u) ? u.map((q: any) => [num(q?.[0], 0), num(q?.[1], 0)] as [number, number]) : [])) : [];
+  const t = r.texture ?? {};
+  const size = (MESH_TEXTURE_SIZES as readonly number[]).includes(t.size) ? t.size : 64;
+  const mesh: MeshData = {
+    vertices,
+    faces,
+    uvs,
+    texture: { size, color: color(t.color) },
+    mirrorX: r.mirrorX === true,
+    subdivision: Math.max(0, Math.min(2, Math.round(num(r.subdivision, 0)))) as 0 | 1 | 2,
+    smooth: r.smooth === true,
+  };
+  if (typeof t.pixels === "string") mesh.texture.pixels = t.pixels;
+  if (Array.isArray(r.weights))
+    mesh.weights = r.weights.map((w: unknown) => (Array.isArray(w) ? w.filter((x: any) => x && typeof x.bone === "string").map((x: any) => ({ bone: x.bone, w: num(x.w, 0) })) : []));
+  return mesh;
+}
 
 /** Lee un archivo .ca3d; corrige lo reparable y rechaza lo que no lo es. */
 export function parseModel(text: string): Model3D {
@@ -403,7 +456,7 @@ export function parseModel(text: string): Model3D {
   } catch {
     throw new Error("El archivo no es un modelo de CoffeeAnimate3D válido.");
   }
-  if (!raw || (raw.version !== 1 && raw.version !== 2) || !Array.isArray(raw.parts)) throw new Error("Versión de archivo desconocida o modelo dañado.");
+  if (!raw || (raw.version !== 1 && raw.version !== 2 && raw.version !== 3) || !Array.isArray(raw.parts)) throw new Error("Versión de archivo desconocida o modelo dañado.");
   const parts: Part[] = raw.parts
     .filter((p: any) => p && typeof p.id === "string")
     .map((p: any): Part => {
@@ -417,7 +470,12 @@ export function parseModel(text: string): Model3D {
         }
         box = { shape: SHAPES.includes(p.box.shape) ? p.box.shape : "box", from: vec(p.box.from, [0, 0, 0]), size: vec(p.box.size, [1, 1, 1]).map((s) => (s > 0 ? s : 1)) as Vec3, faces };
       }
-      return { id: p.id, name: str(p.name, "Pieza"), parent: typeof p.parent === "string" ? p.parent : null, pivot: vec(p.pivot, [0, 0, 0]), rotation: vec(p.rotation, [0, 0, 0]), box, visible: p.visible !== false };
+      const part: Part = { id: p.id, name: str(p.name, "Pieza"), parent: typeof p.parent === "string" ? p.parent : null, pivot: vec(p.pivot, [0, 0, 0]), rotation: vec(p.rotation, [0, 0, 0]), box, visible: p.visible !== false };
+      // Una pieza con caja y malla conserva la caja.
+      if (!box && p.mesh && typeof p.mesh === "object") {
+        return { ...part, mesh: readMesh(p.mesh) };
+      }
+      return part;
     });
   const ids = new Set(parts.map((p) => p.id));
   for (const p of parts) if (p.parent && (!ids.has(p.parent) || p.parent === p.id)) p.parent = null;
@@ -433,7 +491,7 @@ export function parseModel(text: string): Model3D {
       }
       return { id: a.id, name: str(a.name, "Animación"), length: Math.max(0.05, num(a.length, 1)), loop: a.loop !== false, tracks };
     });
-  const out: Model3D = { version: 2, name: str(raw.name, "Modelo"), parts, animations };
+  const out: Model3D = { version: 3, name: str(raw.name, "Modelo"), parts, animations };
   const ref = raw.reference;
   if (ref && typeof ref.positions === "string" && typeof ref.indices === "string") out.reference = { name: str(ref.name, "Referencia"), positions: ref.positions, indices: ref.indices };
   return out;

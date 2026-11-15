@@ -2,7 +2,7 @@
 // una malla por caja, un atlas PNG con todas las caras (muestreo sin suavizar) y las
 // animaciones muestreadas a 24 fps. 16 unidades del editor = 1 metro (1 bloque).
 
-import { clearReference, facePixels, findAnimation, parseModel, samplePose, serializeModel } from "./model";
+import { clearReference, facePixels, findAnimation, parseModel, samplePose, serializePortable } from "./model";
 import { shapeGeometry } from "./geometry";
 import { FACES, TEX, UNITS_PER_BLOCK, type FaceName, type Model3D, type Vec3 } from "./types";
 
@@ -255,7 +255,7 @@ export function exportGlb(m: Model3D): Uint8Array {
   const json: any = {
     // El modelo completo viaja dentro: al importar este .glb vuelve exacto.
     // (sin la referencia para calcar, que no se exporta).
-    asset: { version: "2.0", generator: "CoffeeAnimate3D (CoffeeWorks)", extras: { ca3d: serializeModel(clearReference(m)) } },
+    asset: { version: "2.0", generator: "CoffeeAnimate3D (CoffeeWorks)", extras: { ca3d: serializePortable(clearReference(m)) } },
     scene: 0,
     scenes: [{ name: m.name, nodes: m.parts.filter((p) => !p.parent).map((p) => nodeIndex.get(p.id)!) }],
     nodes,

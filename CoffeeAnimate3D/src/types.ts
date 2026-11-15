@@ -47,6 +47,40 @@ export interface Box {
   faces: Record<FaceName, FaceTex>;
 }
 
+/** Modo de selección al editar una malla. */
+export type SelectMode = "vertex" | "edge" | "face";
+export type MeshPrimitive = "cube" | "sphere" | "cylinder" | "plane";
+export const MESH_PRIMITIVES: MeshPrimitive[] = ["cube", "sphere", "cylinder", "plane"];
+export const MESH_PRIMITIVE_LABEL: Record<MeshPrimitive, string> = { cube: "Cubo", sphere: "Esfera", cylinder: "Cilindro", plane: "Plano" };
+export const MESH_TEXTURE_SIZES = [32, 64, 128, 256] as const;
+export const MAX_MESH_FACES = 20000;
+
+export interface MeshTexture {
+  size: 32 | 64 | 128 | 256;
+  /** Color base (#rrggbb). */
+  color: string;
+  /** Píxeles pintados: size×size en RGBA, en base64. */
+  pixels?: string;
+}
+
+/** Malla libre (modelado libre). Vértices relativos al pivote de la pieza. */
+export interface MeshData {
+  vertices: Vec3[];
+  /** Polígonos (3+ vértices) en sentido antihorario visto desde fuera. */
+  faces: number[][];
+  /** UV por esquina de cara, como `faces`; vacío = sin desplegar. */
+  uvs: [number, number][][];
+  texture: MeshTexture;
+  /** Simetría en X: se modela x ≥ 0 y el otro lado se genera. */
+  mirrorX: boolean;
+  /** Niveles de subdivisión Catmull–Clark al mostrar y exportar. */
+  subdivision: 0 | 1 | 2;
+  /** Sombreado suave. */
+  smooth: boolean;
+  /** Pesos por vértice (entrega 3). */
+  weights?: { bone: string; w: number }[][];
+}
+
 export interface Part {
   id: string;
   name: string;
@@ -56,6 +90,8 @@ export interface Part {
   /** Rotación de reposo en grados (orden XYZ). */
   rotation: Vec3;
   box: Box | null;
+  /** Malla libre (exclusiva con `box`). */
+  mesh?: MeshData;
   visible: boolean;
 }
 
@@ -84,7 +120,7 @@ export interface Animation {
 }
 
 export interface Model3D {
-  version: 2;
+  version: 3;
   /** Malla de referencia para calcar (no se edita ni se exporta): base64 de Float32 y Uint32. */
   reference?: { name: string; positions: string; indices: string };
   name: string;

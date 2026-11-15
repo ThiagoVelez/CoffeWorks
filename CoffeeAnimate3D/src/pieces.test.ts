@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { PIECES } from "./pieces";
-import { insertPiece, newModel, normalizeIds, serializeModel, validateModel } from "./model";
+import { insertPiece, newModel, normalizeIds, serializeModel, serializePortable, validateModel } from "./model";
 
 const DIR = join(import.meta.dirname, "..", "..", "addons", "coffee-ca3d-piezas");
 
@@ -27,7 +27,12 @@ test("normalizeIds da siempre el mismo archivo", () => {
 test("los archivos del complemento están al día (node scripts: npx tsx scripts/make-pieces.ts)", () => {
   const index = JSON.parse(readFileSync(join(DIR, "piezas.json"), "utf8"));
   assert.deepEqual(index.map((x: { name: string }) => x.name), PIECES.map((p) => p.name));
-  for (const p of PIECES) assert.equal(readFileSync(join(DIR, p.file), "utf8"), serializeModel(normalizeIds(p.make())), p.file);
+  for (const p of PIECES) assert.equal(readFileSync(join(DIR, p.file), "utf8"), serializePortable(normalizeIds(p.make())), p.file);
+});
+
+test("las piezas sin mallas se guardan como versión 2 (las abren las apps anteriores)", () => {
+  for (const p of PIECES) assert.equal(JSON.parse(readFileSync(join(DIR, p.file), "utf8")).version, 2, p.file);
+  assert.equal(JSON.parse(serializePortable(newModel())).version, 2);
 });
 
 test("insertar una pieza dos veces: grupos distintos y el modelo valida", () => {
