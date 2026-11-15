@@ -4,7 +4,7 @@
 import { newId } from "./studio/color";
 import { eulerFromQuat, quatFromAxisAngle, quatFromEuler, quatMul, rotateVec, type Quat } from "./rotation";
 import { cloneMesh, validateMesh } from "./mesh";
-import { EASES, FACES, MESH_TEXTURE_SIZES, SHAPES, TEX, type MeshData, type Shape, type Animation, type Box, type Ease, type FaceName, type FaceTex, type Keyframe, type Model3D, type Part, type Pose, type Vec3 } from "./types";
+import { EASES, FACES, MESH_TEXTURE_SIZES, SHAPES, TEX, type MeshData, type MeshTexture, type Shape, type Animation, type Box, type Ease, type FaceName, type FaceTex, type Keyframe, type Model3D, type Part, type Pose, type Vec3 } from "./types";
 
 export const DEFAULT_COLOR = "#c8a27a";
 
@@ -184,14 +184,14 @@ export function mirrorName(name: string): string {
   return out.replace(/\u0000/g, "");
 }
 
-function decode(pixels: string): Uint8Array {
+export function decodeRgba(pixels: string): Uint8Array {
   const bin = atob(pixels);
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
 }
 
-function encode(px: Uint8Array): string {
+export function encodeRgba(px: Uint8Array): string {
   let s = "";
   for (let i = 0; i < px.length; i += 0x8000) s += String.fromCharCode(...px.subarray(i, i + 0x8000));
   return btoa(s);
@@ -204,10 +204,23 @@ export function hexToRgb(hex: string): [number, number, number] {
 
 const toHex = (r: number, g: number, b: number) => `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 
+/** Píxeles RGBA de la textura de una malla (size×size), con el color base donde no se ha pintado. */
+export function meshTexturePixels(tex: MeshTexture): Uint8Array {
+  const n = tex.size * tex.size * 4;
+  if (tex.pixels) {
+    const px = decodeRgba(tex.pixels);
+    if (px.length === n) return px;
+  }
+  const [r, g, b] = hexToRgb(tex.color);
+  const out = new Uint8Array(n);
+  for (let i = 0; i < n; i += 4) (out[i] = r), (out[i + 1] = g), (out[i + 2] = b), (out[i + 3] = 255);
+  return out;
+}
+
 /** Píxeles RGBA de una cara (TEX×TEX), con el color base donde no se ha pintado. */
 export function facePixels(face: FaceTex): Uint8Array {
   if (face.pixels) {
-    const px = decode(face.pixels);
+    const px = decodeRgba(face.pixels);
     if (px.length === TEX * TEX * 4) return px;
   }
   const [r, g, b] = hexToRgb(face.color);
@@ -221,7 +234,7 @@ function flipU(face: FaceTex): FaceTex {
   const src = facePixels(face);
   const dst = new Uint8Array(src.length);
   for (let y = 0; y < TEX; y++) for (let x = 0; x < TEX; x++) dst.set(src.subarray((y * TEX + x) * 4, (y * TEX + x) * 4 + 4), (y * TEX + (TEX - 1 - x)) * 4);
-  return { ...face, pixels: encode(dst) };
+  return { ...face, pixels: encodeRgba(dst) };
 }
 
 /** Cambia el signo sin producir −0. */
@@ -282,7 +295,7 @@ export function paintPixels(m: Model3D, id: string, face: FaceName, points: [num
   return withFace(m, id, face, (f) => {
     const px = facePixels(f);
     for (const [x, y] of points) px.set([r, g, b, 255], (y * TEX + x) * 4);
-    return { color: f.color, pixels: encode(px) };
+    return { color: f.color, pixels: encodeRgba(px) };
   });
 }
 
