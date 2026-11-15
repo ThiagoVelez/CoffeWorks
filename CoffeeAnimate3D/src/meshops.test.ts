@@ -252,3 +252,62 @@ test("barrido con UV: toda operación deja UV coherentes y en [0, 1]", () => {
     assert.equal(m.uvs.length, m.faces.length, name);
   }
 });
+
+// ---------- Revisión final ----------
+import { halveForMirror } from "./meshops";
+import { mirrorMesh, subdivideOnce } from "./meshgeo";
+import { boxToMesh } from "./meshconvert";
+import { addMeshPart, addPart, findPart, mirrorPart, newModel, parseModel, serializeModel } from "./model";
+
+test("revisión 1: copia reflejada de una malla con simetría sigue válida y no se aplana", () => {
+  const h = halfCube();
+  let m = newModel();
+  let a: string, b: string;
+  [m, a] = addMeshPart(m, { name: "cuerpo izquierdo", pivot: [4, 0, 0], mesh: h });
+  [m, b] = mirrorPart(m, a);
+  const copy = findPart(m, b).mesh!;
+  ok(copy);
+  assert.deepEqual(copy.vertices, h.vertices);
+  const moved = moveVertices(copy, new Map([[1, 1]]), [0, 3, 0]);
+  assert.ok(moved.vertices.some((v) => v[0] === 8), "los demás vértices no se aplanan");
+});
+
+test("revisión 2: activar la simetría corta en x = 0 en vez de borrar casi todo", () => {
+  const [mm, id] = addPart(newModel(), { name: "c", box: { from: [-4, -4, -4], size: [8, 8, 8] } });
+  const conv = boxToMesh(findPart(mm, id).box!);
+  const half = halveForMirror(conv);
+  ok(half);
+  assert.equal(half.mirrorX, true);
+  assert.equal(half.faces.length, 5);
+  assert.equal(half.uvs.length, half.faces.length);
+  const full = mirrorMesh(half);
+  for (const list of edgeFaces(full.faces).values()) assert.equal(list.length, 2);
+  assert.throws(() => halveForMirror({ ...cube8(), vertices: cube8().vertices.map((v) => [v[0] - 20, v[1], v[2]]) }), /x < 0/);
+});
+
+test("revisión 3: recalcular normales de 6144 caras tarda poco", () => {
+  let s = primitiveMesh("sphere");
+  let g = { vertices: s.vertices, faces: s.faces, uvs: s.uvs };
+  for (let i = 0; i < 3; i++) g = subdivideOnce(g.vertices, g.faces, g.uvs);
+  const big = { ...s, vertices: g.vertices, faces: g.faces.map((f, i) => (i % 7 === 0 ? [...f].reverse() : f)), uvs: [] };
+  const t = performance.now();
+  const r = recalcNormals(big);
+  assert.ok(performance.now() - t < 3000, `tardó ${Math.round(performance.now() - t)} ms`);
+  ok(r);
+});
+
+test("revisión 4: un .ca3d con una malla dañada da un error claro al abrir", () => {
+  const [m] = addMeshPart(newModel(), { name: "Rota", mesh: cube8() });
+  const raw = JSON.parse(serializeModel(m));
+  raw.parts[0].mesh.faces[0] = [0, 1, 50];
+  assert.throws(() => parseModel(JSON.stringify(raw)), /malla dañada/);
+});
+
+test("revisión 6: biselar un anillo que toca la costura de la simetría", () => {
+  const half = halveForMirror(primitiveMesh("cylinder"));
+  const top = vertsWhere(half, (v) => v[1] === 8);
+  const r = bevel(half, top, 1);
+  ok(r.mesh);
+  for (const list of edgeFaces(mirrorMesh(r.mesh).faces).values()) assert.equal(list.length, 2);
+  assert.ok(r.mesh.vertices.every((v) => v[0] >= 0));
+});

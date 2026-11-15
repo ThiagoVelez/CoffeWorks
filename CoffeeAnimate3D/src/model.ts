@@ -256,7 +256,8 @@ export function mirrorPart(m: Model3D, id: string): [Model3D, string] {
         const side = p.box.shape === "ramp" ? flipU : (x: FaceTex) => x;
         p.box.faces = { px: side(f.nx), nx: side(f.px), py: flipU(f.py), ny: flipU(f.ny), pz: flipU(f.pz), nz: flipU(f.nz) };
       }
-      if (p.mesh) {
+      // Con simetría la malla ya es igual a los dos lados: basta con reflejar pivote y giro.
+      if (p.mesh && !p.mesh.mirrorX) {
         p.mesh.vertices = p.mesh.vertices.map((v) => [neg(v[0]), v[1], v[2]]);
         p.mesh.faces = p.mesh.faces.map((f) => [...f].reverse());
         p.mesh.uvs = p.mesh.uvs.map((u) => [...u].reverse());
@@ -486,7 +487,10 @@ export function parseModel(text: string): Model3D {
       const part: Part = { id: p.id, name: str(p.name, "Pieza"), parent: typeof p.parent === "string" ? p.parent : null, pivot: vec(p.pivot, [0, 0, 0]), rotation: vec(p.rotation, [0, 0, 0]), box, visible: p.visible !== false };
       // Una pieza con caja y malla conserva la caja.
       if (!box && p.mesh && typeof p.mesh === "object") {
-        return { ...part, mesh: readMesh(p.mesh) };
+        const mesh = readMesh(p.mesh);
+        const issues = validateMesh(mesh);
+        if (issues.length) throw new Error(`El archivo tiene una malla dañada («${part.name}»): ${issues[0].toLowerCase()}`);
+        return { ...part, mesh };
       }
       return part;
     });

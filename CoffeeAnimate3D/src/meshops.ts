@@ -62,9 +62,9 @@ function build(m: MeshData, w: Work, prefix = ""): { mesh: MeshData; remap: numb
 const isCenter = (p: Vec3) => Math.abs(p[0]) < MIRROR_EPS;
 
 /** Con simetría: los vértices del centro siguen en x = 0 y nadie pasa a x < 0. */
-function clampMirror(m: MeshData, before: Vec3[], after: Vec3[]): Vec3[] {
+function clampMirror(m: MeshData, before: Vec3[], after: Vec3[], touched?: (i: number) => boolean): Vec3[] {
   if (!m.mirrorX) return after;
-  return after.map((p, i) => [i < before.length && isCenter(before[i]) ? 0 : Math.max(0, p[0]), p[1], p[2]] as Vec3);
+  return after.map((p, i) => (touched && !touched(i) ? p : ([i < before.length && isCenter(before[i]) ? 0 : Math.max(0, p[0]), p[1], p[2]] as Vec3)));
 }
 
 // ---------- Transformar ----------
@@ -74,7 +74,7 @@ function transform(m: MeshData, w: Map<number, number>, fn: (p: Vec3) => Vec3): 
     const k = w.get(i) ?? 0;
     return k ? r6(lerp3(p, fn(p), k)) : ([...p] as Vec3);
   });
-  return { ...m, vertices: clampMirror(m, m.vertices, after) };
+  return { ...m, vertices: clampMirror(m, m.vertices, after, (i) => (w.get(i) ?? 0) > 0) };
 }
 
 export function moveVertices(m: MeshData, w: Map<number, number>, delta: Vec3): MeshData {
@@ -343,10 +343,34 @@ function fan(w: Work, ef: ReturnType<typeof edgeFaces>, v: number): { face: numb
   return null;
 }
 
+/** Abanico abierto (vértice en un borde): de la arista de borde de entrada a la de salida. */
+function openFan(w: Work, ef: ReturnType<typeof edgeFaces>, v: number): { inQ: number; fan: { face: number; q: number }[] } | null {
+  const start = w.f.findIndex((f) => {
+    if (!f.includes(v)) return false;
+    const p = f[(f.indexOf(v) + f.length - 1) % f.length];
+    return ef.get(edgeKey(p, v))!.length === 1;
+  });
+  if (start < 0) return null;
+  const f0 = w.f[start];
+  const inQ = f0[(f0.indexOf(v) + f0.length - 1) % f0.length];
+  const fan: { face: number; q: number }[] = [];
+  let face = start;
+  for (let guard = 0; guard <= w.f.length; guard++) {
+    const f = w.f[face];
+    const q = f[(f.indexOf(v) + 1) % f.length];
+    fan.push({ face, q });
+    const other = ef.get(edgeKey(v, q))!.find((x) => x.face !== face);
+    if (!other) return { inQ, fan };
+    face = other.face;
+  }
+  return null;
+}
+
 export function bevel(m: MeshData, verts: number[], width = 2): { mesh: MeshData; verts: number[] } {
   const w = work(m);
   const ef = edgeFaces(w.f);
-  const edges = selectedEdges(m, verts);
+  // Con simetría, las aristas de la costura (borde en x = 0) no se biselan: las genera el reflejo.
+  const edges = selectedEdges(m, verts).filter(([a, b]) => !seamEdge(m, w, a, b, ef.get(edgeKey(a, b))!.length));
   if (!edges.length) throw new Error(BEVEL_CHAIN);
   const count = new Map<number, number>();
   for (const [a, b] of edges) for (const v of [a, b]) count.set(v, (count.get(v) ?? 0) + 1);
@@ -368,6 +392,24 @@ export function bevel(m: MeshData, verts: number[], width = 2): { mesh: MeshData
   };
   for (const v of count.keys()) {
     const fv = fan(w, ef, v);
+    if (!fv && m.mirrorX && isCenter(w.v[v])) {
+      // Vértice en la costura: abanico abierto, cortado en las aristas elegidas.
+      const of = openFan(w, ef, v);
+      if (!of) throw new Error("Biselar: solo aristas entre dos caras");
+      const k = of.fan.length;
+      const cuts = of.fan.flatMap((e, i) => (i < k - 1 && sel.has(edgeKey(v, e.q)) ? [i] : []));
+      let start = 0;
+      for (const end of [...cuts, k - 1]) {
+        const qs: number[] = [];
+        if (start === 0) qs.push(of.inQ);
+        for (let i = start; i < end; i++) qs.push(of.fan[i].q);
+        if (end === k - 1) qs.push(of.fan[k - 1].q);
+        const nv = add(toward(v, qs, of.fan[start].face));
+        for (let i = start; i <= end; i++) repl.set(`${of.fan[i].face}:${v}`, [nv]);
+        start = end + 1;
+      }
+      continue;
+    }
     if (!fv || fv.length < 3) throw new Error("Biselar: solo aristas entre dos caras");
     const k = fv.length;
     const selIdx = fv.flatMap((e, i) => (sel.has(edgeKey(v, e.q)) ? [i] : []));
@@ -629,7 +671,7 @@ export function relax(m: MeshData, verts: number[], strength = 0.5): MeshData {
     for (const j of nb[i]) avg = add3(avg, scale3(m.vertices[j], 1 / nb[i].size));
     return r6(lerp3(p, avg, strength));
   });
-  return { ...m, vertices: clampMirror(m, m.vertices, vertices) };
+  return { ...m, vertices: clampMirror(m, m.vertices, vertices, (i) => verts.includes(i)) };
 }
 
 // ---------- Normales ----------
@@ -653,23 +695,28 @@ export function recalcNormals(m: MeshData): MeshData {
     faces[i].reverse();
     if (uvs.length) uvs[i].reverse();
   };
+  /** ¿La cara recorre a → b (en su orden actual)? */
+  const goes = (fi: number, a: number, b: number) => {
+    const f = faces[fi];
+    return f[(f.indexOf(a) + 1) % f.length] === b;
+  };
+  const ef = edgeFaces(m.faces);
   const done = new Array(faces.length).fill(false);
   for (let s = 0; s < faces.length; s++) {
     if (done[s]) continue;
     const comp: number[] = [];
     const queue = [s];
     done[s] = true;
-    while (queue.length) {
-      const fi = queue.shift()!;
+    for (let qi = 0; qi < queue.length; qi++) {
+      const fi = queue[qi];
       comp.push(fi);
-      const ef = edgeFaces(faces);
       const f = faces[fi];
       for (let i = 0; i < f.length; i++) {
         const a = f[i];
         const b = f[(i + 1) % f.length];
         for (const x of ef.get(edgeKey(a, b))!) {
           if (x.face === fi || done[x.face]) continue;
-          if (x.from === a) flip(x.face);
+          if (goes(x.face, a, b)) flip(x.face);
           done[x.face] = true;
           queue.push(x.face);
         }
@@ -685,6 +732,55 @@ export function recalcNormals(m: MeshData): MeshData {
     if (vol < 0) for (const fi of comp) flip(fi);
   }
   return { ...m, faces, uvs };
+}
+
+/**
+ * Activar la simetría: corta la malla por x = 0 (con vértices nuevos en la costura) y se queda
+ * con la mitad x ≥ 0; la otra mitad la genera la simetría.
+ */
+export function halveForMirror(m: MeshData): MeshData {
+  if (!m.vertices.some((p) => p[0] > MIRROR_EPS || isCenter(p))) throw new Error("La malla está entera en x < 0: muévela hacia +X antes de activar la simetría");
+  const w = work(m);
+  const side = (i: number) => (isCenter(w.v[i]) ? 0 : w.v[i][0] > 0 ? 1 : -1);
+  const seam = new Map<string, number>();
+  const cut = (a: number, b: number): number => {
+    const k = edgeKey(a, b);
+    if (!seam.has(k)) {
+      const t = w.v[a][0] / (w.v[a][0] - w.v[b][0]);
+      const p = lerp3(w.v[a], w.v[b], t);
+      p[0] = 0;
+      seam.set(k, w.v.length);
+      w.v.push(p);
+    }
+    return seam.get(k)!;
+  };
+  const faces: number[][] = [];
+  const uvs: UV[][] = [];
+  w.f.forEach((f, fi) => {
+    const nf: number[] = [];
+    const nu: UV[] = [];
+    f.forEach((v, i) => {
+      const nx = f[(i + 1) % f.length];
+      if (side(v) >= 0) {
+        nf.push(v);
+        nu.push(cornerUv(w, fi, v));
+      }
+      if (side(v) * side(nx) < 0) {
+        nf.push(cut(v, nx));
+        const t = w.v[v][0] / (w.v[v][0] - w.v[nx][0]);
+        nu.push(lerp2(cornerUv(w, fi, v), cornerUv(w, fi, nx), t));
+      }
+    });
+    // Caras apoyadas solo en la costura (sin área en x > 0) desaparecen.
+    if (nf.length >= 3 && nf.some((v) => side(v) > 0)) {
+      faces.push(nf);
+      uvs.push(nu);
+    }
+  });
+  w.f = faces;
+  if (w.uv) w.uv = uvs;
+  w.v = w.v.map((p) => (Math.abs(p[0]) < MIRROR_EPS ? [0, p[1], p[2]] : p));
+  return build({ ...m, mirrorX: true }, w, "Simetría: ").mesh;
 }
 
 // ---------- Aplicar modificadores ----------

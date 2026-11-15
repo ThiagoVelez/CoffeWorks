@@ -19,7 +19,7 @@ import { RenderDialog, PiecesDialog } from "./panels";
 import { canModel, canRender, loadPiece, type PieceEntry } from "./addonsLib";
 import { primitiveMesh } from "./mesh";
 import { edgeLoop, linked } from "./meshsel";
-import { applyMirror, applySubdivision, bevel, deleteSelection, extrude, fillFace as fillMeshFace, flipFaces, inset, loopCut, mergeVertices, moveVertices, recalcNormals, relax, rotateVertices, scaleVertices, subdivideFaces } from "./meshops";
+import { halveForMirror, applyMirror, applySubdivision, bevel, deleteSelection, extrude, fillFace as fillMeshFace, flipFaces, inset, loopCut, mergeVertices, moveVertices, recalcNormals, relax, rotateVertices, scaleVertices, subdivideFaces } from "./meshops";
 import { convertPartToMesh, refToMesh } from "./meshconvert";
 import { proportional } from "./meshsel";
 import { Viewport, type GizmoMode, type MeshPick, type MeshTransform, type TransformChange, type ViewAngle, type ViewTool } from "./viewport";
@@ -567,7 +567,10 @@ export const App: React.FC = () => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !doc) return;
       const k = e.key.toLowerCase();
-      if (k === "tab" && !e.ctrlKey && !e.altKey) {
+      // Tab solo entra o sale de Editar malla con una malla elegida y el foco en el visor;
+      // si no, sigue moviendo el foco del teclado como siempre.
+      const inUi = (e.target as HTMLElement)?.closest?.('[role="dialog"], [role="menu"], [data-dialog], button, a');
+      if (k === "tab" && !e.ctrlKey && !e.altKey && (meshEdit || selPart?.mesh) && !inUi) {
         e.preventDefault();
         void enterMeshEdit();
         return;
@@ -1138,13 +1141,6 @@ const PartPanel: React.FC<{ model: Model3D; part: Part; mode: Mode; color: strin
   );
 };
 
-/** Activar la simetría: se queda la mitad x ≥ 0 (lo que estaba en x < 0 se genera reflejado). */
-function halveForMirror(mesh: MeshData): MeshData {
-  const neg = mesh.vertices.flatMap((p, i) => (p[0] < -1e-3 ? [i] : []));
-  const half = neg.length && neg.length < mesh.vertices.length ? deleteSelection(mesh, neg, "vertex") : mesh;
-  return { ...half, mirrorX: true, vertices: half.vertices.map((p) => [Math.abs(p[0]) < 1e-3 ? 0 : Math.max(0, p[0]), p[1], p[2]] as Vec3) };
-}
-
 /** Propiedades de una pieza de malla (complemento «Modelado libre»). */
 const MeshPanel: React.FC<{
   mesh: MeshData;
@@ -1166,7 +1162,13 @@ const MeshPanel: React.FC<{
       <Button primary={editing} onClick={onEdit}>
         <PenTool size={14} /> {editing ? "Salir de Editar malla (Tab)" : "Editar malla (Tab)"}
       </Button>
-      <Toggle checked={mesh.mirrorX} onChange={(v) => onChange(v ? halveForMirror(mesh) : { ...mesh, mirrorX: false })} label="Simetría en X (se modela x ≥ 0)" />
+      <Toggle checked={mesh.mirrorX} onChange={(v) => {
+          try {
+            onChange(v ? halveForMirror(mesh) : { ...mesh, mirrorX: false });
+          } catch (e) {
+            toast(String((e as Error).message), "error");
+          }
+        }} label="Simetría en X (se modela x ≥ 0)" />
       <Toggle checked={mesh.smooth} onChange={(v) => onChange({ ...mesh, smooth: v })} label="Sombreado suave" />
       <label className="flex flex-col gap-1">
         <span className="text-[11px] text-[#8a8a92]">Suavizado (subdivisión)</span>
