@@ -4,21 +4,8 @@ import { addMeshPart, addPart, findPart, mirrorPart, newModel, parseModel, seria
 import { cloneMesh, meshEdges, primitiveMesh, validateMesh } from "./mesh";
 import { MESH_PRIMITIVES } from "./types";
 import { TEMPLATES } from "./templates";
-import type { MeshData, Vec3 } from "./types";
-
-const sub = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-const cross = (a: Vec3, b: Vec3): Vec3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-
-/** Cada cara mira hacia fuera respecto al centro `c`. */
-export function facesOutward(m: MeshData, c: Vec3 = [0, 0, 0]): boolean {
-  return m.faces.every((f) => {
-    const [a, b, d] = [m.vertices[f[0]], m.vertices[f[1]], m.vertices[f[2]]];
-    const n = cross(sub(b, a), sub(d, a));
-    const cen = f.reduce<Vec3>((s, i) => [s[0] + m.vertices[i][0] / f.length, s[1] + m.vertices[i][1] / f.length, s[2] + m.vertices[i][2] / f.length], [0, 0, 0]);
-    return dot(n, sub(cen, c)) > 0;
-  });
-}
+import type { MeshData } from "./types";
+import { facesOutward } from "./meshtest-utils";
 
 const quad = (): MeshData => ({
   vertices: [[0, 0, 0], [4, 0, 0], [4, 0, 4], [0, 0, 4]],
