@@ -4,9 +4,13 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { TransformControls } from "three/addons/controls/TransformControls.js";
-import { facePixels } from "./model";
+import { facePixels, meshTexturePixels } from "./model";
+import { meshGeometry } from "./meshgeo";
+import { meshEdges } from "./mesh";
+import { proportional, selectionCenter } from "./meshsel";
+import { moveVertices, rotateVertices, scaleVertices } from "./meshops";
 import { shapeGeometry, uvToPixel } from "./geometry";
-import { FACES, TEX, type FaceName, type Model3D, type Pose, type Vec3 } from "./types";
+import { FACES, TEX, type FaceName, type MeshData, type Model3D, type Pose, type SelectMode, type Vec3 } from "./types";
 import { ViewCube, cameraDir } from "./viewcube";
 import { ROTATE_STEP, gridAnchor, type SnapStep } from "./snap";
 import { topLevel } from "./model";
@@ -42,6 +46,33 @@ export interface ViewportEvents {
   onMeasure: (distance: number | null) => void;
   /** Pintar: pieza, cara y píxel tocados. `last` es el último del trazo. */
   onPaint: (id: string, face: FaceName, x: number, y: number, last: boolean) => void;
+  /** Editar malla: clic (vértice, arista y cara más cercanos bajo el ratón) o null en vacío. */
+  onMeshPick?: (hit: MeshPick | null) => void;
+  /** Editar malla: vértices visibles dentro del rectángulo (Mayús+arrastre). */
+  onMeshBox?: (verts: number[], shift: boolean) => void;
+  /** Editar malla: fin de un arrastre del gizmo sobre la selección (espacio de la pieza). */
+  onMeshTransform?: (change: MeshTransform) => void;
+}
+
+export interface MeshPick {
+  vert?: number;
+  edge?: [number, number];
+  face?: number;
+  shift: boolean;
+  alt: boolean;
+}
+
+export interface MeshTransform {
+  delta?: Vec3;
+  rotate?: { quat: Quat; center: Vec3 };
+  scale?: { factor: Vec3; center: Vec3 };
+}
+
+export interface MeshEditState {
+  partId: string;
+  mode: SelectMode;
+  verts: number[];
+  proportional: number | null;
 }
 
 const DEG = Math.PI / 180;
@@ -55,6 +86,35 @@ function faceTexture(px: Uint8Array): THREE.DataTexture {
   tex.needsUpdate = true;
   return tex;
 }
+
+function meshTexture(mesh: MeshData): THREE.DataTexture {
+  const size = mesh.texture.size;
+  const tex = new THREE.DataTexture(meshTexturePixels(mesh.texture), size, size, THREE.RGBAFormat);
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestFilter;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.flipY = false;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+/** Geometría de una malla libre (simetría y suavizado aplicados); `faceOf` va en userData. */
+function freeGeometry(mesh: MeshData, subdivision = mesh.subdivision): THREE.BufferGeometry {
+  const g = meshGeometry(mesh, 1, subdivision);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(g.positions, 3));
+  geo.setAttribute("normal", new THREE.Float32BufferAttribute(g.normals, 3));
+  geo.setAttribute("uv", new THREE.Float32BufferAttribute(g.uvs, 2));
+  geo.setIndex(g.indices);
+  geo.userData.faceOf = g.faceOf;
+  return geo;
+}
+
+function freeMaterial(mesh: MeshData): THREE.MeshLambertMaterial {
+  return mesh.uvs.length ? new THREE.MeshLambertMaterial({ map: meshTexture(mesh) }) : new THREE.MeshLambertMaterial({ color: new THREE.Color(mesh.texture.color) });
+}
+
+const toMaterials = (m: THREE.Material | THREE.Material[]) => (Array.isArray(m) ? m : [m]) as THREE.MeshLambertMaterial[];
 
 /** Geometría de la forma con un grupo por cara (material = índice en FACES), igual que la exportación. */
 function partGeometry(box: NonNullable<Model3D["parts"][number]["box"]>): THREE.BufferGeometry {
@@ -98,6 +158,14 @@ export class Viewport {
   private ro: ResizeObserver;
   mode: "model" | "paint" | "animate" = "model";
   private model: Model3D | null = null;
+  /** Mallas libres dibujadas, por pieza. */
+  private free = new Map<string, THREE.Mesh>();
+  /** Editar malla: estado, capa de puntos y aristas, y asa del gizmo. */
+  private edit: MeshEditState | null = null;
+  private overlay = new THREE.Group();
+  private handle = new THREE.Object3D();
+  private handleStart = { center: [0, 0, 0] as Vec3 };
+  private ring: THREE.Line | null = null;
 
   constructor(private host: HTMLElement, private events: ViewportEvents) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
@@ -116,7 +184,9 @@ export class Viewport {
     const fine = new THREE.GridHelper(64, 64, "#2c2c33", "#2c2c33");
     const blocks = new THREE.GridHelper(64, 4, "#4a4a55", "#4a4a55");
     blocks.position.y = 0.01;
-    this.scene.add(fine, blocks, this.root, this.ghosts);
+    this.overlay.matrixAutoUpdate = false;
+    this.overlay.add(this.handle);
+    this.scene.add(fine, blocks, this.root, this.ghosts, this.overlay);
     const el = this.renderer.domElement;
     // Antes que OrbitControls: Mayús+arrastre en vacío es un rectángulo de selección.
     el.addEventListener("pointerdown", this.onDown, { capture: true });
@@ -130,6 +200,10 @@ export class Viewport {
       const dragging = (e as unknown as { value: boolean }).value;
       this.orbit.enabled = !dragging;
       if (!dragging) this.commitGizmo();
+    });
+    // Vista previa al arrastrar la selección de una malla.
+    this.gizmo.addEventListener("objectChange", () => {
+      if (this.gizmo.object === this.handle && this.gizmo.dragging) this.previewEdit();
     });
     this.scene.add(this.gizmo.getHelper());
     el.addEventListener("pointermove", this.onMove);
@@ -145,6 +219,7 @@ export class Viewport {
       this.stepCamera(now);
       this.orbit.update();
       for (const o of this.outlines) o.update();
+      this.syncOverlay();
       this.renderer.render(this.scene, this.camera);
       if (!this.camera.quaternion.equals(this.lastQuat)) {
         this.lastQuat.copy(this.camera.quaternion);
@@ -193,12 +268,13 @@ export class Viewport {
     this.multi.removeFromParent();
     for (const m of this.meshes) {
       m.geometry.dispose();
-      for (const mat of m.material as THREE.MeshLambertMaterial[]) {
+      for (const mat of toMaterials(m.material)) {
         mat.map?.dispose();
         mat.dispose();
       }
     }
     this.meshes = [];
+    this.free.clear();
     this.groups.clear();
     this.root.clear();
     this.clearOutlines();
@@ -220,6 +296,14 @@ export class Viewport {
         g.add(mesh);
         this.meshes.push(mesh);
       }
+      if (p.mesh && p.visible) {
+        const mesh = new THREE.Mesh(freeGeometry(p.mesh), freeMaterial(p.mesh));
+        mesh.userData.partId = p.id;
+        mesh.userData.free = true;
+        g.add(mesh);
+        this.meshes.push(mesh);
+        this.free.set(p.id, mesh);
+      }
     }
     for (const p of model.parts) {
       const g = this.groups.get(p.id)!;
@@ -227,6 +311,7 @@ export class Viewport {
     }
     this.applyPose(pose);
     this.select(this.selected.filter((id) => this.groups.has(id)));
+    if (this.edit) this.setMeshEdit(this.edit);
   }
 
   /** Papel cebolla: fantasmas translúcidos del modelo en otras poses (o null para quitarlos). */
@@ -253,8 +338,8 @@ export class Viewport {
         g.position.set(p.pivot[0] + (ps?.pos[0] ?? 0), p.pivot[1] + (ps?.pos[1] ?? 0), p.pivot[2] + (ps?.pos[2] ?? 0));
         g.rotation.set((p.rotation[0] + (ps?.rot[0] ?? 0)) * DEG, (p.rotation[1] + (ps?.rot[1] ?? 0)) * DEG, (p.rotation[2] + (ps?.rot[2] ?? 0)) * DEG, "XYZ");
         g.scale.set(ps?.scale[0] ?? 1, ps?.scale[1] ?? 1, ps?.scale[2] ?? 1);
-        if (p.box && p.visible) {
-          const mesh = new THREE.Mesh(partGeometry(p.box), new THREE.MeshBasicMaterial({ color: colors[i % 2], transparent: true, opacity: 0.22, depthWrite: false }));
+        if ((p.box || p.mesh) && p.visible) {
+          const mesh = new THREE.Mesh(p.box ? partGeometry(p.box) : freeGeometry(p.mesh!), new THREE.MeshBasicMaterial({ color: colors[i % 2], transparent: true, opacity: 0.22, depthWrite: false }));
           mesh.raycast = () => {};
           g.add(mesh);
         }
@@ -316,6 +401,10 @@ export class Viewport {
   }
 
   private attachGizmo() {
+    if (this.edit) {
+      if (this.edit.verts.length && this.mode === "model") this.gizmo.attach(this.handle);
+      return;
+    }
     const ids = this.selected;
     if (!ids.length || this.mode === "paint" || this.tool === "measure") return;
     if (ids.length === 1) {
@@ -415,6 +504,10 @@ export class Viewport {
   }
 
   private commitGizmo() {
+    if (this.gizmo.object === this.handle && this.edit) {
+      this.events.onMeshTransform?.(this.handleChange());
+      return;
+    }
     const ids = [...this.selected];
     if (!ids.length || !this.model) return;
     const r = (v: number) => Math.round(v * 100) / 100 + 0;
@@ -457,7 +550,8 @@ export class Viewport {
   private hit(e: PointerEvent): THREE.Intersection | null {
     const ray = new THREE.Raycaster();
     ray.setFromCamera(this.ndc(e), this.camera);
-    return ray.intersectObjects(this.meshes, false)[0] ?? null;
+    const targets = this.mode === "paint" ? this.meshes.filter((m) => !m.userData.free) : this.meshes;
+    return ray.intersectObjects(targets, false)[0] ?? null;
   }
 
   private paintAt(e: PointerEvent, last: boolean) {
@@ -487,7 +581,7 @@ export class Viewport {
       }
       return;
     }
-    if (e.shiftKey && this.tool === "select" && !this.hit(e)) {
+    if (e.shiftKey && this.tool === "select" && (this.edit || !this.hit(e))) {
       // Rectángulo de selección: OrbitControls no debe girar ni desplazar.
       this.orbit.enabled = false;
       const div = document.createElement("div");
@@ -527,6 +621,11 @@ export class Viewport {
       const rect = this.renderer.domElement.getBoundingClientRect();
       const [x0, x1] = [Math.min(x, e.clientX), Math.max(x, e.clientX)];
       const [y0, y1] = [Math.min(y, e.clientY), Math.max(y, e.clientY)];
+      if ((x1 - x0 > 4 || y1 - y0 > 4) && this.edit) {
+        this.events.onMeshBox?.(this.vertsInRect(x0, y0, x1, y1), true);
+        this.downAt = null;
+        return;
+      }
       if (x1 - x0 > 4 || y1 - y0 > 4) {
         const ids: string[] = [];
         for (const m of this.meshes) {
@@ -545,7 +644,8 @@ export class Viewport {
       const h = this.hit(e);
       if (this.tool === "measure") {
         if (h) this.measureAt(h.point);
-      } else this.events.onSelect(h ? (h.object.userData.partId as string) : null, this.downAt.shift);
+      } else if (this.edit) this.events.onMeshPick?.(this.pickMesh(e));
+      else this.events.onSelect(h ? (h.object.userData.partId as string) : null, this.downAt.shift);
     }
     this.downAt = null;
   };
@@ -625,6 +725,197 @@ export class Viewport {
     if (t >= 1) this.camAnim = null;
   }
 
+  // ---------- Editar malla ----------
+
+  private editMesh(): MeshData | null {
+    return (this.edit && this.model?.parts.find((p) => p.id === this.edit!.partId)?.mesh) || null;
+  }
+
+  /** Activa (o quita con null) el modo Editar malla: puntos, aristas, caras elegidas y gizmo. */
+  setMeshEdit(edit: MeshEditState | null) {
+    this.edit = edit && this.groups.has(edit.partId) ? edit : null;
+    for (const m of this.free.values()) for (const mat of toMaterials(m.material)) (mat.polygonOffset = !!this.edit), (mat.polygonOffsetFactor = 1), (mat.polygonOffsetUnits = 1);
+    this.buildOverlay(this.editMesh());
+    this.select(this.selected);
+  }
+
+  private clearOverlay() {
+    for (const c of [...this.overlay.children]) {
+      if (c === this.handle) continue;
+      this.overlay.remove(c);
+      const o = c as THREE.Mesh;
+      o.geometry?.dispose();
+      (o.material as THREE.Material | undefined)?.dispose();
+    }
+    this.ring = null;
+  }
+
+  private buildOverlay(mesh: MeshData | null) {
+    this.clearOverlay();
+    if (!this.edit || !mesh) return;
+    const sel = new Set(this.edit.verts);
+    const accent = new THREE.Color("#ff8a3d");
+    const plain = new THREE.Color("#f2f2f5");
+    // Puntos.
+    const pg = new THREE.BufferGeometry();
+    pg.setAttribute("position", new THREE.Float32BufferAttribute(mesh.vertices.flat(), 3));
+    pg.setAttribute("color", new THREE.Float32BufferAttribute(mesh.vertices.flatMap((_, i) => (sel.has(i) ? accent : plain).toArray()), 3));
+    const pts = new THREE.Points(pg, new THREE.PointsMaterial({ size: this.edit.mode === "vertex" ? 7 : 4, sizeAttenuation: false, vertexColors: true, depthTest: true }));
+    pts.renderOrder = 6;
+    // Aristas.
+    const edges = meshEdges(mesh);
+    const lg = new THREE.BufferGeometry();
+    lg.setAttribute("position", new THREE.Float32BufferAttribute(edges.flatMap(([a, b]) => [...mesh.vertices[a], ...mesh.vertices[b]]), 3));
+    lg.setAttribute("color", new THREE.Float32BufferAttribute(edges.flatMap(([a, b]) => (sel.has(a) && sel.has(b) ? [...accent.toArray(), ...accent.toArray()] : [0.08, 0.08, 0.1, 0.08, 0.08, 0.1])), 3));
+    const lines = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ vertexColors: true }));
+    lines.renderOrder = 5;
+    // Caras elegidas.
+    const tri: number[] = [];
+    for (const f of mesh.faces) if (f.every((v) => sel.has(v))) for (let k = 1; k + 1 < f.length; k++) tri.push(...mesh.vertices[f[0]], ...mesh.vertices[f[k]], ...mesh.vertices[f[k + 1]]);
+    const fg = new THREE.BufferGeometry();
+    fg.setAttribute("position", new THREE.Float32BufferAttribute(tri, 3));
+    const faces = new THREE.Mesh(fg, new THREE.MeshBasicMaterial({ color: accent, transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+    faces.renderOrder = 4;
+    for (const o of [pts, lines, faces]) o.raycast = () => {};
+    this.overlay.add(pts, lines, faces);
+    // Asa del gizmo en el centro de la selección.
+    const c = selectionCenter(mesh, this.edit.verts);
+    this.handle.position.set(...c);
+    this.handle.quaternion.identity();
+    this.handle.scale.set(1, 1, 1);
+    this.handleStart = { center: c };
+    if (this.edit.proportional && this.edit.verts.length) {
+      const pts2 = Array.from({ length: 65 }, (_, i) => new THREE.Vector3(Math.cos((i / 64) * Math.PI * 2) * this.edit!.proportional!, Math.sin((i / 64) * Math.PI * 2) * this.edit!.proportional!, 0));
+      this.ring = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts2), new THREE.LineBasicMaterial({ color: "#ffc08a", depthTest: false, transparent: true, opacity: 0.7 }));
+      this.ring.raycast = () => {};
+      this.ring.position.set(...c);
+      this.overlay.add(this.ring);
+    }
+  }
+
+  /** La capa de edición sigue a la pieza (que puede estar girada o colgada de otra). */
+  private syncOverlay() {
+    if (!this.edit) return;
+    const g = this.groups.get(this.edit.partId);
+    if (!g) return;
+    g.updateWorldMatrix(true, false);
+    this.overlay.matrix.copy(g.matrixWorld);
+    this.overlay.matrixWorldNeedsUpdate = true;
+    if (this.ring) {
+      // De cara a la cámara (en el espacio de la pieza).
+      const inv = new THREE.Quaternion().setFromRotationMatrix(g.matrixWorld).invert();
+      this.ring.quaternion.copy(inv.multiply(this.camera.quaternion));
+    }
+  }
+
+  private handleChange(): MeshTransform {
+    const r = (v: number) => Math.round(v * 100) / 100 + 0;
+    const c = this.handleStart.center;
+    if (this.gizmoMode === "translate") {
+      const p = this.handle.position;
+      return { delta: [r(p.x - c[0]), r(p.y - c[1]), r(p.z - c[2])] };
+    }
+    if (this.gizmoMode === "rotate") {
+      const q = this.handle.quaternion;
+      return { rotate: { quat: [q.x, q.y, q.z, q.w], center: c } };
+    }
+    const s = this.handle.scale;
+    return { scale: { factor: [r(s.x), r(s.y), r(s.z)], center: c } };
+  }
+
+  /** Malla con el cambio del gizmo aplicado (para la vista previa). */
+  applyMeshTransform(mesh: MeshData, verts: number[], radius: number | null, ch: MeshTransform): MeshData {
+    const w = proportional(mesh, verts, radius);
+    if (ch.delta) return moveVertices(mesh, w, ch.delta);
+    if (ch.rotate) return rotateVertices(mesh, w, ch.rotate.quat, ch.rotate.center);
+    if (ch.scale) return scaleVertices(mesh, w, ch.scale.factor, ch.scale.center);
+    return mesh;
+  }
+
+  private previewEdit() {
+    const mesh = this.editMesh();
+    const obj = this.edit && this.free.get(this.edit.partId);
+    if (!mesh || !obj || !this.edit) return;
+    const next = this.applyMeshTransform(mesh, this.edit.verts, this.edit.proportional, this.handleChange());
+    obj.geometry.dispose();
+    // Mientras se arrastra se dibuja sin suavizado (se recalcula al soltar).
+    obj.geometry = freeGeometry(next, 0);
+    const keepHandle = { p: this.handle.position.clone(), q: this.handle.quaternion.clone(), s: this.handle.scale.clone(), c: this.handleStart };
+    this.buildOverlay(next);
+    this.handle.position.copy(keepHandle.p);
+    this.handle.quaternion.copy(keepHandle.q);
+    this.handle.scale.copy(keepHandle.s);
+    this.handleStart = keepHandle.c;
+  }
+
+  /** Posición en pantalla (píxeles del cliente) de un punto de la malla editada. */
+  private screenOf(p: Vec3): { x: number; y: number; z: number } {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const v = new THREE.Vector3(...p).applyMatrix4(this.overlay.matrixWorld).project(this.camera);
+    return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height, z: v.z };
+  }
+
+  /** ¿Se ve el vértice (nada de la malla lo tapa)? */
+  private visible(p: Vec3): boolean {
+    const obj = this.edit && this.free.get(this.edit.partId);
+    if (!obj) return true;
+    const world = new THREE.Vector3(...p).applyMatrix4(this.overlay.matrixWorld);
+    const dir = world.clone().sub(this.camera.position);
+    const dist = dir.length();
+    const ray = new THREE.Raycaster(this.camera.position.clone(), dir.normalize(), 0, dist);
+    const h = ray.intersectObject(obj, false)[0];
+    return !h || h.distance >= dist - Math.max(0.05, dist * 0.002);
+  }
+
+  private vertsInRect(x0: number, y0: number, x1: number, y1: number): number[] {
+    const mesh = this.editMesh();
+    if (!mesh) return [];
+    this.syncOverlay();
+    this.overlay.updateMatrixWorld(true);
+    return mesh.vertices.flatMap((p, i) => {
+      const s = this.screenOf(p);
+      return s.z < 1 && s.x >= x0 && s.x <= x1 && s.y >= y0 && s.y <= y1 && this.visible(p) ? [i] : [];
+    });
+  }
+
+  private pickMesh(e: PointerEvent): MeshPick | null {
+    const mesh = this.editMesh();
+    const obj = this.edit && this.free.get(this.edit.partId);
+    if (!mesh || !obj) return null;
+    this.syncOverlay();
+    this.overlay.updateMatrixWorld(true);
+    const out: MeshPick = { shift: e.shiftKey, alt: e.altKey };
+    let best = 10;
+    mesh.vertices.forEach((p, i) => {
+      const s = this.screenOf(p);
+      const d = Math.hypot(s.x - e.clientX, s.y - e.clientY);
+      if (s.z < 1 && d < best && this.visible(p)) {
+        best = d;
+        out.vert = i;
+      }
+    });
+    let bestE = 8;
+    for (const [a, b] of meshEdges(mesh)) {
+      const A = this.screenOf(mesh.vertices[a]);
+      const B = this.screenOf(mesh.vertices[b]);
+      if (A.z >= 1 || B.z >= 1) continue;
+      const dx = B.x - A.x;
+      const dy = B.y - A.y;
+      const t = Math.max(0, Math.min(1, ((e.clientX - A.x) * dx + (e.clientY - A.y) * dy) / (dx * dx + dy * dy || 1)));
+      const d = Math.hypot(A.x + t * dx - e.clientX, A.y + t * dy - e.clientY);
+      const mid = mesh.vertices[a].map((v, k) => (v + mesh.vertices[b][k]) / 2) as Vec3;
+      if (d < bestE && this.visible(mid)) {
+        bestE = d;
+        out.edge = [a, b];
+      }
+    }
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(this.ndc(e), this.camera);
+    const h = ray.intersectObject(obj, false)[0];
+    if (h && h.faceIndex != null) out.face = (obj.geometry.userData.faceOf as number[])[h.faceIndex];
+    return out.vert === undefined && out.edge === undefined && out.face === undefined ? null : out;
+  }
+
   /** Captura PNG (sin gizmo ni contorno) desde un ángulo; devuelve un data URL. */
   capture(angle?: ViewAngle | Vec3, width = 640, height = 480): string {
     const prev = { pos: this.camera.position.clone(), target: this.orbit.target.clone(), aspect: this.camera.aspect };
@@ -636,6 +927,8 @@ export class Viewport {
     if (this.reference) this.reference.visible = false;
     const hadGhosts = this.ghosts.visible;
     this.ghosts.visible = false;
+    const hadOverlay = this.overlay.visible;
+    this.overlay.visible = false;
     const oldSize = this.renderer.getSize(new THREE.Vector2());
     this.renderer.setSize(width, height, false);
     this.camera.aspect = width / height;
@@ -647,6 +940,7 @@ export class Viewport {
     for (const o of this.outlines) o.visible = true;
     if (this.reference) this.reference.visible = hadRef;
     this.ghosts.visible = hadGhosts;
+    this.overlay.visible = hadOverlay;
     this.renderer.setSize(oldSize.x, oldSize.y, false);
     this.camera.aspect = prev.aspect;
     this.camera.updateProjectionMatrix();
