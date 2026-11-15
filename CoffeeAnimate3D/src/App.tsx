@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FilePlus, FolderOpen, SaveAll, Home, Undo2, Redo2, Download, Keyboard, Info, Play, Pause, Plus, Trash2, Eye, EyeOff, Copy, FlipHorizontal2, Box as BoxIcon, Bone, Move3d, Rotate3d, Focus, Pencil, PaintBucket, Pipette, Diamond, Camera, Bot, Shapes, Scale3d, Ruler, Group, Ungroup, Minus, Cylinder, Circle, Triangle, Square, ClipboardCopy, ClipboardPaste, Layers, Spline, FileUp, FileDown, ScanEye, Sparkles, Package } from "lucide-react";
+import { FilePlus, FolderOpen, SaveAll, Home, Undo2, Redo2, Download, Keyboard, Info, Play, Pause, Plus, Trash2, Eye, EyeOff, Copy, FlipHorizontal2, Box as BoxIcon, Bone, Move3d, Rotate3d, Focus, Pencil, PaintBucket, Pipette, Diamond, Camera, Bot, Shapes, Scale3d, Ruler, Group, Ungroup, Minus, Cylinder, Circle, Triangle, Square, ClipboardCopy, ClipboardPaste, Layers, Spline, FileUp, FileDown, ScanEye, Sparkles, Package, Hexagon, PenTool } from "lucide-react";
 import { SuiteHeader, type MenuDefinition } from "./studio/SuiteHeader";
 import { StartScreen } from "./studio/StartScreen";
 import { CommandSearch } from "./studio/CommandSearch";
@@ -9,15 +9,20 @@ import { useStudioDoc } from "./studio/useStudioDoc";
 import { Button, IconButton, NumberField, STUDIO_CSS, Section, Select, Toggle, cx } from "./studio/ui";
 import { bytesToText, pickOpenFile, saveFileAs } from "./studio/desktop";
 import { makeZip } from "./studio/zip";
-import { ACCENT, ACCENT_DARK, EASES, FACE_LABEL, SHAPES, SHAPE_FACES, SHAPE_LABEL, type Ease, type Shape, type FaceName, type Model3D, type Part, type Vec3 } from "./types";
-import { addAnimation, addPart, insertPiece, clearReference, copyPose, getReference, moveKeyframe, pastePose, setReference, type PoseClip, descendants, duplicatePart, fillFace, findPart, getPixel, groupParts, mirrorPart, newModel, paintPixels, parseModel, removeAnimation, removeKeyframe, removePart, resizeBox, rotatePartsQuat, samplePose, scaleParts, serializeModel, setKeyframe, topLevel, translateParts, ungroup, updateAnimation, updatePart, wrapTime } from "./model";
+import { ACCENT, ACCENT_DARK, EASES, FACE_LABEL, MESH_PRIMITIVES, MESH_PRIMITIVE_LABEL, SHAPES, SHAPE_FACES, SHAPE_LABEL, type Ease, type MeshData, type MeshPrimitive, type SelectMode, type Shape, type FaceName, type Model3D, type Part, type Vec3 } from "./types";
+import { addMeshPart, updateMesh, addAnimation, addPart, insertPiece, clearReference, copyPose, getReference, moveKeyframe, pastePose, setReference, type PoseClip, descendants, duplicatePart, fillFace, findPart, getPixel, groupParts, mirrorPart, newModel, paintPixels, parseModel, removeAnimation, removeKeyframe, removePart, resizeBox, rotatePartsQuat, samplePose, scaleParts, serializeModel, setKeyframe, topLevel, translateParts, ungroup, updateAnimation, updatePart, wrapTime } from "./model";
 import { SNAP_OPTIONS, formatDistance, loadSnap, parseNumber, saveSnap, snapValue, type SnapPrefs, type SnapStep } from "./snap";
 import { TEMPLATES } from "./templates";
 import { exportGlb, importGlb } from "./gltf";
 import { exportObj, objFileBase, objReference } from "./objfile";
 import { RenderDialog, PiecesDialog } from "./panels";
-import { canRender, loadPiece, type PieceEntry } from "./addonsLib";
-import { Viewport, type GizmoMode, type TransformChange, type ViewAngle, type ViewTool } from "./viewport";
+import { canModel, canRender, loadPiece, type PieceEntry } from "./addonsLib";
+import { primitiveMesh } from "./mesh";
+import { edgeLoop, linked } from "./meshsel";
+import { applyMirror, applySubdivision, bevel, deleteSelection, extrude, fillFace as fillMeshFace, flipFaces, inset, loopCut, mergeVertices, moveVertices, recalcNormals, relax, rotateVertices, scaleVertices, subdivideFaces } from "./meshops";
+import { convertPartToMesh, refToMesh } from "./meshconvert";
+import { proportional } from "./meshsel";
+import { Viewport, type GizmoMode, type MeshPick, type MeshTransform, type TransformChange, type ViewAngle, type ViewTool } from "./viewport";
 import { useMcpBridge } from "./mcpBridge";
 
 const store = createDocStore<Model3D>({
@@ -76,6 +81,10 @@ export const App: React.FC = () => {
   const [refVisible, setRefVisible] = useState(true);
   const poseClip = useRef<PoseClip | null>(null);
   const [dialog, setDialog] = useState<"render" | "pieces" | null>(null);
+  // Editar malla (complemento «Modelado libre»): pieza, modo de selección y vértices elegidos.
+  const [meshEdit, setMeshEdit] = useState<{ partId: string; mode: SelectMode; verts: number[] } | null>(null);
+  const [propRadius, setPropRadius] = useState<number | null>(null);
+  const [meshOpts, setMeshOpts] = useState({ extrude: 4, inset: 2, radius: 8 });
   const closeDialog = useCallback(() => setDialog(null), []);
   const getViewport = useCallback(() => vpRef.current, []);
 
@@ -111,6 +120,9 @@ export const App: React.FC = () => {
     onSelectRect: (_ids: string[], _additive: boolean) => {},
     onTransform: (_c: TransformChange) => {},
     onPaint: (_id: string, _f: FaceName, _x: number, _y: number, _last: boolean) => {},
+    onMeshPick: (_h: MeshPick | null) => {},
+    onMeshBox: (_v: number[], _shift: boolean) => {},
+    onMeshTransform: (_c: MeshTransform) => {},
   });
 
   useEffect(() => {
@@ -121,10 +133,14 @@ export const App: React.FC = () => {
       onTransform: (c) => handlers.current.onTransform(c),
       onMeasure: (d) => setMeasured(d),
       onPaint: (id, f, x, y, last) => handlers.current.onPaint(id, f, x, y, last),
+      onMeshPick: (h) => handlers.current.onMeshPick(h),
+      onMeshBox: (v, shift) => handlers.current.onMeshBox(v, shift),
+      onMeshTransform: (c) => handlers.current.onMeshTransform(c),
     });
     vpRef.current = vp;
     // Acceso para las pruebas automáticas (solo en desarrollo).
     if (import.meta.env.DEV) (window as unknown as { __ca3dViewport?: Viewport }).__ca3dViewport = vp;
+    if (import.meta.env.DEV) (window as unknown as { __ca3dDoc?: () => Model3D | null }).__ca3dDoc = () => docRef.current;
     vp.setModel(docRef.current!, poseNow());
     vp.frame();
     return () => {
@@ -162,6 +178,14 @@ export const App: React.FC = () => {
   useEffect(() => vpRef.current?.setTool(viewTool), [viewTool]);
   useEffect(() => vpRef.current?.setMode(mode), [mode]);
   useEffect(() => vpRef.current?.setGizmo(gizmo), [gizmo]);
+  // Editar malla: se sale al cambiar de modo, de pieza o si la pieza deja de ser malla.
+  const editMeshData = doc && meshEdit ? doc.parts.find((p) => p.id === meshEdit.partId)?.mesh ?? null : null;
+  useEffect(() => {
+    if (!meshEdit) return;
+    if (mode !== "model" || !editMeshData || sel !== meshEdit.partId) setMeshEdit(null);
+    else if (meshEdit.verts.some((v) => v >= editMeshData.vertices.length)) setMeshEdit({ ...meshEdit, verts: meshEdit.verts.filter((v) => v < editMeshData.vertices.length) });
+  }, [mode, editMeshData, sel, meshEdit]);
+  useEffect(() => vpRef.current?.setMeshEdit(meshEdit ? { ...meshEdit, proportional: propRadius } : null), [meshEdit, propRadius, doc]);
 
   handlers.current.onSelect = (id, additive) => {
     if (!id) return additive ? undefined : setSel(null);
@@ -188,6 +212,10 @@ export const App: React.FC = () => {
         return apply(setKeyframe(d, animId, id, t, v));
       }
       if (c.scale && c.ids.length > 1) return apply(scaleParts(d, c.ids, c.scale.factor, c.scale.center));
+      if (c.scale && part.mesh) {
+        const all = new Map(part.mesh.vertices.map((_, i) => [i, 1]));
+        return apply(updateMesh(d, id, scaleVertices(part.mesh, all, c.scale.factor, [0, 0, 0])));
+      }
       if (c.scale) {
         if (!part.box) return;
         const size = part.box.size.map((v, k) => snapValue(v * c.scale!.factor[k], snap.step)) as Vec3;
@@ -216,6 +244,123 @@ export const App: React.FC = () => {
     if (!stroke.current) stroke.current = { id: ++strokeCount.current, points: new Map() };
     apply(paintPixels(d, id, face, [[x, y]], color), `paint-${stroke.current.id}`);
   };
+
+  // ---------- Editar malla ----------
+  /** Aplica una operación sobre la malla editada; los errores se avisan y no cambian nada. */
+  const meshOp = (fn: (mesh: MeshData, verts: number[]) => MeshData | { mesh: MeshData; verts: number[] }, keepSel = false) => {
+    if (!meshEdit) return;
+    const d = cur();
+    const part = d.parts.find((p) => p.id === meshEdit.partId);
+    if (!part?.mesh) return;
+    try {
+      const r = fn(part.mesh, meshEdit.verts);
+      const mesh = "mesh" in r && "verts" in r ? r.mesh : (r as MeshData);
+      apply(updateMesh(d, part.id, mesh));
+      if ("verts" in r && "mesh" in r) setMeshEdit({ ...meshEdit, verts: r.verts });
+      else if (!keepSel) setMeshEdit({ ...meshEdit, verts: [] });
+    } catch (e) {
+      toast(String((e as Error).message), "error");
+    }
+  };
+  const setEditVerts = (verts: number[]) => meshEdit && setMeshEdit({ ...meshEdit, verts: [...new Set(verts)].sort((a, b) => a - b) });
+  handlers.current.onMeshPick = (h) => {
+    if (!meshEdit || !editMeshData) return;
+    if (!h) return h === null && setEditVerts([]);
+    const m = editMeshData;
+    let picked: number[] = [];
+    if (h.alt && h.edge) picked = edgeLoop(m, h.edge[0], h.edge[1]);
+    else if (meshEdit.mode === "vertex" && h.vert !== undefined) picked = [h.vert];
+    else if (meshEdit.mode === "edge" && h.edge) picked = [...h.edge];
+    else if (meshEdit.mode === "face" && h.face !== undefined) picked = [...m.faces[h.face]];
+    else if (h.vert !== undefined) picked = [h.vert];
+    if (!picked.length) return h.shift ? undefined : setEditVerts([]);
+    if (!h.shift) return setEditVerts(picked);
+    const all = picked.every((v) => meshEdit.verts.includes(v));
+    setEditVerts(all ? meshEdit.verts.filter((v) => !picked.includes(v)) : [...meshEdit.verts, ...picked]);
+  };
+  handlers.current.onMeshBox = (verts) => meshEdit && setEditVerts([...meshEdit.verts, ...verts]);
+  handlers.current.onMeshTransform = (c) =>
+    meshOp((mesh, verts) => {
+      const w = proportional(mesh, verts, propRadius);
+      if (c.delta) return moveVertices(mesh, w, c.delta);
+      if (c.rotate) return rotateVertices(mesh, w, c.rotate.quat, c.rotate.center);
+      if (c.scale) return scaleVertices(mesh, w, c.scale.factor, c.scale.center);
+      return mesh;
+    }, true);
+
+  const enterMeshEdit = async () => {
+    if (meshEdit) return setMeshEdit(null);
+    if (!selPart?.mesh) return toast("Elige una pieza de malla (Edición › Añadir malla o Convertir en malla)", "info");
+    if (!(await canModel())) return;
+    setMode("model");
+    setMeshEdit({ partId: selPart.id, mode: "vertex", verts: [] });
+  };
+  const addMesh = async (kind: MeshPrimitive) => {
+    if (!(await canModel())) return;
+    const parent = selPart?.id ?? null;
+    const [m, id] = addMeshPart(cur(), { name: `malla ${MESH_PRIMITIVE_LABEL[kind].toLowerCase()} ${cur().parts.length + 1}`, parent, pivot: parent ? [0, 0, 0] : [0, 8, 0], mesh: { ...primitiveMesh(kind), texture: { size: 64, color } } });
+    apply(m);
+    setSel(id);
+    setMode("model");
+  };
+  const convertToMesh = async () => {
+    if (!selPart?.box || !(await canModel())) return;
+    try {
+      apply(convertPartToMesh(cur(), selPart.id));
+      toast(`«${selPart.name}» ahora es una malla (Tab para editarla)`);
+    } catch (e) {
+      toast(String((e as Error).message), "error");
+    }
+  };
+  const importAsMesh = async () => {
+    if (!(await canModel())) return;
+    const f = await pickOpenFile([{ name: "Modelos 3D", extensions: ["glb", "obj"] }], "Importar como malla editable");
+    if (!f) return;
+    try {
+      let mesh: MeshData;
+      if (f.name.toLowerCase().endsWith(".obj")) mesh = refToMesh(objReference(bytesToText(f.bytes)));
+      else {
+        const r = importGlb(f.bytes);
+        if ("model" in r) return toast("Este .glb es de CoffeeAnimate3D: ábrelo con Archivo › Importar .glb u .obj", "info");
+        mesh = refToMesh(r.reference);
+      }
+      const [m, id] = addMeshPart(cur(), { name: f.name.replace(/\.[^.]+$/, ""), mesh });
+      apply(m);
+      setSel(id);
+      setTimeout(() => vpRef.current?.frame(), 50);
+      toast(`Malla importada: ${mesh.vertices.length} vértices y ${mesh.faces.length} caras`);
+    } catch (e) {
+      toast(String((e as Error).message), "error");
+    }
+  };
+  const changeMesh = async (next: MeshData) => {
+    if (!selPart?.mesh || !(await canModel())) return;
+    try {
+      apply(updateMesh(cur(), selPart.id, next));
+    } catch (e) {
+      toast(String((e as Error).message), "error");
+    }
+  };
+  const editSel = meshEdit?.verts ?? [];
+  const opExtrude = () => meshOp((m, v) => extrude(m, v, meshOpts.extrude));
+  const opInset = () => meshOp((m, v) => inset(m, v, meshOpts.inset));
+  const opLoopCut = () =>
+    meshOp((m, v) => {
+      const e = v.length >= 2 ? (m.faces.flatMap((f) => f.map((a, i) => [a, f[(i + 1) % f.length]] as [number, number])).find(([a, b]) => v.includes(a) && v.includes(b)) ?? null) : null;
+      if (!e) throw new Error("Corte en bucle: elige una arista (modo Aristas, 2)");
+      return loopCut(m, e[0], e[1], 0.5);
+    });
+  const opBevel = () => meshOp((m, v) => bevel(m, v, meshOpts.inset));
+  const opMerge = () => meshOp((m, v) => mergeVertices(m, v, "center"));
+  const opMergeDist = () => meshOp((m, v) => mergeVertices(m, v, "distance", 0.5));
+  const opDelete = () => meshEdit && meshOp((m, v) => deleteSelection(m, v, meshEdit.mode));
+  const opFill = () => meshOp((m, v) => fillMeshFace(m, v));
+  const opSubdivide = () => meshOp((m, v) => subdivideFaces(m, v));
+  const opRelax = () => meshOp((m, v) => relax(m, v, 0.5), true);
+  const opFlip = () => meshOp((m, v) => flipFaces(m, v), true);
+  const opRecalc = () => meshOp((m) => recalcNormals(m), true);
+  const selectAll = () => editMeshData && setEditVerts(editSel.length === editMeshData.vertices.length ? [] : editMeshData.vertices.map((_, i) => i));
+  const selectLinked = () => editMeshData && setEditVerts(linked(editMeshData, editSel));
 
   // ---------- Reproducción ----------
   useEffect(() => {
@@ -422,6 +567,29 @@ export const App: React.FC = () => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !doc) return;
       const k = e.key.toLowerCase();
+      if (k === "tab" && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        void enterMeshEdit();
+        return;
+      }
+      if (meshEdit && !e.altKey) {
+        const ctrl = e.ctrlKey || e.metaKey;
+        const done = () => e.preventDefault();
+        if (ctrl && k === "r") return done(), opLoopCut();
+        if (ctrl && k === "b") return done(), opBevel();
+        if (!ctrl) {
+          if (k === "1" || k === "2" || k === "3") return done(), setMeshEdit({ ...meshEdit, mode: (["vertex", "edge", "face"] as const)[Number(k) - 1] });
+          if (k === "a") return done(), selectAll();
+          if (k === "l") return done(), selectLinked();
+          if (k === "e") return done(), opExtrude();
+          if (k === "i") return done(), opInset();
+          if (k === "m") return done(), opMerge();
+          if (k === "f") return done(), opFill();
+          if (k === "o") return done(), setPropRadius(propRadius ? null : meshOpts.radius);
+          if (k === "delete" || k === "backspace") return done(), opDelete();
+          if (k === "escape") return done(), setEditVerts([]);
+        }
+      }
       if ((e.ctrlKey || e.metaKey) && k === "z") {
         e.preventDefault();
         if (e.shiftKey) sd.redo();
@@ -486,6 +654,7 @@ export const App: React.FC = () => {
             { label: "Guardar", shortcut: "Ctrl+S", action: () => void sd.flush().then(() => toast("Guardado")) },
             { label: "Guardar como…", icon: SaveAll, action: () => void sd.saveAs() },
             { label: "Importar .glb u .obj…", icon: FileUp, action: () => void importFile() },
+            { label: "Importar como malla editable (.glb u .obj)…", icon: FileUp, action: () => void importAsMesh() },
             { label: "Exportar a glTF (.glb)…", icon: Download, action: () => void exportModel() },
             { label: "Exportar a OBJ (.zip)…", icon: FileDown, action: () => void exportObjZip() },
             { label: "Guardar captura (PNG)…", icon: Camera, action: () => void exportShot() },
@@ -506,6 +675,9 @@ export const App: React.FC = () => {
             { label: "Añadir rampa", icon: Triangle, action: () => addCube(false, "ramp") },
             { label: "Añadir plano", icon: Square, action: () => addCube(false, "plane") },
             { label: "Añadir hueso (sin caja)", icon: Bone, action: () => addCube(true) },
+            ...MESH_PRIMITIVES.map((k) => ({ label: `Añadir malla: ${MESH_PRIMITIVE_LABEL[k].toLowerCase()}`, icon: Hexagon, action: () => void addMesh(k) })),
+            { label: "Convertir en malla", icon: Hexagon, action: () => void convertToMesh(), disabled: !selPart?.box },
+            { label: meshEdit ? "Salir de Editar malla" : "Editar malla", icon: PenTool, shortcut: "Tab", action: () => void enterMeshEdit(), disabled: !selPart?.mesh },
             { label: "Duplicar", icon: Copy, shortcut: "Ctrl+D", action: dup, disabled: !sel },
             { label: "Copia reflejada (izquierda ↔ derecha)", icon: FlipHorizontal2, shortcut: "M", action: mirror, disabled: !sel },
             { label: "Eliminar", icon: Trash2, shortcut: "Supr", action: del, disabled: !sel },
@@ -515,6 +687,40 @@ export const App: React.FC = () => {
             { label: "Desagrupar", icon: Ungroup, shortcut: "Ctrl+Mayús+G", action: doUngroup, disabled: !isGroup },
           ],
         },
+        ...(meshEdit
+          ? ([
+              {
+                id: "mesh",
+                label: "Malla",
+                items: [
+                  { label: "Vértices", checked: meshEdit.mode === "vertex", shortcut: "1", action: () => setMeshEdit({ ...meshEdit, mode: "vertex" }) },
+                  { label: "Aristas", checked: meshEdit.mode === "edge", shortcut: "2", action: () => setMeshEdit({ ...meshEdit, mode: "edge" }) },
+                  { label: "Caras", checked: meshEdit.mode === "face", shortcut: "3", action: () => setMeshEdit({ ...meshEdit, mode: "face" }) },
+                  { label: "Seleccionar todo", shortcut: "A", action: selectAll },
+                  { label: "Seleccionar lo conectado", shortcut: "L", action: selectLinked },
+                  { divider: true },
+                  { label: "Extruir", shortcut: "E", action: opExtrude },
+                  { label: "Insertar cara", shortcut: "I", action: opInset },
+                  { label: "Corte en bucle", shortcut: "Ctrl+R", action: opLoopCut },
+                  { label: "Biselar", shortcut: "Ctrl+B", action: opBevel },
+                  { label: "Unir al centro", shortcut: "M", action: opMerge },
+                  { label: "Unir por distancia", action: opMergeDist },
+                  { label: "Borrar", shortcut: "Supr", action: opDelete },
+                  { label: "Crear cara", shortcut: "F", action: opFill },
+                  { label: "Subdividir la selección", action: opSubdivide },
+                  { label: "Relajar", action: opRelax },
+                  { divider: true },
+                  { label: "Voltear caras", action: opFlip },
+                  { label: "Recalcular normales (hacia fuera)", action: opRecalc },
+                  { label: "Edición proporcional", checked: !!propRadius, shortcut: "O", action: () => setPropRadius(propRadius ? null : meshOpts.radius) },
+                  { divider: true },
+                  { label: "Aplicar simetría", action: () => meshOp((m) => applyMirror(m)) },
+                  { label: "Aplicar suavizado", action: () => meshOp((m) => applySubdivision(m)) },
+                  { label: "Salir de Editar malla", shortcut: "Tab", action: () => setMeshEdit(null) },
+                ],
+              },
+            ] as MenuDefinition[])
+          : []),
         {
           id: "view",
           label: "Ver",
@@ -564,7 +770,7 @@ export const App: React.FC = () => {
               action: () =>
                 void showMessage(
                   "Cómo usar CoffeeAnimate3D",
-                  "Modelar (1): añade cubos, cilindros, esferas, rampas, planos y huesos (la forma se cambia en Propiedades; todas se pintan cara a cara: el cilindro reparte su lateral en cuatro caras y la rampa usa la de arriba como pendiente); cada pieza gira alrededor de su pivote y arrastra a sus hijas. Con el gizmo mueves (G), giras (R) o escalas (S, desde el pivote); el tamaño exacto y los botones −/+ van en Propiedades. M crea la copia reflejada (por ejemplo, la pata derecha a partir de la izquierda). Mayús+clic añade piezas a la selección (Mayús+arrastrar en vacío: rectángulo; Ctrl+A: todas); Ctrl+G agrupa y Ctrl+Mayús+G desagrupa. El ajuste a la cuadrícula está en la barra (Ctrl invierte el paso de giro de 15°). Mayús+M mide distancias. El cubo de vista (arriba a la derecha) gira la cámara hacia la cara, arista o esquina que pulses.\n\nPintar (2): pinta píxel a píxel sobre las caras (texturas de 32×32), rellena una cara o toma un color con el cuentagotas.\n\nAnimar (3): elige una animación, coloca el tiempo, mueve o gira piezas con el gizmo (crea una clave) o pulsa K. Espacio reproduce.\n\nExporta a glTF (.glb) para SurvivalForest, Blender, Godot o Unity. 16 unidades = 1 bloque.",
+                  "Modelar (1): añade cubos, cilindros, esferas, rampas, planos y huesos (la forma se cambia en Propiedades; todas se pintan cara a cara: el cilindro reparte su lateral en cuatro caras y la rampa usa la de arriba como pendiente); cada pieza gira alrededor de su pivote y arrastra a sus hijas. Con el gizmo mueves (G), giras (R) o escalas (S, desde el pivote); el tamaño exacto y los botones −/+ van en Propiedades. M crea la copia reflejada (por ejemplo, la pata derecha a partir de la izquierda). Mayús+clic añade piezas a la selección (Mayús+arrastrar en vacío: rectángulo; Ctrl+A: todas); Ctrl+G agrupa y Ctrl+Mayús+G desagrupa. El ajuste a la cuadrícula está en la barra (Ctrl invierte el paso de giro de 15°). Mayús+M mide distancias. El cubo de vista (arriba a la derecha) gira la cámara hacia la cara, arista o esquina que pulses.\n\nPintar (2): pinta píxel a píxel sobre las caras (texturas de 32×32), rellena una cara o toma un color con el cuentagotas.\n\nAnimar (3): elige una animación, coloca el tiempo, mueve o gira piezas con el gizmo (crea una clave) o pulsa K. Espacio reproduce.\n\nModelado libre (complemento): añade una malla (Edición › Añadir malla) o convierte una pieza en malla, y pulsa Tab para editarla. 1, 2 y 3 eligen vértices, aristas o caras; clic elige, Mayús+clic añade, Alt+clic elige un bucle, Mayús+arrastrar hace un rectángulo, A todo y L lo conectado. Mueve, gira o escala lo elegido con el gizmo (G, R, S); O activa la edición proporcional. E extruye, I inserta cara, Ctrl+R corta en bucle, Ctrl+B bisela, M une, F crea una cara y Supr borra. En Propiedades: simetría en X (modela la mitad x ≥ 0), suavizado y sombreado suave.\n\nExporta a glTF (.glb) para SurvivalForest, Blender, Godot o Unity. 16 unidades = 1 bloque.",
                 ),
             },
             {
@@ -728,7 +934,33 @@ export const App: React.FC = () => {
               {selection.length > 1 ? (
                 <MultiPanel model={doc} ids={selection} onGroup={group} onDelete={del} onMove={(delta) => apply(translateParts(cur(), selection, delta))} />
               ) : selPart ? (
-                <PartPanel key={selPart.id} model={doc} part={selPart} mode={mode} color={color} onPatch={patch} onFill={(f) => apply(fillFace(cur(), selPart.id, f, color))} onGrow={grow} onUngroup={isGroup ? doUngroup : undefined} />
+                <PartPanel
+                  key={selPart.id}
+                  model={doc}
+                  part={selPart}
+                  mode={mode}
+                  color={color}
+                  onPatch={patch}
+                  onFill={(f) => apply(fillFace(cur(), selPart.id, f, color))}
+                  onGrow={grow}
+                  onUngroup={isGroup && !selPart.mesh ? doUngroup : undefined}
+                  meshTools={
+                    selPart.mesh ? (
+                      <MeshPanel
+                        mesh={selPart.mesh}
+                        editing={meshEdit?.partId === selPart.id}
+                        selected={editSel.length}
+                        onEdit={() => void enterMeshEdit()}
+                        onChange={(m) => void changeMesh(m)}
+                        opts={meshOpts}
+                        setOpts={setMeshOpts}
+                        propRadius={propRadius}
+                        setPropRadius={setPropRadius}
+                        color={color}
+                      />
+                    ) : undefined
+                  }
+                />
               ) : (
                 <div className="p-4 text-[12px] text-[#8a8a92] leading-relaxed">
                   Selecciona una pieza en el visor o en la lista para ver sus propiedades.
@@ -786,7 +1018,7 @@ const Tree: React.FC<{ model: Model3D; parent: string | null; depth: number; sel
             onClick={(e) => onSelect(p.id, e.shiftKey)}
             data-part={p.name}
           >
-            {p.box ? <ShapeIcon shape={p.box.shape} /> : <Bone size={13} className="text-[#8ab4ff] shrink-0" />}
+            {p.box ? <ShapeIcon shape={p.box.shape} /> : p.mesh ? <Hexagon size={13} className="text-[#ffb27a] shrink-0" /> : <Bone size={13} className="text-[#8ab4ff] shrink-0" />}
             <span className="truncate flex-1">{p.name}</span>
             {anim?.tracks[p.id]?.length ? <Diamond size={10} className="text-[#ffd166] shrink-0" /> : null}
             <button
@@ -828,7 +1060,7 @@ const Vec3Field: React.FC<{ label: string; value: Vec3; onChange: (v: Vec3) => v
   </div>
 );
 
-const PartPanel: React.FC<{ model: Model3D; part: Part; mode: Mode; color: string; onPatch: (p: Parameters<typeof updatePart>[2], key?: string) => void; onFill: (f: FaceName) => void; onGrow: (axis: 0 | 1 | 2, amount: number) => void; onUngroup?: () => void }> = ({ model, part, mode, color, onPatch, onFill, onGrow, onUngroup }) => {
+const PartPanel: React.FC<{ model: Model3D; part: Part; mode: Mode; color: string; onPatch: (p: Parameters<typeof updatePart>[2], key?: string) => void; onFill: (f: FaceName) => void; onGrow: (axis: 0 | 1 | 2, amount: number) => void; onUngroup?: () => void; meshTools?: React.ReactNode }> = ({ model, part, mode, color, onPatch, onFill, onGrow, onUngroup, meshTools }) => {
   const banned = new Set([part.id, ...descendants(model, part.id)]);
   const parents = [{ value: "", label: "(ninguna: raíz)" }, ...model.parts.filter((p) => !banned.has(p.id)).map((p) => ({ value: p.id, label: p.name }))];
   return (
@@ -848,7 +1080,8 @@ const PartPanel: React.FC<{ model: Model3D; part: Part; mode: Mode; color: strin
           {mode === "animate" && <p className="text-[11px] text-[#8a8a92] leading-relaxed">En Animar, el gizmo crea fotogramas clave; estos valores cambian el reposo.</p>}
         </div>
       </Section>
-      <Section title="Caja">
+      {meshTools}
+      {!part.mesh && <Section title="Caja">
         {part.box ? (
           <div className="flex flex-col gap-2">
             <label className="flex flex-col gap-1">
@@ -888,7 +1121,7 @@ const PartPanel: React.FC<{ model: Model3D; part: Part; mode: Mode; color: strin
             )}
           </div>
         )}
-      </Section>
+      </Section>}
       {part.box && (
         <Section title="Caras" defaultOpen={mode === "paint"}>
           <div className="grid grid-cols-2 gap-1.5">
@@ -904,6 +1137,53 @@ const PartPanel: React.FC<{ model: Model3D; part: Part; mode: Mode; color: strin
     </div>
   );
 };
+
+/** Activar la simetría: se queda la mitad x ≥ 0 (lo que estaba en x < 0 se genera reflejado). */
+function halveForMirror(mesh: MeshData): MeshData {
+  const neg = mesh.vertices.flatMap((p, i) => (p[0] < -1e-3 ? [i] : []));
+  const half = neg.length && neg.length < mesh.vertices.length ? deleteSelection(mesh, neg, "vertex") : mesh;
+  return { ...half, mirrorX: true, vertices: half.vertices.map((p) => [Math.abs(p[0]) < 1e-3 ? 0 : Math.max(0, p[0]), p[1], p[2]] as Vec3) };
+}
+
+/** Propiedades de una pieza de malla (complemento «Modelado libre»). */
+const MeshPanel: React.FC<{
+  mesh: MeshData;
+  editing: boolean;
+  selected: number;
+  onEdit: () => void;
+  onChange: (m: MeshData) => void;
+  opts: { extrude: number; inset: number; radius: number };
+  setOpts: (o: { extrude: number; inset: number; radius: number }) => void;
+  propRadius: number | null;
+  setPropRadius: (r: number | null) => void;
+  color: string;
+}> = ({ mesh, editing, selected, onEdit, onChange, opts, setOpts, propRadius, setPropRadius, color }) => (
+  <Section title="Malla">
+    <div className="flex flex-col gap-2" data-mesh-panel>
+      <div className="text-[11px] text-[#a1a1aa]" data-mesh-counts>
+        {mesh.vertices.length} vértices · {mesh.faces.length} caras{editing ? ` · ${selected} elegidos` : ""}
+      </div>
+      <Button primary={editing} onClick={onEdit}>
+        <PenTool size={14} /> {editing ? "Salir de Editar malla (Tab)" : "Editar malla (Tab)"}
+      </Button>
+      <Toggle checked={mesh.mirrorX} onChange={(v) => onChange(v ? halveForMirror(mesh) : { ...mesh, mirrorX: false })} label="Simetría en X (se modela x ≥ 0)" />
+      <Toggle checked={mesh.smooth} onChange={(v) => onChange({ ...mesh, smooth: v })} label="Sombreado suave" />
+      <label className="flex flex-col gap-1">
+        <span className="text-[11px] text-[#8a8a92]">Suavizado (subdivisión)</span>
+        <Select value={String(mesh.subdivision)} onChange={(v) => onChange({ ...mesh, subdivision: Number(v) as 0 | 1 | 2 })} options={[{ value: "0", label: "Sin suavizar" }, { value: "1", label: "Nivel 1" }, { value: "2", label: "Nivel 2" }]} data-subdivision />
+      </label>
+      <NumberField label="Distancia de extruir" value={opts.extrude} step={0.5} onChange={(v) => setOpts({ ...opts, extrude: v })} />
+      <NumberField label="Grosor de insertar y biselar" value={opts.inset} step={0.5} min={0.1} onChange={(v) => setOpts({ ...opts, inset: Math.max(0.1, v) })} />
+      <Toggle checked={!!propRadius} onChange={(v) => setPropRadius(v ? opts.radius : null)} label="Edición proporcional (O)" />
+      {propRadius != null && <NumberField label="Radio proporcional" value={propRadius} step={1} min={1} onChange={(v) => (setOpts({ ...opts, radius: Math.max(1, v) }), setPropRadius(Math.max(1, v)))} />}
+      {!mesh.uvs.length && (
+        <Button onClick={() => onChange({ ...mesh, texture: { ...mesh.texture, color } })}>
+          <PaintBucket size={14} /> Color de la malla: el actual
+        </Button>
+      )}
+    </div>
+  </Section>
+);
 
 /** Valor común a todas (o null si difieren). */
 const common = (values: number[]) => (values.every((v) => v === values[0]) ? values[0] : null);

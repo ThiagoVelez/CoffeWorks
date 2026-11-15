@@ -734,6 +734,9 @@ export class Viewport {
   /** Activa (o quita con null) el modo Editar malla: puntos, aristas, caras elegidas y gizmo. */
   setMeshEdit(edit: MeshEditState | null) {
     this.edit = edit && this.groups.has(edit.partId) ? edit : null;
+    // Tras deshacer, la selección puede apuntar a vértices que ya no existen.
+    const m = this.editMesh();
+    if (this.edit && m) this.edit = { ...this.edit, verts: this.edit.verts.filter((v) => v < m.vertices.length) };
     for (const m of this.free.values()) for (const mat of toMaterials(m.material)) (mat.polygonOffset = !!this.edit), (mat.polygonOffsetFactor = 1), (mat.polygonOffsetUnits = 1);
     this.buildOverlay(this.editMesh());
     this.select(this.selected);
