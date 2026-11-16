@@ -46,6 +46,7 @@ export const App: React.FC = () => {
     });
   }, []);
   const [currentTab, setCurrentTab] = useState<NavTab>("launcher");
+  const [showGames, setShowGames] = useState<boolean>(() => tauriBridge.getShowGames());
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [createModal, setCreateModal] = useState<{ open: boolean; docType: string }>({
@@ -146,6 +147,13 @@ export const App: React.FC = () => {
     const updated = await tauriBridge.uninstallApp(appId);
     setApps((prev) => prev.map((app) => (app.id === appId ? updated : app)));
     showNotification(`${updated.name} desinstalada. Tus documentos se conservan.`);
+  };
+
+  const handleToggleGames = () => {
+    const next = !showGames;
+    setShowGames(next);
+    tauriBridge.setShowGames(next);
+    showNotification(next ? "Games vuelve a verse en el menú lateral" : "Games oculto: puedes volver a mostrarlo aquí en Ajustes");
   };
 
   const handleToggleFocus = () => {
@@ -251,6 +259,7 @@ export const App: React.FC = () => {
           onOpenVault={isTauri ? () => void handleOpenVault() : undefined}
           collapsed={sidebarCollapsed}
           onToggleCollapsed={toggleSidebar}
+          showGames={showGames}
         />
 
         <main className={`flex-1 min-w-0 ${sidebarCollapsed ? "ml-[68px]" : "ml-64"} p-5 lg:p-8 flex flex-col gap-8 max-w-7xl transition-[margin] duration-200`}>
@@ -286,7 +295,7 @@ export const App: React.FC = () => {
             </>
           )}
 
-          {currentTab === "games" && <GamesView />}
+          {currentTab === "games" && showGames && <GamesView />}
 
           {currentTab === "templates" && <TemplatesView onNotify={showNotification} />}
 
@@ -329,6 +338,16 @@ export const App: React.FC = () => {
               />
 
               <McpSettings onNotify={showNotification} />
+
+              <div className="p-6 rounded-2xl bg-white border border-[#dfd3c7] flex flex-col gap-4 text-xs text-[#5c3a21]" data-games-settings>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="checkbox" checked={showGames} onChange={handleToggleGames} className="mt-0.5" />
+                  <span>
+                    <span className="font-bold text-[#2c1b12] block">Mostrar Games</span>
+                    Muestra el apartado Games (SurvivalForest, Mods, TexturePacks y Shaders) en el menú lateral. Ocultarlo no desinstala los juegos ni borra tus mundos.
+                  </span>
+                </label>
+              </div>
 
               <div className="p-6 rounded-2xl bg-white border border-[#dfd3c7] flex flex-col gap-4 text-xs text-[#5c3a21]">
                 <label className="flex items-start gap-3 cursor-pointer">

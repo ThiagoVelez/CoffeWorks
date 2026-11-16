@@ -37,6 +37,8 @@ interface SidebarProps {
   /** Barra plegada: sólo se ven los iconos. */
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  /** Mostrar el apartado Games (se puede ocultar en Ajustes). */
+  showGames: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -51,16 +53,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenVault,
   collapsed,
   onToggleCollapsed,
+  showGames,
 }) => {
   // Cerrado al abrir el Launcher; se despliega al hacer clic
   const [isAppsOpen, setIsAppsOpen] = useState<boolean>(false);
 
-  const staticNavItems: Array<{ id: NavTab; label: string; icon: React.FC<{ size?: number; className?: string }> }> = [
+  const allNavItems: Array<{ id: NavTab; label: string; icon: React.FC<{ size?: number; className?: string }> }> = [
     { id: "games", label: "Games", icon: Gamepad2 },
     { id: "templates", label: "Plantillas", icon: LayoutTemplate },
     { id: "addons", label: "Complementos", icon: Puzzle },
     { id: "settings", label: "Ajustes", icon: Settings },
   ];
+  const staticNavItems = allNavItems.filter((item) => showGames || item.id !== "games");
 
   return (
     <aside
