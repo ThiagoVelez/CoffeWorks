@@ -21,6 +21,7 @@ export interface GameStatus {
 const RECENT_KEY = "coffeeworks_recent_docs";
 const INSTALLED_KEY = "coffeeworks_installed_apps";
 const FOCUS_KEY = "coffeeworks_focus_mode";
+const SHOW_GAMES_KEY = "coffeeworks_show_games";
 
 /** Puertos de los servidores de desarrollo de cada aplicación. */
 const DEV_PORTS: Record<string, number> = { coffeedoc: 1421, coffeebooks: 1440, coffeecalc: 1422, coffeeview: 1423, coffeepdf: 1424, coffeepage: 1425, coffeeedit: 1426, coffeelive: 1427, coffeedatabase: 1428, coffeeuiux: 1429, coffeeuml: 1430, coffeephoto: 1431, coffeevector: 1432, coffeepaint: 1433, coffeelens: 1434, coffeemotion: 1435, coffeesound: 1436, coffeeencoder: 1437, coffeeanimate: 1438, coffeepuppet: 1439, coffeeanimate3d: 1441, coffeeconvert: 1442 };
@@ -792,6 +793,15 @@ export const tauriBridge = {
 
   setFocusMode(enabled: boolean): void {
     writeJson(FOCUS_KEY, enabled);
+  },
+
+  /** Si el apartado Games se ve en el menú lateral (sí por defecto). */
+  getShowGames(): boolean {
+    return readJson<boolean>(SHOW_GAMES_KEY, true);
+  },
+
+  setShowGames(visible: boolean): void {
+    writeJson(SHOW_GAMES_KEY, visible);
   },
 
   async openExternal(target: string): Promise<void> {
