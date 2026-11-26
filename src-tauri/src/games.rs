@@ -109,9 +109,8 @@ fn extract(archive: &Path, dest: &Path) -> Result<(), String> {
     std::fs::create_dir_all(dest).map_err(|e| format!("No se pudo crear la carpeta del juego: {e}"))?;
     if cfg!(windows) {
         let script = format!(
-            "$ErrorActionPreference='Stop'; Expand-Archive -Path {} -DestinationPath {} -Force",
-            coffee_core::addons::ps_quote(&archive.to_string_lossy()),
-            coffee_core::addons::ps_quote(&dest.to_string_lossy())
+            "$ErrorActionPreference='Stop'; {}",
+            coffee_core::addons::ps_unzip_script(&archive.to_string_lossy(), &dest.to_string_lossy())
         );
         coffee_core::addons::run_powershell(&script).map(|_| ()).map_err(|e| format!("No se pudo descomprimir el juego: {e}"))
     } else {

@@ -337,17 +337,41 @@ pub fn ps_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "''"))
 }
 
+/// Windows PowerShell oculto, listo para ejecutar `script`. No hereda `PSModulePath`:
+/// si CoffeeWorks se abrió desde PowerShell 7, esas rutas hacen que Windows PowerShell
+/// cargue módulos incompatibles (por ejemplo, un Expand-Archive que falla).
+pub fn powershell_command(script: &str) -> Command {
+    let mut cmd = Command::new("powershell");
+    hidden(&mut cmd)
+        .args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script])
+        .env_remove("PSModulePath")
+        .stdin(Stdio::null());
+    cmd
+}
+
+/// Script de PowerShell que descomprime `zip` en `dest` con .NET (sin Expand-Archive),
+/// sobrescribiendo lo que exista y sin dejar escribir fuera de `dest`.
+pub fn ps_unzip_script(zip: &str, dest: &str) -> String {
+    format!(
+        "Add-Type -AssemblyName System.IO.Compression.FileSystem; \
+         $dest = [IO.Path]::GetFullPath({dest}); New-Item -ItemType Directory -Force $dest | Out-Null; \
+         $raiz = $dest.TrimEnd('\\') + '\\'; \
+         $z = [IO.Compression.ZipFile]::OpenRead({zip}); \
+         try {{ foreach ($e in $z.Entries) {{ \
+           $p = [IO.Path]::GetFullPath([IO.Path]::Combine($dest, $e.FullName)); \
+           if (-not $p.StartsWith($raiz, [StringComparison]::OrdinalIgnoreCase)) {{ throw ('Ruta no válida en el paquete: ' + $e.FullName) }}; \
+           if ($e.FullName.EndsWith('/') -or $e.FullName.EndsWith('\\')) {{ New-Item -ItemType Directory -Force $p | Out-Null }} \
+           else {{ New-Item -ItemType Directory -Force ([IO.Path]::GetDirectoryName($p)) | Out-Null; \
+                  [IO.Compression.ZipFileExtensions]::ExtractToFile($e, $p, $true) }} }} }} \
+         finally {{ $z.Dispose() }}",
+        zip = ps_quote(zip),
+        dest = ps_quote(dest),
+    )
+}
+
 /// Ejecuta un script de PowerShell oculto y devuelve su salida.
 pub fn run_powershell(script: &str) -> Result<String, String> {
-    let output = hidden(Command::new("powershell").args([
-        "-NoProfile",
-        "-NonInteractive",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-Command",
-        script,
-    ]))
-    .stdin(Stdio::null())
+    let output = powershell_command(script)
     .output()
     .map_err(|e| format!("No se pudo iniciar PowerShell: {e}"))?;
     if output.status.success() {
@@ -472,7 +496,7 @@ pub fn install_addon(id: &str) -> Result<AddonInfo, String> {
              [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; \
              Invoke-WebRequest -UseBasicParsing -Uri {url} -OutFile {zip}; \
              if (Test-Path {unpack}) {{ Remove-Item {unpack} -Recurse -Force }}; \
-             Expand-Archive -Path {zip} -DestinationPath {unpack} -Force; \
+             {unzip}; \
              $exe = Get-ChildItem {unpack} -Recurse -Filter {exe} | Select-Object -First 1; \
              if (-not $exe) {{ throw ('El paquete no contiene ' + {exe}) }}; \
              Get-ChildItem $exe.DirectoryName -File | Copy-Item -Destination {target} -Force",
@@ -481,16 +505,9 @@ pub fn install_addon(id: &str) -> Result<AddonInfo, String> {
             unpack = ps_quote(&unpack.to_string_lossy()),
             exe = ps_quote(&exe),
             target = ps_quote(&target_dir.to_string_lossy()),
+            unzip = ps_unzip_script(&zip.to_string_lossy(), &unpack.to_string_lossy()),
         );
-        let output = hidden(Command::new("powershell").args([
-            "-NoProfile",
-            "-NonInteractive",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-            &script,
-        ]))
-        .stdin(Stdio::null())
+        let output = powershell_command(&script)
         .output()
         .map_err(|e| format!("No se pudo iniciar PowerShell: {e}"))?;
         let _ = fs::remove_file(&zip);
@@ -582,6 +599,24 @@ pub fn run_addon_with(id: &str, args: &[String], input: Option<&[u8]>, extension
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn powershell_no_hereda_las_rutas_de_modulos() {
+        // Si se hereda PSModulePath de PowerShell 7, Windows PowerShell carga un
+        // Expand-Archive incompatible (MethodCountCouldNotFindBest).
+        let cmd = powershell_command("Write-Output 1");
+        assert!(cmd.get_envs().any(|(k, v)| k == "PSModulePath" && v.is_none()));
+        assert_eq!(cmd.get_program(), "powershell");
+    }
+
+    #[test]
+    fn descomprimir_no_usa_expand_archive_y_frena_rutas_fuera() {
+        let s = ps_unzip_script("C:\\tmp\\a.zip", "C:\\tmp\\destino");
+        assert!(!s.contains("Expand-Archive"));
+        assert!(s.contains("System.IO.Compression"));
+        assert!(s.contains("StartsWith"), "comprueba que nada se escriba fuera del destino");
+        assert!(s.contains("'C:\\tmp\\a.zip'") && s.contains("'C:\\tmp\\destino'"));
+    }
 
     #[test]
     fn catalogo_modelado_libre_es_de_servicio() {
