@@ -105,13 +105,15 @@ async fn red_cortar(red: State<'_, Red>, peer: String) -> Result<(), String> {
 async fn red_cambiar_sala(red: State<'_, Red>, sala: String, clave: String) -> Result<(), String> {
     let clave = ClaveSala::desde_link(&clave)?;
     let nodo = red.nodo.lock().await.clone().ok_or("No hay un tablero compartido")?;
-    let reles = reles_de(&sala).await?;
-    nodo.cambiar_sala(reles.clone() as Arc<dyn Senalizacion>, clave).await;
-    // Deja de escuchar en la sala vieja.
-    let viejos: Vec<_> = std::mem::replace(&mut *red.reles.lock().await, vec![reles]);
+    // Primero se cierra la sala vieja: aunque la nueva falle, el link viejo ya no sirve.
+    nodo.dejar_de_escuchar().await;
+    let viejos: Vec<_> = std::mem::take(&mut *red.reles.lock().await);
     for r in viejos {
         r.cerrar().await;
     }
+    let reles = reles_de(&sala).await?;
+    nodo.cambiar_sala(reles.clone() as Arc<dyn Senalizacion>, clave).await;
+    red.reles.lock().await.push(reles);
     Ok(())
 }
 

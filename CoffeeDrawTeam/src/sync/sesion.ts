@@ -7,7 +7,7 @@ import * as Y from "yjs";
 import * as encoding from "lib0/encoding";
 import * as decoding from "lib0/decoding";
 import * as sync from "y-protocols/sync";
-import { elementosDe, metaDe, type Kind } from "../board/model";
+import { elementosDe, historialDe, metaDe, type Kind } from "../board/model";
 import { registrar, type Entrada } from "../board/history";
 import { colorLibre, nombreValido, PALETA, type Persona } from "../board/personas";
 import { crearSala, type Sala } from "../board/link";
@@ -85,7 +85,8 @@ class Limitador {
 const DE_POSICION = new Set(["x", "y", "w", "h", "z"]);
 
 function detalleDe(m: Y.Map<unknown> | undefined): string | undefined {
-  const t = m?.get("texto");
+  const v = m?.get("texto");
+  const t = v instanceof Y.Text ? v.toString() : v;
   if (typeof t !== "string" || !t.trim()) return undefined;
   const limpio = t.trim().replace(/\s+/g, " ");
   return limpio.length > 40 ? `${limpio.slice(0, 39)}…` : limpio;
@@ -94,6 +95,9 @@ function detalleDe(m: Y.Map<unknown> | undefined): string | undefined {
 export class SesionAnfitrion {
   activa = true;
   private admitidos = new Map<string, Persona>();
+  private expulsados = new Set<string>();
+  /** Deshace lo que un invitado cambie en el historial o en los nombres (solo los escribe el anfitrión). */
+  private guardia: Y.UndoManager;
   private presencias = new Map<string, Presencia>();
   private cambios: (() => void)[] = [];
   private cola: Entrada[] = [];
@@ -106,9 +110,21 @@ export class SesionAnfitrion {
     this.recordar(yo);
     t.alRecibir((origen, datos) => this.recibir(origen, datos));
     t.alSalir((peer) => this.salio(peer));
+    this.guardia = new Y.UndoManager([historialDe(doc), metaDe(doc)], { trackedOrigins: new Set(), captureTimeout: 0 });
     doc.on("update", this.alUpdate);
+    doc.on("afterTransaction", this.vigilar);
     elementosDe(doc).observeDeep(this.alCambiarElementos);
   }
+
+  private vigilar = (tr: Y.Transaction) => {
+    if (typeof tr.origin !== "string" || !this.admitidos.has(tr.origin)) return;
+    const protegidos = [historialDe(this.doc), metaDe(this.doc)] as unknown as Y.AbstractType<Y.YEvent<any>>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+    if (!protegidos.some((t) => tr.changed.has(t) || tr.changedParentTypes.has(t))) return;
+    queueMicrotask(() => {
+      while (this.guardia.undoStack.length) this.guardia.undo();
+      this.guardia.clear();
+    });
+  };
 
   personas(): Persona[] {
     return [this.yo, ...this.admitidos.values()];
@@ -137,7 +153,9 @@ export class SesionAnfitrion {
   }
 
   async expulsar(id: string): Promise<Sala> {
+    this.expulsados.add(id);
     if (this.admitidos.has(id)) {
+      this.guardia.trackedOrigins.delete(id);
       this.t.enviar(id, codificar(TIPO.EXPULSADO));
       this.admitidos.delete(id);
       this.presencias.delete(id);
@@ -155,13 +173,19 @@ export class SesionAnfitrion {
     this.activa = false;
     this.limitador.parar();
     this.doc.off("update", this.alUpdate);
+    this.doc.off("afterTransaction", this.vigilar);
+    this.guardia.destroy();
     elementosDe(this.doc).unobserveDeep(this.alCambiarElementos);
     this.t.cerrar();
   }
 
   private async rotar(): Promise<Sala> {
     const nueva = crearSala();
-    await this.t.cambiarSala(nueva.sala, nueva.clave);
+    try {
+      await this.t.cambiarSala(nueva.sala, nueva.clave);
+    } catch (e) {
+      throw new Error(`No se pudo cambiar el link: ${e instanceof Error ? e.message : String(e)}`);
+    }
     this.sala = nueva;
     this.aTodos(codificar(TIPO.NUEVA_SALA, nueva));
     return nueva;
@@ -207,6 +231,10 @@ export class SesionAnfitrion {
 
   private hola(peer: string, cuerpo: Uint8Array) {
     if (this.admitidos.has(peer)) return;
+    if (this.expulsados.has(peer)) {
+      this.t.cortar(peer);
+      return;
+    }
     const h = json<{ nombre?: unknown; color?: unknown }>(cuerpo);
     const nombre = typeof h?.nombre === "string" ? nombreValido(h.nombre) : null;
     if (!nombre) return;
@@ -218,6 +246,7 @@ export class SesionAnfitrion {
     const preferido = typeof h?.color === "string" && PALETA.includes(h.color) ? h.color : PALETA[0];
     const persona: Persona = { id: peer, nombre, color: colorLibre(preferido, this.personas().map((p) => p.color)) };
     this.admitidos.set(peer, persona);
+    this.guardia.trackedOrigins.add(peer);
     this.recordar(persona);
     registrar(this.doc, { personaId: peer, accion: "entro", t: this.ahora() });
     this.enviarRoster();
@@ -228,6 +257,7 @@ export class SesionAnfitrion {
 
   private salio(peer: string) {
     if (!this.admitidos.delete(peer)) return;
+    this.guardia.trackedOrigins.delete(peer);
     this.presencias.delete(peer);
     if (this.activa) {
       registrar(this.doc, { personaId: peer, accion: "salio", t: this.ahora() });
@@ -273,7 +303,7 @@ export class SesionAnfitrion {
         const m = elementos.get(id);
         if (!m) continue;
         const claves = [...ev.changes.keys.keys()];
-        const accion = claves.every((k) => DE_POSICION.has(k)) ? "movio" : "edito";
+        const accion = ev.target instanceof Y.Text || !claves.every((k) => DE_POSICION.has(k)) ? "edito" : "movio";
         this.cola.push({ personaId, accion, kind: m.get("kind") as Kind, elementoId: id, detalle: detalleDe(m), t });
       }
     }

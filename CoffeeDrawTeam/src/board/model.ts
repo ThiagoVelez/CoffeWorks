@@ -83,9 +83,24 @@ export function obtener(doc: Y.Doc, id: string): Elemento | undefined {
 export function agregar(doc: Y.Doc, el: Elemento, origen: unknown): void {
   doc.transact(() => {
     const m = new Y.Map<unknown>();
-    for (const [k, v] of Object.entries(el)) m.set(k, v);
+    // El texto es un Y.Text para que dos personas puedan escribir a la vez sin pisarse.
+    for (const [k, v] of Object.entries(el)) m.set(k, k === "texto" && typeof v === "string" ? new Y.Text(v) : v);
     elementosDe(doc).set(el.id, m);
   }, origen);
+}
+
+/** Cambia un Y.Text por el texto nuevo tocando solo lo que cambió. */
+function aplicarTexto(t: Y.Text, nuevo: string): void {
+  const viejo = t.toString();
+  if (viejo === nuevo) return;
+  let ini = 0;
+  while (ini < viejo.length && ini < nuevo.length && viejo[ini] === nuevo[ini]) ini++;
+  let fin = 0;
+  while (fin < viejo.length - ini && fin < nuevo.length - ini && viejo[viejo.length - 1 - fin] === nuevo[nuevo.length - 1 - fin]) fin++;
+  const borrar = viejo.length - ini - fin;
+  if (borrar > 0) t.delete(ini, borrar);
+  const poner = nuevo.slice(ini, nuevo.length - fin);
+  if (poner) t.insert(ini, poner);
 }
 
 export function actualizar(doc: Y.Doc, id: string, cambios: Partial<Elemento>, origen: unknown): void {
@@ -94,7 +109,11 @@ export function actualizar(doc: Y.Doc, id: string, cambios: Partial<Elemento>, o
   doc.transact(() => {
     for (const [k, v] of Object.entries(cambios)) {
       if (k === "id" || k === "kind") continue;
-      if (m.get(k) !== v) m.set(k, v);
+      const actual = m.get(k);
+      if (k === "texto" && typeof v === "string") {
+        if (actual instanceof Y.Text) aplicarTexto(actual, v);
+        else m.set(k, new Y.Text(v));
+      } else if (actual !== v) m.set(k, v);
     }
   }, origen);
 }
@@ -109,7 +128,15 @@ export function borrar(doc: Y.Doc, ids: string[], origen: unknown): void {
     if (("id" in d && quitar.has(d.id)) || ("id" in h && quitar.has(h.id))) quitar.add(id);
   });
   doc.transact(() => {
-    for (const id of quitar) mapa.delete(id);
+    const imagenes = new Set<string>();
+    for (const id of quitar) {
+      const m = mapa.get(id);
+      if (m?.get("kind") === "imagen") imagenes.add(m.get("imagenId") as string);
+      mapa.delete(id);
+    }
+    // Libera los datos de las imágenes que ya nadie usa.
+    mapa.forEach((m) => { if (m.get("kind") === "imagen") imagenes.delete(m.get("imagenId") as string); });
+    for (const img of imagenes) imagenesDe(doc).delete(img);
   }, origen);
 }
 

@@ -168,3 +168,53 @@ test("el invitado ve el cursor del anfitrión", async () => {
   assert.deepEqual(b.s.presenciaDe("A"), { x: 5, y: 7, seleccion: ["n"] });
   anfitrion.cerrar();
 });
+
+import { historialDe, metaDe } from "../board/model";
+import { registrar } from "../board/history";
+
+test("un invitado no puede escribir el historial ni cambiar nombres", async () => {
+  const { docA, anfitrion, invitados: [b, c] } = montar(2);
+  await esperar();
+  const antes = historialDe(docA).length;
+  // Cliente modificado: escribe historial falso y renombra al anfitrión
+  registrar(b.doc, { personaId: "A", accion: "borro", kind: "nota", t: 1 });
+  metaDe(b.doc).set("personas", { A: { nombre: "Tramposo", color: "#000000" } });
+  metaDe(b.doc).set("nombre", "Hackeado");
+  await esperar(60);
+  assert.equal(historialDe(docA).length, antes);
+  assert.equal((metaDe(docA).get("personas") as Record<string, { nombre: string }>).A.nombre, "Ana");
+  assert.notEqual(metaDe(docA).get("nombre"), "Hackeado");
+  assert.ok(!entradas(c.doc).some((e) => e.accion === "borro"));
+  anfitrion.cerrar();
+});
+
+test("el invitado edita texto y el historial lo registra como edición", async () => {
+  const { docA, anfitrion, invitados: [b] } = montar(1);
+  agregar(docA, nota("x", "hola"), "A");
+  await esperar();
+  actualizar(b.doc, "x", { texto: "hola Sofía" }, "local");
+  await esperar();
+  const e = entradas(docA).find((x) => x.elementoId === "x" && x.personaId === b.id);
+  assert.equal(e?.accion, "edito");
+  assert.equal(e?.detalle, "hola Sofía");
+  anfitrion.cerrar();
+});
+
+test("un expulsado no vuelve a entrar con un HOLA nuevo", async () => {
+  const { red, anfitrion, invitados: [b] } = montar(1);
+  await esperar();
+  await anfitrion.expulsar(b.id);
+  red.enviarComo(b.id, "A", codificar(TIPO.HOLA, { nombre: "Otra vez", color: PALETA[3] }));
+  await esperar();
+  assert.equal(anfitrion.personas().length, 1);
+  anfitrion.cerrar();
+});
+
+test("si no se puede cambiar el link, expulsar avisa con un error", async () => {
+  const { red, anfitrion, invitados: [b] } = montar(1);
+  await esperar();
+  red.fallarCambioDeSala("A");
+  await assert.rejects(anfitrion.expulsar(b.id), /link/);
+  assert.equal(anfitrion.personas().length, 1);
+  anfitrion.cerrar();
+});

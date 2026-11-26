@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Y from "yjs";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { ArrowLeft, Download, History, Share2, Copy } from "lucide-react";
+import { ArrowLeft, Copy, Download, History, Maximize2, Minus, Share2, X } from "lucide-react";
 import { crearTablero, elementosDe, imagenesDe, listar, metaDe } from "./board/model";
 import { aplicarPlantilla, PLANTILLAS, type PlantillaId } from "./board/templates";
 import { crearSala, type Sala } from "./board/link";
@@ -21,7 +21,7 @@ import { Inicio } from "./archivo/Inicio";
 import { miId, recordarUnido, store, tablerosUnidos, type Unido } from "./archivo/almacen";
 import { exportarPDF, exportarPNG } from "./archivo/exportar";
 import { downloadBlob } from "./studio/docStore";
-import { getLaunchArgs, isTauri, saveFileAs, type RecentEntry } from "./studio/desktop";
+import { appWindow, getLaunchArgs, isTauri, saveFileAs, type RecentEntry } from "./studio/desktop";
 
 interface Tablero {
   doc: Y.Doc;
@@ -81,21 +81,31 @@ export const App: React.FC = () => {
     }
   }, [avisar]);
 
+  // El temporizador lee el tablero de este momento (nombre, link y ubicación al día).
+  const actual = useRef<Tablero | null>(null);
+  actual.current = tablero;
+  const docActual = tablero?.propio ? tablero.doc : null;
   useEffect(() => {
-    if (!tablero?.propio) return;
-    const t = tablero;
+    if (!docActual) return;
+    const guardarAhora = () => {
+      if (actual.current?.doc === docActual) void guardar(actual.current);
+    };
     const alCambiar = () => {
       if (guardado.current) clearTimeout(guardado.current);
-      guardado.current = window.setTimeout(() => void guardar(t), AUTOGUARDADO_MS);
+      guardado.current = window.setTimeout(guardarAhora, AUTOGUARDADO_MS);
     };
-    t.doc.on("update", alCambiar);
-    const alCerrar = () => void guardar(t);
-    window.addEventListener("beforeunload", alCerrar);
+    docActual.on("update", alCambiar);
+    window.addEventListener("beforeunload", guardarAhora);
     return () => {
-      t.doc.off("update", alCambiar);
-      window.removeEventListener("beforeunload", alCerrar);
+      docActual.off("update", alCambiar);
+      window.removeEventListener("beforeunload", guardarAhora);
+      if (guardado.current) {
+        clearTimeout(guardado.current);
+        guardado.current = null;
+        guardarAhora();
+      }
     };
-  }, [tablero, guardar]);
+  }, [docActual, guardar]);
 
   // Redibujar la barra cuando cambian el nombre o las personas del tablero.
   useEffect(() => {
@@ -105,10 +115,12 @@ export const App: React.FC = () => {
     return () => metaDe(tablero.doc).unobserve(f);
   }, [tablero]);
 
+  const docTablero = tablero?.doc ?? null;
   const undo = useMemo(
-    () => (tablero ? new Y.UndoManager([elementosDe(tablero.doc), imagenesDe(tablero.doc)], { trackedOrigins: new Set([origen]) }) : null),
-    [tablero, origen],
+    () => (docTablero ? new Y.UndoManager([elementosDe(docTablero), imagenesDe(docTablero)], { trackedOrigins: new Set([origen]) }) : null),
+    [docTablero, origen],
   );
+  useEffect(() => () => undo?.destroy(), [undo]);
 
   // ---- Abrir y crear ----
   const abrirTablero = useCallback(async (t: Tablero) => {
@@ -223,10 +235,30 @@ export const App: React.FC = () => {
     const titulo = `${tituloVisible} (copia)`;
     metaDe(doc).set("nombre", titulo);
     const t: Tablero = { doc, titulo, docId: store.newDocId(), location: null, propio: true, link: null };
-    void abrirTablero(t);
-    void guardar(t);
+    const conectado = !tablero.propio && !sesion.estado.fin;
+    // Mientras se está dentro del tablero compartido, la copia se guarda sin salir de él.
+    if (conectado) void guardar(t);
+    else {
+      void abrirTablero(t);
+      void guardar(t);
+    }
     avisar("Copia guardada en Mis tableros");
   };
+
+  // Cerrar la ventana: guardar, avisar a los invitados («El anfitrión cerró el tablero») y salir.
+  const cerrarVentana = async () => {
+    if (tablero) await guardar(tablero);
+    sesion.cerrar();
+    await new Promise((r) => setTimeout(r, 500));
+    await appWindow.close();
+  };
+  const controles = isTauri && (
+    <div className="flex items-center gap-0.5 ml-1" data-controles-ventana>
+      <button type="button" aria-label="Minimizar" className="w-9 h-9 rounded-lg hover:bg-[#f3ece4] flex items-center justify-center" onClick={() => void appWindow.minimize()}><Minus size={16} /></button>
+      <button type="button" aria-label="Maximizar" className="w-9 h-9 rounded-lg hover:bg-[#f3ece4] flex items-center justify-center" onClick={() => void appWindow.toggleMaximize()}><Maximize2 size={14} /></button>
+      <button type="button" aria-label="Cerrar" className="w-9 h-9 rounded-lg hover:bg-[#e81123] hover:text-white flex items-center justify-center" onClick={() => void cerrarVentana()}><X size={16} /></button>
+    </div>
+  );
 
   const reintentar = () => {
     if (!tablero || !yo) return;
@@ -280,6 +312,9 @@ export const App: React.FC = () => {
 
   return (
     <div className="h-full w-full flex flex-col bg-[#faf7f2] text-[#2c1b12]">
+      {!tablero && isTauri && (
+        <div className="h-10 shrink-0 flex items-center justify-end px-2 bg-[#faf7f2]" data-tauri-drag-region>{controles}</div>
+      )}
       {!tablero ? (
         <Inicio
           perfil={perfil}
@@ -291,7 +326,7 @@ export const App: React.FC = () => {
         />
       ) : (
         <>
-          <header className="h-14 shrink-0 flex items-center gap-3 px-3 bg-white border-b border-[#e8dfd8]">
+          <header className="h-14 shrink-0 flex items-center gap-3 px-3 bg-white border-b border-[#e8dfd8]" data-tauri-drag-region>
             <button type="button" className="w-9 h-9 rounded-lg hover:bg-[#f3ece4] flex items-center justify-center" onClick={() => void salir()} aria-label="Volver al inicio" title="Volver al inicio">
               <ArrowLeft size={18} />
             </button>
@@ -316,7 +351,7 @@ export const App: React.FC = () => {
               esAnfitrion={sesion.estado.modo === "anfitrion"}
               siguiendo={siguiendo}
               alSeguir={setSiguiendo}
-              alExpulsar={(p) => { if (window.confirm(`¿Sacar a ${p.nombre} del tablero? El link cambiará para que no pueda volver a entrar.`)) void sesion.expulsar(p.id); }}
+              alExpulsar={(p) => { if (window.confirm(`¿Sacar a ${p.nombre} del tablero? El link cambiará para que no pueda volver a entrar.`)) void sesion.expulsar(p.id).catch((e) => avisar(e instanceof Error ? e.message : "No se pudo cambiar el link")); }}
             />
             <button type="button" className={`h-9 px-3 rounded-lg flex items-center gap-1.5 text-sm font-semibold ${historial ? "bg-[#f3ece4]" : "hover:bg-[#f3ece4]"}`} onClick={() => setHistorial(!historial)} aria-pressed={historial}>
               <History size={16} /> Historial
@@ -343,6 +378,7 @@ export const App: React.FC = () => {
                 <Copy size={16} /> Guardar una copia
               </button>
             )}
+            {controles}
           </header>
 
           <main className="relative flex-1 min-h-0">
@@ -383,7 +419,7 @@ export const App: React.FC = () => {
         <DialogoUnirse perfil={perfil} linkInicial={unirse} alCerrar={() => setUnirse(null)} alUnirse={(sala, quien) => void entrar(sala, quien)} />
       )}
       {compartir && tablero?.link && (
-        <DialogoCompartir link={sesion.estado.link ?? tablero.link} alCerrar={() => setCompartir(false)} alCambiarLink={sesion.cambiarLink} />
+        <DialogoCompartir link={sesion.estado.link ?? tablero.link} alCerrar={() => setCompartir(false)} alCambiarLink={() => sesion.cambiarLink().catch((e) => avisar(e instanceof Error ? e.message : "No se pudo cambiar el link"))} />
       )}
       {aviso && (
         <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-[#2c1b12] text-white text-sm shadow-xl" role="status">{aviso}</div>

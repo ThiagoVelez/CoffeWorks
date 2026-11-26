@@ -10,6 +10,7 @@ interface Nodo {
   estado: ((e: EstadoRed) => void)[];
   conectados: Set<string>;
   salas: { sala: string; clave: string }[];
+  fallarSala?: boolean;
   enviados: Uint8Array[];
 }
 
@@ -61,6 +62,7 @@ export function crearRedMemoria(anfitrion: string) {
         alEstado: (cb) => void nodo.estado.push(cb),
         cortar: (peer) => desconectar(id, peer),
         async cambiarSala(sala, clave) {
+          if (nodo.fallarSala) throw new Error("sin servidores de presentación");
           nodo.salas.push({ sala, clave });
         },
         cerrar() {
@@ -72,6 +74,11 @@ export function crearRedMemoria(anfitrion: string) {
     /** Inyecta un mensaje como si `de` lo hubiera enviado (aunque no estén conectados). */
     enviarComo(de: string, para: string, datos: Uint8Array) {
       entregar(de, para, datos);
+    },
+    /** El siguiente cambio de sala de ese nodo falla (para probar errores). */
+    fallarCambioDeSala(id: string) {
+      const n = nodos.get(id);
+      if (n) n.fallarSala = true;
     },
     salasDe: (id: string) => nodos.get(id)?.salas ?? [],
     enviados: (id: string, tipo: number) => (nodos.get(id)?.enviados ?? []).filter((d) => d[0] === tipo).length,

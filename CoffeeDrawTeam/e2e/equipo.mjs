@@ -104,12 +104,41 @@ try {
   assert.match(descarga.suggestedFilename(), /^Feria\.png$/);
   paso("Exportar a PNG descarga «Feria.png»");
 
+  // Guardar una copia sin salir del tablero compartido
+  await B.getByRole("button", { name: "Guardar una copia" }).click();
+  await B.waitForTimeout(500);
+  assert.match(await B.locator("[data-estado-red]").innerText(), /Conectado/);
+  assert.equal(await B.locator("header").getByText("Feria").count(), 1);
+  paso("B guarda una copia y sigue conectado al tablero de A");
+
+  // Deshacer sigue funcionando después de cambiar el nombre del tablero
+  await A.keyboard.press("n");
+  await A.mouse.click(300, 650);
+  await A.keyboard.type("Deshacer");
+  await A.mouse.click(1000, 700);
+  await A.getByLabel("Nombre del tablero").fill("");
+  await A.getByLabel("Nombre del tablero").pressSequentially("Feria 2026");
+  await A.mouse.click(1000, 700);
+  await A.keyboard.press("Control+z");
+  await A.keyboard.press("Control+z");
+  await A.waitForTimeout(300);
+  assert.equal(await A.getByText("Deshacer", { exact: true }).count(), 0, "Ctrl+Z tras renombrar");
+  paso("Ctrl+Z funciona después de renombrar el tablero");
+
   // Expulsar
   A.once("dialog", (d) => d.accept());
   await A.locator("[data-personas]").click();
   await A.getByRole("button", { name: "Expulsar a Sofía" }).click();
   await B.locator('[data-fin="expulsado"]').waitFor({ timeout: 5000 });
   paso("A expulsa a B y B ve el aviso");
+
+  // El guardado automático guarda el nombre completo (sin salir del tablero)
+  await A.waitForTimeout(4000);
+  await A.reload();
+  await A.locator("[data-inicio]").waitFor();
+  assert.ok(await A.getByText("Feria 2026", { exact: true }).count() >= 1, "nombre guardado completo");
+  assert.equal(await A.getByText("Feria 202", { exact: true }).count(), 0, "sin la última letra");
+  paso("El guardado automático guarda «Feria 2026» completo");
 
   assert.deepEqual(errores, []);
   console.log("\nTodo bien.");

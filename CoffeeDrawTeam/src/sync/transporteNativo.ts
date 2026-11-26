@@ -3,6 +3,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { EstadoRed, Transporte } from "./transporte";
+import { crearCola } from "./cola";
 
 function aBase64(b: Uint8Array): string {
   let s = "";
@@ -55,9 +56,12 @@ export async function crearTransporteNativo(modo: "anfitrion" | "invitado", sala
     listo = true;
     pendientes.splice(0).forEach((f) => f());
   }, 0);
+  // Cada comando espera al anterior: «HOLA» siempre llega antes que la sincronización.
+  const cola = crearCola();
   return {
     enviar(destino, datos) {
-      void invoke("red_enviar", { destino: destino === "todos" ? null : destino, datos: aBase64(datos) });
+      const cuerpo = aBase64(datos);
+      void cola(() => invoke("red_enviar", { destino: destino === "todos" ? null : destino, datos: cuerpo })).catch(() => undefined);
     },
     alRecibir: (cb) => void recibir.push(cb),
     alEntrar: (cb) => void entrar.push(cb),
@@ -66,11 +70,10 @@ export async function crearTransporteNativo(modo: "anfitrion" | "invitado", sala
       estado.push(cb);
       if (ultimoEstado) cb(ultimoEstado);
     },
-    cortar: (peer) => void invoke("red_cortar", { peer }),
-    cambiarSala: (s, c) => invoke("red_cambiar_sala", { sala: s, clave: c }),
+    cortar: (peer) => void cola(() => invoke("red_cortar", { peer })).catch(() => undefined),
+    cambiarSala: (s, c) => cola(() => invoke<void>("red_cambiar_sala", { sala: s, clave: c })),
     cerrar() {
-      quitar.forEach((q) => q());
-      void invoke("red_cerrar");
+      void cola(() => invoke("red_cerrar")).catch(() => undefined).finally(() => quitar.forEach((q) => q()));
     },
   };
 }

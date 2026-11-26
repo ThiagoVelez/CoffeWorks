@@ -260,8 +260,11 @@ export function Lienzo(p: Props) {
       return;
     }
     if (e.button !== 0) return;
-    // Sin esto, el clic le quita el foco al cuadro de texto que se acaba de abrir.
+    // Sin esto, el clic le quita el foco al cuadro de texto que se acaba de abrir;
+    // por eso se suelta a mano el foco de otros campos (el nombre del tablero, por ejemplo).
     e.preventDefault();
+    const activo = document.activeElement as HTMLElement | null;
+    if (activo && activo !== document.body && !svgRef.current?.contains(activo)) activo.blur();
     setEditando(null);
     const pt = puntoDe(e);
     const bajo = elementoBajo(e);

@@ -48,3 +48,31 @@ test("nuevoId no se repite", () => {
   const ids = new Set(Array.from({ length: 1000 }, () => nuevoId()));
   assert.equal(ids.size, 1000);
 });
+
+import * as Y from "yjs";
+import { imagenesDe } from "./model";
+
+test("dos personas escriben a la vez en la misma nota sin perder letras", () => {
+  const a = crearTablero(), b = crearTablero();
+  agregar(a, nota("n", 1, "hola"), "a");
+  Y.applyUpdate(b, Y.encodeStateAsUpdate(a));
+  actualizar(a, "n", { texto: "hola Ana" }, "a");
+  actualizar(b, "n", { texto: "¡hola" }, "b");
+  Y.applyUpdate(a, Y.encodeStateAsUpdate(b));
+  Y.applyUpdate(b, Y.encodeStateAsUpdate(a));
+  const [na] = listar(a), [nb] = listar(b);
+  assert.equal(na.kind === "nota" && na.texto, "¡hola Ana");
+  assert.equal(nb.kind === "nota" && nb.texto, "¡hola Ana");
+});
+
+test("borrar una imagen libera sus datos si nadie más la usa", () => {
+  const doc = crearTablero();
+  imagenesDe(doc).set("img", new Uint8Array([1]));
+  const img = (id: string): Elemento => ({ id, kind: "imagen", imagenId: "img", x: 0, y: 0, w: 10, h: 10, z: 1, autor: "a" });
+  agregar(doc, img("i1"), "a");
+  agregar(doc, img("i2"), "a");
+  borrar(doc, ["i1"], "a");
+  assert.ok(imagenesDe(doc).has("img"));
+  borrar(doc, ["i2"], "a");
+  assert.ok(!imagenesDe(doc).has("img"));
+});

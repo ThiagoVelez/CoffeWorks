@@ -24,7 +24,12 @@ use webrtc::peer_connection::RTCPeerConnection;
 
 pub const STUN_PUBLICOS: &[&str] = &["stun:stun.l.google.com:19302", "stun:stun.cloudflare.com:3478"];
 const PARTE: usize = 16_000;
-const MAX_PARTES: u16 = 1024;
+/// Hasta 8192 partes de 16 KB (unos 130 MB) por mensaje: un tablero con muchas fotos cabe.
+const MAX_PARTES: u16 = 8192;
+/// Mensajes a medio llegar que se guardan por canal; los más viejos se descartan.
+const MAX_PENDIENTES: usize = 8;
+/// Invitados a medio conectar que el anfitrión atiende a la vez.
+const MAX_SIN_CONECTAR: usize = 24;
 const REPETIR_OFERTA: Duration = Duration::from_secs(4);
 const ESPERA_MAXIMA: Duration = Duration::from_secs(60);
 /// Mensajes de presentación más viejos que esto se ignoran (evita repeticiones).
@@ -79,6 +84,8 @@ type Piezas = (u16, Vec<Option<Vec<u8>>>);
 #[derive(Default)]
 struct Rearmado {
     piezas: HashMap<u32, Piezas>,
+    /// Ids pendientes, del más viejo al más nuevo.
+    orden: Vec<u32>,
 }
 
 impl Rearmado {
@@ -93,13 +100,23 @@ impl Rearmado {
         if total == 0 || total > MAX_PARTES || parte >= total {
             return None;
         }
+        if !self.piezas.contains_key(&id) {
+            while self.piezas.len() >= MAX_PENDIENTES {
+                let viejo = *self.orden.first().expect("hay pendientes");
+                self.orden.remove(0);
+                self.piezas.remove(&viejo);
+            }
+            self.orden.push(id);
+        }
         let entrada = self.piezas.entry(id).or_insert_with(|| (total, vec![None; total as usize]));
         if entrada.0 != total {
             self.piezas.remove(&id);
+            self.orden.retain(|x| *x != id);
             return None;
         }
         entrada.1[parte as usize] = Some(f[8..].to_vec());
         if entrada.1.iter().all(Option::is_some) {
+            self.orden.retain(|x| *x != id);
             let (_, partes) = self.piezas.remove(&id)?;
             return Some(partes.into_iter().flatten().flatten().collect());
         }
@@ -116,6 +133,8 @@ struct Par {
 
 struct Interior {
     id: String,
+    /// Los invitados avisan «conectado» cuando abre el canal con el anfitrión.
+    invitado: bool,
     pares: Mutex<HashMap<String, Par>>,
     eventos: mpsc::UnboundedSender<EventoRed>,
     stun: Vec<String>,
@@ -167,6 +186,9 @@ impl Interior {
             Box::pin(async move {
                 if let Some(yo) = yo.upgrade() {
                     yo.emitir(EventoRed::Entra(p));
+                    if yo.invitado {
+                        yo.emitir(EventoRed::Estado("conectado".into(), None));
+                    }
                 }
             })
         }));
@@ -198,8 +220,11 @@ impl Interior {
             let yo = yo.clone();
             let p = peer.clone();
             Box::pin(async move {
-                if matches!(s, RTCPeerConnectionState::Failed | RTCPeerConnectionState::Closed) {
-                    if let Some(yo) = yo.upgrade() {
+                if let Some(yo) = yo.upgrade() {
+                    // El invitado no espera los ~30 s de «Failed»: sin anfitrión, lo que edite se perdería.
+                    let perdida = matches!(s, RTCPeerConnectionState::Failed | RTCPeerConnectionState::Closed)
+                        || (yo.invitado && s == RTCPeerConnectionState::Disconnected);
+                    if perdida {
                         yo.quitar(&p).await;
                     }
                 }
@@ -228,6 +253,13 @@ impl Interior {
                     }
                     return Ok(());
                 }
+            }
+        }
+        {
+            let pares = self.pares.lock().await;
+            let sin_conectar = pares.values().filter(|p| p.dc.is_none()).count();
+            if !pares.contains_key(&m.de) && sin_conectar >= MAX_SIN_CONECTAR {
+                return Err("demasiadas conexiones a medio abrir".into());
             }
         }
         self.quitar(&m.de).await;
@@ -265,10 +297,11 @@ impl Interior {
 }
 
 impl Nodo {
-    fn nuevo(stun: Vec<String>) -> (Self, mpsc::UnboundedReceiver<EventoRed>) {
+    fn nuevo(stun: Vec<String>, invitado: bool) -> (Self, mpsc::UnboundedReceiver<EventoRed>) {
         let (tx, rx) = mpsc::unbounded_channel();
         let interior = Arc::new(Interior {
             id: id_aleatorio(),
+            invitado,
             pares: Mutex::new(HashMap::new()),
             eventos: tx,
             stun,
@@ -283,7 +316,7 @@ impl Nodo {
 
     /// Crea el anfitrión y empieza a escuchar ofertas en la sala.
     pub async fn anfitrion(senal: Arc<dyn Senalizacion>, clave: ClaveSala, stun: Vec<String>) -> (Self, mpsc::UnboundedReceiver<EventoRed>) {
-        let (nodo, rx) = Self::nuevo(stun);
+        let (nodo, rx) = Self::nuevo(stun, false);
         nodo.escuchar(senal, clave).await;
         nodo.interior.emitir(EventoRed::Estado("conectado".into(), None));
         (nodo, rx)
@@ -306,6 +339,13 @@ impl Nodo {
         }
     }
 
+    /// Anfitrión: deja de atender ofertas (antes de cambiar de sala).
+    pub async fn dejar_de_escuchar(&self) {
+        if let Some(t) = self.escucha.lock().await.take() {
+            t.abort();
+        }
+    }
+
     /// Anfitrión: escuchar desde ahora en otra sala. Las conexiones abiertas siguen.
     pub async fn cambiar_sala(&self, senal: Arc<dyn Senalizacion>, clave: ClaveSala) {
         self.escuchar(senal, clave).await;
@@ -313,7 +353,7 @@ impl Nodo {
 
     /// Crea un invitado que busca al anfitrión de la sala.
     pub async fn invitado(senal: Arc<dyn Senalizacion>, clave: ClaveSala, stun: Vec<String>) -> Result<(Self, mpsc::UnboundedReceiver<EventoRed>), String> {
-        let (nodo, rx) = Self::nuevo(stun);
+        let (nodo, rx) = Self::nuevo(stun, true);
         let interior = nodo.interior.clone();
         interior.emitir(EventoRed::Estado("conectando".into(), None));
         let pc = interior.nueva_conexion().await?;
@@ -371,6 +411,13 @@ impl Nodo {
 
     /// Envía a un par concreto o a todos (`None`).
     pub async fn enviar(&self, destino: Option<&str>, datos: &[u8]) {
+        if datos.len() > MAX_PARTES as usize * PARTE {
+            self.interior.emitir(EventoRed::Estado(
+                "error".into(),
+                Some("El tablero es demasiado grande para enviarlo: borra algunas imágenes".into()),
+            ));
+            return;
+        }
         let id = self.interior.siguiente_msg.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let partes = trocear(id, datos);
         let canales: Vec<Arc<RTCDataChannel>> = {
@@ -433,6 +480,26 @@ mod tests {
     }
 
     #[test]
+    fn rearmar_no_guarda_mensajes_sin_limite() {
+        let mut r = Rearmado::default();
+        // Un par malicioso empieza muchos mensajes y nunca los termina.
+        for id in 0..100u32 {
+            let mut f = id.to_be_bytes().to_vec();
+            f.extend_from_slice(&0u16.to_be_bytes());
+            f.extend_from_slice(&MAX_PARTES.to_be_bytes());
+            f.extend_from_slice(&[7; 100]);
+            assert!(r.meter(&f).is_none());
+        }
+        assert!(r.piezas.len() <= MAX_PENDIENTES);
+    }
+
+    #[test]
+    fn trocear_admite_tableros_grandes() {
+        // 40 MB (unas 25 fotos) caben en un solo mensaje.
+        assert!(MAX_PARTES as usize * PARTE >= 40_000_000);
+    }
+
+    #[test]
     fn rearmar_rechaza_basura() {
         let mut r = Rearmado::default();
         assert!(r.meter(&[1, 2, 3]).is_none());
@@ -464,6 +531,10 @@ mod tests {
         assert_eq!(quien, inv.id());
         let EventoRed::Entra(host) = esperar(&mut ri, |e| matches!(e, EventoRed::Entra(_))).await else { unreachable!() };
         assert_eq!(host, anf.id());
+        assert_eq!(
+            esperar(&mut ri, |e| matches!(e, EventoRed::Estado(s, _) if s != "conectando")).await,
+            EventoRed::Estado("conectado".into(), None)
+        );
 
         inv.enviar(None, b"hola").await;
         assert_eq!(esperar(&mut ra, |e| matches!(e, EventoRed::Dato(..))).await, EventoRed::Dato(inv.id().into(), b"hola".to_vec()));
