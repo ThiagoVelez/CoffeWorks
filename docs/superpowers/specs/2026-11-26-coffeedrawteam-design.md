@@ -63,9 +63,16 @@ grupo).
 
 ### Conexión
 
-- Biblioteca **Trystero** (MIT) para WebRTC con presentación vía relés Nostr públicos
-  (BitTorrent como respaldo si Nostr falla). La sala se cifra con la contraseña del link, así
-  que los relés solo ven datos cifrados.
+- La conexión vive en el **lado nativo (Rust)** de la app, igual en Windows y Linux:
+  **WebRTC** con el crate `webrtc` (canales de datos) y **presentación por relés Nostr
+  públicos** (crate `nostr-sdk`), más servidores STUN públicos. Los mensajes de presentación
+  se cifran con la clave del link, así que los relés solo ven datos cifrados; los canales
+  WebRTC van cifrados (DTLS).
+  *Por qué nativo:* se comprobó que WebKitGTK 2.52 de Ubuntu 24.04 viene **sin WebRTC**
+  (no incluye el motor GStreamer de WebRTC), y una sola implementación en Rust hace que un
+  equipo con Windows y otro con Linux hablen el mismo protocolo. La interfaz web solo ve
+  una capa `Transporte` (enviar bytes, recibir bytes, personas que entran y salen); por eso
+  pasar al enfoque B más adelante solo cambia el lado nativo.
 - **Topología en estrella**: los invitados solo aceptan datos del anfitrión; el anfitrión
   reenvía los cambios de cada uno a los demás. Así expulsar funciona de verdad y hay una sola
   copia que manda (la del anfitrión).
@@ -81,10 +88,6 @@ grupo).
 - Estados visibles: «Conectando…», «Conectado (n personas)», «No se pudo conectar — tu red
   puede estar bloqueando la conexión directa» (con «Reintentar»), «El anfitrión cerró el
   tablero».
-- **Riesgo a comprobar primero (Linux)**: la vista web de Tauri en Linux (WebKitGTK 2.52)
-  puede venir sin WebRTC. La primera tarea del plan lo comprueba en Debian/Ubuntu; si falta,
-  en Linux la conexión se hace en el lado nativo (Rust, crate `webrtc`) con la misma
-  interfaz `Conexion`. En Windows (WebView2) WebRTC está disponible.
 
 ### Sincronización
 
