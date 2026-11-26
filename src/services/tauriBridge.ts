@@ -24,7 +24,7 @@ const FOCUS_KEY = "coffeeworks_focus_mode";
 const SHOW_GAMES_KEY = "coffeeworks_show_games";
 
 /** Puertos de los servidores de desarrollo de cada aplicación. */
-const DEV_PORTS: Record<string, number> = { coffeedoc: 1421, coffeebooks: 1440, coffeecalc: 1422, coffeeview: 1423, coffeepdf: 1424, coffeepage: 1425, coffeeedit: 1426, coffeelive: 1427, coffeedatabase: 1428, coffeeuiux: 1429, coffeeuml: 1430, coffeephoto: 1431, coffeevector: 1432, coffeepaint: 1433, coffeelens: 1434, coffeemotion: 1435, coffeesound: 1436, coffeeencoder: 1437, coffeeanimate: 1438, coffeepuppet: 1439, coffeeanimate3d: 1441, coffeeconvert: 1442, coffeedrawteam: 1443 };
+const DEV_PORTS: Record<string, number> = { coffeedoc: 1421, coffeebooks: 1440, coffeecalc: 1422, coffeeview: 1423, coffeepdf: 1424, coffeepage: 1425, coffeeedit: 1426, coffeelive: 1427, coffeedatabase: 1428, coffeeuiux: 1429, coffeeuml: 1430, coffeephoto: 1431, coffeevector: 1432, coffeepaint: 1433, coffeelens: 1434, coffeemotion: 1435, coffeesound: 1436, coffeeencoder: 1437, coffeeanimate: 1438, coffeepuppet: 1439, coffeeanimate3d: 1441, coffeeconvert: 1442, coffeedrawteam: 1443, coffeelatex: 1444 };
 
 const ALIASES: Record<string, string> = { coffeesheet: "coffeecalc", coffeeslides: "coffeeview", coffeecams: "coffeeedit" };
 
@@ -258,6 +258,22 @@ const WEB_CATALOG: SuiteApp[] = [
     color_badge: "notes",
     icon_name: "notebook-pen",
     icon_url: "/icons/CoffeeBooks.ico",
+    category: "Office",
+  },
+  {
+    id: "coffeelatex",
+    name: "CoffeeLatex",
+    subtitle: "Documentos con fórmulas en LaTeX y Markdown",
+    description:
+      "Documentos científicos y técnicos en LaTeX y Markdown con las fórmulas a la vista mientras escribes: informes de laboratorio, talleres de física y artículos. Exporta a PDF, Word y HTML.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "primary",
+    icon_name: "sigma",
+    icon_url: "/icons/CoffeeLatex.ico",
     category: "Office",
   },
   {

@@ -135,6 +135,7 @@ export default defineConfig({
         "**/CoffeeAnimate3D/dist/**",
         "**/CoffeeConvert/dist/**",
         "**/CoffeeDrawTeam/dist/**",
+        "**/CoffeeLatex/dist/**",
         "**/data/vault.json",
       ],
     },

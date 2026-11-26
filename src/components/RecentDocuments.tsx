@@ -102,6 +102,9 @@ export const RecentDocuments: React.FC<RecentDocumentsProps> = ({
         border: "border-[#dfd3c7]",
       };
     }
+    if (lowerName.endsWith(".tex") || appId === "coffeelatex") {
+      return { iconUrl: "/icons/CoffeeLatex.ico", alt: "CoffeeLatex", bg: "bg-[#dcf0f3]", border: "border-[#0d5e6f]/20" };
+    }
     if (lowerName.endsWith(".cbk") || appId === "coffeebooks") {
       return { iconUrl: "/icons/CoffeeBooks.ico", alt: "CoffeeBooks", bg: "bg-[#f1f1ef]", border: "border-[#2f2f2f]/20" };
     }

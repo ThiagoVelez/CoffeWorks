@@ -156,7 +156,7 @@ export const Editor = forwardRef<EditorApi, Props>(({ texto, modo, onCambio, onT
         <div className="editor-capa" aria-hidden>{capa}</div>
         <textarea
           ref={area}
-          className="editor-area"
+          className="editor-area bg-transparent"
           value={texto}
           spellCheck={false}
           autoCapitalize="off"

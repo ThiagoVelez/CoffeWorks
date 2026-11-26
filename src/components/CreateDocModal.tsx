@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import {
-  BookOpen, X, FileText, Table, Presentation, FilePen, NotebookPen, Database, Scissors, Radio, Plus, PenTool, Workflow, Image as ImageIcon, PenLine, Brush, Aperture, WandSparkles, AudioWaveform, RefreshCw, Film, Smile, Box as BoxIcon } from "lucide-react";
+  BookOpen, X, FileText, Table, Presentation, FilePen, NotebookPen, Database, Scissors, Radio, Plus, PenTool, Workflow, Image as ImageIcon, PenLine, Brush, Aperture, WandSparkles, AudioWaveform, RefreshCw, Film, Smile, Box as BoxIcon, Sigma } from "lucide-react";
 
 interface CreateDocModalProps {
   isOpen: boolean;
@@ -23,6 +23,7 @@ export const CreateDocModal: React.FC<CreateDocModalProps> = ({
   const docOptions = [
     { id: "coffeedoc", name: "CoffeeDoc", ext: ".cfd", icon: FileText, color: "text-[#185abd]", bg: "bg-[#e8f1fc]" },
     { id: "coffeebooks", name: "CoffeeBooks", ext: ".cbk", icon: BookOpen, color: "text-[#2f2f2f]", bg: "bg-[#f1f1ef]" },
+    { id: "coffeelatex", name: "CoffeeLatex", ext: ".tex", icon: Sigma, color: "text-[#0d5e6f]", bg: "bg-[#dcf0f3]" },
     { id: "coffeecalc", name: "CoffeeCalc", ext: ".cfs", icon: Table, color: "text-[#107c41]", bg: "bg-[#dff6dd]" },
     { id: "coffeeview", name: "CoffeeView", ext: ".csl", icon: Presentation, color: "text-[#c43e1c]", bg: "bg-[#faede4]" },
     { id: "coffeepdf", name: "CoffeePDF", ext: ".pdf", icon: FilePen, color: "text-[#c62828]", bg: "bg-[#fdecea]" },
