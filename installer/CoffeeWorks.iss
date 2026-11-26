@@ -11,7 +11,7 @@
 ;   powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
 
 #define AppName "CoffeeWorks"
-#define AppVersion "2.16.0"
+#define AppVersion "2.17.0"
 #define AppPublisher "CoffeeWorks OpenSource Team"
 #define AppExeName "CoffeeWorks.exe"
 
