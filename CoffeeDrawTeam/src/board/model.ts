@@ -1,0 +1,196 @@
+// Modelo del tablero de CoffeeDrawTeam sobre un documento Yjs.
+// Cada elemento es un Y.Map (una clave por propiedad), así dos personas que cambian
+// propiedades distintas del mismo elemento a la vez no se pisan.
+
+import * as Y from "yjs";
+
+export type NotaColor = "amarillo" | "rosa" | "verde" | "azul" | "naranja" | "lila";
+
+export const NOTA_COLORES: Record<NotaColor, string> = {
+  amarillo: "#fff3a3",
+  rosa: "#ffc9de",
+  verde: "#c8f2c2",
+  azul: "#c4e2ff",
+  naranja: "#ffd6a8",
+  lila: "#e0d2ff",
+};
+
+interface Base {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  z: number;
+  /** id de la persona que lo creó */
+  autor: string;
+}
+
+export type Extremo = { id: string } | { x: number; y: number };
+
+export interface Nota extends Base { kind: "nota"; color: NotaColor; texto: string }
+export interface Texto extends Base { kind: "texto"; texto: string; tam: number; negrita: boolean; color: string }
+export interface Forma extends Base {
+  kind: "forma";
+  forma: "rect" | "elipse" | "rombo" | "flecha";
+  relleno: string;
+  borde: string;
+  texto: string;
+}
+export interface Conector extends Base {
+  kind: "conector";
+  desde: Extremo;
+  hasta: Extremo;
+  estilo: "recto" | "codo";
+  flecha: boolean;
+  color: string;
+}
+export interface Trazo extends Base { kind: "trazo"; puntos: number[]; grosor: number; color: string; marcador: boolean }
+export interface Imagen extends Base { kind: "imagen"; imagenId: string }
+
+export type Elemento = Nota | Texto | Forma | Conector | Trazo | Imagen;
+export type Kind = Elemento["kind"];
+
+export const elementosDe = (doc: Y.Doc) => doc.getMap<Y.Map<unknown>>("elementos");
+export const imagenesDe = (doc: Y.Doc) => doc.getMap<Uint8Array>("imagenes");
+export const historialDe = (doc: Y.Doc) => doc.getArray<unknown>("historial");
+export const metaDe = (doc: Y.Doc) => doc.getMap<unknown>("meta");
+
+export function crearTablero(): Y.Doc {
+  const doc = new Y.Doc();
+  elementosDe(doc);
+  imagenesDe(doc);
+  historialDe(doc);
+  metaDe(doc);
+  return doc;
+}
+
+export function nuevoId(): string {
+  const bytes = new Uint8Array(9);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(36).padStart(2, "0")).join("").slice(0, 14);
+}
+
+export function leerElemento(m: Y.Map<unknown>): Elemento {
+  return m.toJSON() as Elemento;
+}
+
+export function obtener(doc: Y.Doc, id: string): Elemento | undefined {
+  const m = elementosDe(doc).get(id);
+  return m ? leerElemento(m) : undefined;
+}
+
+export function agregar(doc: Y.Doc, el: Elemento, origen: unknown): void {
+  doc.transact(() => {
+    const m = new Y.Map<unknown>();
+    // El texto es un Y.Text para que dos personas puedan escribir a la vez sin pisarse.
+    for (const [k, v] of Object.entries(el)) m.set(k, k === "texto" && typeof v === "string" ? new Y.Text(v) : v);
+    elementosDe(doc).set(el.id, m);
+  }, origen);
+}
+
+/** Cambia un Y.Text por el texto nuevo tocando solo lo que cambió. */
+function aplicarTexto(t: Y.Text, nuevo: string): void {
+  const viejo = t.toString();
+  if (viejo === nuevo) return;
+  let ini = 0;
+  while (ini < viejo.length && ini < nuevo.length && viejo[ini] === nuevo[ini]) ini++;
+  let fin = 0;
+  while (fin < viejo.length - ini && fin < nuevo.length - ini && viejo[viejo.length - 1 - fin] === nuevo[nuevo.length - 1 - fin]) fin++;
+  const borrar = viejo.length - ini - fin;
+  if (borrar > 0) t.delete(ini, borrar);
+  const poner = nuevo.slice(ini, nuevo.length - fin);
+  if (poner) t.insert(ini, poner);
+}
+
+export function actualizar(doc: Y.Doc, id: string, cambios: Partial<Elemento>, origen: unknown): void {
+  const m = elementosDe(doc).get(id);
+  if (!m) return;
+  doc.transact(() => {
+    for (const [k, v] of Object.entries(cambios)) {
+      if (k === "id" || k === "kind") continue;
+      const actual = m.get(k);
+      if (k === "texto" && typeof v === "string") {
+        if (actual instanceof Y.Text) aplicarTexto(actual, v);
+        else m.set(k, new Y.Text(v));
+      } else if (actual !== v) m.set(k, v);
+    }
+  }, origen);
+}
+
+export function borrar(doc: Y.Doc, ids: string[], origen: unknown): void {
+  const quitar = new Set(ids);
+  const mapa = elementosDe(doc);
+  // Conectores enganchados a lo que se borra
+  mapa.forEach((m, id) => {
+    if (m.get("kind") !== "conector") return;
+    const d = m.get("desde") as Extremo, h = m.get("hasta") as Extremo;
+    if (("id" in d && quitar.has(d.id)) || ("id" in h && quitar.has(h.id))) quitar.add(id);
+  });
+  doc.transact(() => {
+    const imagenes = new Set<string>();
+    for (const id of quitar) {
+      const m = mapa.get(id);
+      if (m?.get("kind") === "imagen") imagenes.add(m.get("imagenId") as string);
+      mapa.delete(id);
+    }
+    // Libera los datos de las imágenes que ya nadie usa.
+    mapa.forEach((m) => { if (m.get("kind") === "imagen") imagenes.delete(m.get("imagenId") as string); });
+    for (const img of imagenes) imagenesDe(doc).delete(img);
+  }, origen);
+}
+
+export function listar(doc: Y.Doc): Elemento[] {
+  const out: Elemento[] = [];
+  elementosDe(doc).forEach((m) => out.push(leerElemento(m)));
+  return out.sort((a, b) => a.z - b.z || (a.id < b.id ? -1 : 1));
+}
+
+export function zMaximo(doc: Y.Doc): number {
+  let z = 0;
+  elementosDe(doc).forEach((m) => { z = Math.max(z, (m.get("z") as number) ?? 0); });
+  return z;
+}
+
+export function alFrente(doc: Y.Doc, ids: string[], origen: unknown): void {
+  let z = zMaximo(doc);
+  const orden = listar(doc).filter((e) => ids.includes(e.id));
+  doc.transact(() => {
+    for (const e of orden) elementosDe(doc).get(e.id)?.set("z", ++z);
+  }, origen);
+}
+
+/** Centro de un elemento o el punto suelto de un extremo de conector. */
+export function extremoPos(doc: Y.Doc, e: Extremo): { x: number; y: number } {
+  if ("id" in e) {
+    const el = obtener(doc, e.id);
+    return el ? { x: el.x + el.w / 2, y: el.y + el.h / 2 } : { x: 0, y: 0 };
+  }
+  return { x: e.x, y: e.y };
+}
+
+const KINDS = new Set(["nota", "texto", "forma", "conector", "trazo", "imagen"]);
+const num = (v: unknown) => typeof v === "number" && Number.isFinite(v) && Math.abs(v) < 1e7;
+const str = (v: unknown, max = 10_000) => typeof v === "string" && v.length <= max;
+const extremo = (e: unknown) => !!e && typeof e === "object" && ("id" in e ? str((e as { id: unknown }).id, 64) : num((e as Punto2).x) && num((e as Punto2).y));
+type Punto2 = { x: unknown; y: unknown };
+
+/** ¿Es un elemento bien formado? (lo que manda un invitado se revisa antes de quedarse) */
+export function elementoValido(e: unknown): e is Elemento {
+  if (!e || typeof e !== "object") return false;
+  const o = e as Record<string, unknown>;
+  if (!str(o.id, 64) || !KINDS.has(o.kind as string) || !str(o.autor, 64)) return false;
+  if (![o.x, o.y, o.w, o.h, o.z].every(num) || (o.w as number) < 0 || (o.h as number) < 0) return false;
+  switch (o.kind) {
+    case "nota": return (o.color as string) in NOTA_COLORES && str(o.texto);
+    case "texto": return str(o.texto) && num(o.tam) && typeof o.negrita === "boolean" && str(o.color, 32);
+    case "forma": return ["rect", "elipse", "rombo", "flecha"].includes(o.forma as string) && str(o.relleno, 32) && str(o.borde, 32) && str(o.texto);
+    case "conector": return extremo(o.desde) && extremo(o.hasta) && (o.estilo === "recto" || o.estilo === "codo") && typeof o.flecha === "boolean" && str(o.color, 32);
+    case "trazo": return Array.isArray(o.puntos) && o.puntos.length % 2 === 0 && o.puntos.length <= 40_000 && o.puntos.every(num) && num(o.grosor) && str(o.color, 32) && typeof o.marcador === "boolean";
+    case "imagen": return str(o.imagenId, 64);
+  }
+  return false;
+}
+
+/** Tamaño máximo de una imagen en el tablero (las de la app pesan como mucho 1,5 MB). */
+export const MAX_BYTES_IMAGEN = 2_000_000;

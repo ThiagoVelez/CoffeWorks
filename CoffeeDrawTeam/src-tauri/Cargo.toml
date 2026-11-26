@@ -1,0 +1,39 @@
+[package]
+name = "coffeedrawteam"
+description = "Tablero en equipo de la suite CoffeeWorks"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "CoffeeDrawTeam"
+path = "src/main.rs"
+
+[features]
+# Activa el modo de producción (frontend embebido en el ejecutable).
+custom-protocol = ["tauri/custom-protocol"]
+
+[build-dependencies]
+tauri-build = { workspace = true }
+
+[dependencies]
+tauri = { workspace = true }
+tauri-plugin-dialog = { workspace = true }
+coffee-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+base64 = "0.22"
+webrtc = "0.17"
+nostr-sdk = "0.45"
+chacha20poly1305 = "0.10"
+hkdf = "0.12"
+sha2 = "0.10"
+rand = "0.8"
+bytes = "1"
+tokio = { version = "1", features = ["sync", "rt", "rt-multi-thread", "macros", "time"] }
+async-trait = "0.1"
+hex = "0.4"
+futures = "0.3"
+tauri-plugin-deep-link = "2"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+ed25519-dalek = { version = "2", features = ["rand_core"] }

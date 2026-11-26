@@ -24,7 +24,7 @@ const FOCUS_KEY = "coffeeworks_focus_mode";
 const SHOW_GAMES_KEY = "coffeeworks_show_games";
 
 /** Puertos de los servidores de desarrollo de cada aplicación. */
-const DEV_PORTS: Record<string, number> = { coffeedoc: 1421, coffeebooks: 1440, coffeecalc: 1422, coffeeview: 1423, coffeepdf: 1424, coffeepage: 1425, coffeeedit: 1426, coffeelive: 1427, coffeedatabase: 1428, coffeeuiux: 1429, coffeeuml: 1430, coffeephoto: 1431, coffeevector: 1432, coffeepaint: 1433, coffeelens: 1434, coffeemotion: 1435, coffeesound: 1436, coffeeencoder: 1437, coffeeanimate: 1438, coffeepuppet: 1439, coffeeanimate3d: 1441, coffeeconvert: 1442 };
+const DEV_PORTS: Record<string, number> = { coffeedoc: 1421, coffeebooks: 1440, coffeecalc: 1422, coffeeview: 1423, coffeepdf: 1424, coffeepage: 1425, coffeeedit: 1426, coffeelive: 1427, coffeedatabase: 1428, coffeeuiux: 1429, coffeeuml: 1430, coffeephoto: 1431, coffeevector: 1432, coffeepaint: 1433, coffeelens: 1434, coffeemotion: 1435, coffeesound: 1436, coffeeencoder: 1437, coffeeanimate: 1438, coffeepuppet: 1439, coffeeanimate3d: 1441, coffeeconvert: 1442, coffeedrawteam: 1443 };
 
 const ALIASES: Record<string, string> = { coffeesheet: "coffeecalc", coffeeslides: "coffeeview", coffeecams: "coffeeedit" };
 
@@ -323,6 +323,22 @@ const WEB_CATALOG: SuiteApp[] = [
     icon_name: "arrow-left-right",
     icon_url: "/icons/CoffeeConvert.ico",
     category: "Office",
+  },
+  {
+    id: "coffeedrawteam",
+    name: "CoffeeDrawTeam",
+    subtitle: "Tablero para trabajar en equipo",
+    description:
+      "Tablero infinito para trabajar en grupo o solo: notas adhesivas, texto, formas, conectores, dibujo a mano e imágenes. Compártelo con un link: cada persona se ve con su cursor de color y un historial muestra quién hizo qué.",
+    version: "v1.0",
+    installed: true,
+    available: true,
+    size_mb: 0,
+    status: "",
+    color_badge: "warning",
+    icon_name: "users",
+    icon_url: "/icons/CoffeeDrawTeam.ico",
+    category: "Equipos",
   },
   {
     id: "coffeepage",

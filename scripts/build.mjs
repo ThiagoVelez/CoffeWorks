@@ -28,6 +28,7 @@
 //      installer/build/packages/CoffeePuppet(.exe)
 //      installer/build/packages/CoffeeAnimate3D(.exe)
 //      installer/build/packages/CoffeeConvert(.exe)
+//      installer/build/packages/CoffeeDrawTeam(.exe)
 
 import { execSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, rmSync, statSync } from "node:fs";
@@ -45,7 +46,7 @@ const run = (command, cwd = root) => {
   execSync(command, { cwd, stdio: "inherit" });
 };
 
-const frontends = [".", "CoffeeDoc", "CoffeeCalc", "CoffeeView", "CoffeePDF", "CoffeePage", "CoffeeBooks", "CoffeeDataBase", "CoffeeEdit", "CoffeeLive", "CoffeeUIUX", "CoffeeUML", "CoffeePhoto", "CoffeeVector", "CoffeePaint", "CoffeeLens", "CoffeeMotion", "CoffeeSound", "CoffeeEncoder", "CoffeeAnimate", "CoffeePuppet", "CoffeeAnimate3D", "CoffeeConvert"];
+const frontends = [".", "CoffeeDoc", "CoffeeCalc", "CoffeeView", "CoffeePDF", "CoffeePage", "CoffeeBooks", "CoffeeDataBase", "CoffeeEdit", "CoffeeLive", "CoffeeUIUX", "CoffeeUML", "CoffeePhoto", "CoffeeVector", "CoffeePaint", "CoffeeLens", "CoffeeMotion", "CoffeeSound", "CoffeeEncoder", "CoffeeAnimate", "CoffeePuppet", "CoffeeAnimate3D", "CoffeeConvert", "CoffeeDrawTeam"];
 
 if (!skipFrontend) {
   for (const dir of frontends) {
@@ -74,7 +75,7 @@ const stage = (name, destination) => {
 
 console.log(`\nEjecutables en ${path.relative(root, outDir)}:`);
 stage("CoffeeWorks", "");
-for (const app of ["CoffeeDoc", "CoffeeCalc", "CoffeeView", "CoffeePDF", "CoffeePage", "CoffeeBooks", "CoffeeDataBase", "CoffeeEdit", "CoffeeLive", "CoffeeUIUX", "CoffeeUML", "CoffeePhoto", "CoffeeVector", "CoffeePaint", "CoffeeLens", "CoffeeMotion", "CoffeeSound", "CoffeeEncoder", "CoffeeAnimate", "CoffeePuppet", "CoffeeAnimate3D", "CoffeeConvert"]) stage(app, "packages");
+for (const app of ["CoffeeDoc", "CoffeeCalc", "CoffeeView", "CoffeePDF", "CoffeePage", "CoffeeBooks", "CoffeeDataBase", "CoffeeEdit", "CoffeeLive", "CoffeeUIUX", "CoffeeUML", "CoffeePhoto", "CoffeeVector", "CoffeePaint", "CoffeeLens", "CoffeeMotion", "CoffeeSound", "CoffeeEncoder", "CoffeeAnimate", "CoffeePuppet", "CoffeeAnimate3D", "CoffeeConvert", "CoffeeDrawTeam"]) stage(app, "packages");
 
 // Diccionarios del corrector ortográfico (los copia el Launcher a la carpeta común)
 mkdirSync(path.join(outDir, "packages", "dictionaries"), { recursive: true });
