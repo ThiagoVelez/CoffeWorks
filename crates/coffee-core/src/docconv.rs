@@ -475,6 +475,58 @@ pub async fn doc_ocr_modelo(nombre: String) -> Result<tauri::ipc::Response, Stri
     .map_err(|e| format!("La lectura se interrumpió: {e}"))?
 }
 
+/// Archivos que la app puede pedir de cada complemento de audio de CoffeeSound.
+const ARCHIVOS_AUDIO: &[(&str, &[&str])] = &[
+    ("separarvoz", &["voc_ft.onnx"]),
+    (
+        "letra",
+        &[
+            "small-encoder.int8.onnx",
+            "small-decoder.int8.onnx",
+            "small-tokens.txt",
+        ],
+    ),
+];
+
+/// Ruta de un modelo de «separarvoz» o «letra» (solo los de la lista).
+pub fn archivo_audio(complemento: &str, nombre: &str) -> Result<PathBuf, String> {
+    let permitidos = ARCHIVOS_AUDIO
+        .iter()
+        .find(|(c, _)| *c == complemento)
+        .map(|(_, l)| *l)
+        .unwrap_or(&[]);
+    if !permitidos.contains(&nombre) {
+        return Err(format!("Archivo no permitido: {complemento}/{nombre}"));
+    }
+    let dir = addon_executable(complemento)
+        .and_then(|p| p.parent().map(Path::to_path_buf))
+        .ok_or("Instala el complemento desde el Launcher › Complementos.")?;
+    let ruta = dir.join(nombre);
+    if ruta.is_file() {
+        Ok(ruta)
+    } else {
+        Err(format!(
+            "Falta {nombre} en el complemento. Vuelve a instalarlo."
+        ))
+    }
+}
+
+/// Un modelo de audio de CoffeeSound, en binario (sin base64: son cientos de MB).
+#[tauri::command]
+pub async fn doc_audio_modelo(
+    complemento: String,
+    nombre: String,
+) -> Result<tauri::ipc::Response, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let ruta = archivo_audio(&complemento, &nombre)?;
+        fs::read(&ruta)
+            .map(tauri::ipc::Response::new)
+            .map_err(|e| format!("No se pudo leer {nombre}: {e}"))
+    })
+    .await
+    .map_err(|e| format!("La lectura se interrumpió: {e}"))?
+}
+
 #[derive(Debug, Serialize)]
 pub struct Herramientas {
     /// «tectonic», «xelatex» o nada.
@@ -484,6 +536,10 @@ pub struct Herramientas {
     pub ocr: bool,
     /// Tesseract para el texto de los renglones (complemento «pdfcheck»).
     pub tesseract: bool,
+    /// CoffeeSound: separar voz y música (complemento «separarvoz»).
+    pub separarvoz: bool,
+    /// CoffeeSound: sacar la letra (complemento «letra»).
+    pub letra: bool,
 }
 
 #[tauri::command]
@@ -493,6 +549,8 @@ pub fn doc_herramientas() -> Herramientas {
         pandoc: pandoc().is_some(),
         ocr: addon_executable("latexocr").is_some(),
         tesseract: addon_executable("pdfcheck").is_some(),
+        separarvoz: addon_executable("separarvoz").is_some(),
+        letra: addon_executable("letra").is_some(),
     }
 }
 
@@ -593,6 +651,25 @@ mod tests {
             assert!(
                 archivo_ocr(malo).unwrap_err().contains("no permitido"),
                 "{malo}"
+            );
+        }
+    }
+
+    #[test]
+    fn audio_solo_entrega_sus_archivos() {
+        for (complemento, malo) in [
+            ("separarvoz", "../secreto"),
+            ("separarvoz", "/etc/passwd"),
+            ("separarvoz", "small-encoder.int8.onnx"),
+            ("letra", "voc_ft.onnx"),
+            ("letra", "small-tokens.txt/../x"),
+            ("otro", "voc_ft.onnx"),
+        ] {
+            assert!(
+                archivo_audio(complemento, malo)
+                    .unwrap_err()
+                    .contains("no permitido"),
+                "{complemento} {malo}"
             );
         }
     }
