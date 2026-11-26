@@ -16,7 +16,7 @@
 - MDX (modelo `UVR-MDX-NET-Voc_FT`, md5 de cola `77d07b2667ddf05b9e3175941b4454a0`): n_fft 7680, salto 1024, dim_f 3072, dim_t 256, compensación 1.021, 44 100 Hz estéreo, primeras 3 bandas a 0.
 - Whisper (sherpa-onnx `whisper-small` int8): 16 kHz mono, 80 bandas mel, log10 recortado a max−8, (x+4)/4; relleno de 1500 cuadros; ≤ 3000 cuadros (frases ≤ 28 s); decodificación voraz con supresión de sot, no_timestamps, translate, no_speech (y eot/blank en la primera pieza).
 - Todo en español en la interfaz; nada congela la ventana (Web Worker) y hay «Cancelar».
-- Commits con los trailers de la sesión; versión de la suite 2.18.0.
+- Commits con los trailers de la sesión; va en el mismo PR que «Desde foto», con la versión 2.17.0 (decisión al construir: no hay una versión publicada entre medio).
 
 ## Review Focus
 

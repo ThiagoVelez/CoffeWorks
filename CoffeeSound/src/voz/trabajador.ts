@@ -21,7 +21,8 @@ export type Respuesta =
   | { tipo: "error"; id?: number; mensaje: string };
 
 ort.env.wasm.wasmPaths = { wasm: new URL(wasmUrl, self.location.href).href };
-ort.env.wasm.numThreads = 1;
+// Con aislamiento entre orígenes (crossOriginIsolated) se usan varios núcleos; si no, uno.
+ort.env.wasm.numThreads = (self as unknown as { crossOriginIsolated?: boolean }).crossOriginIsolated ? Math.min(8, navigator.hardwareConcurrency || 1) : 1;
 
 let separador: SesionOnnx | null = null;
 let whisper: ModelosWhisper | null = null;

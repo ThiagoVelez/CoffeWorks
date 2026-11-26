@@ -49,6 +49,12 @@ jobs:
           npm ci --no-audit --no-fund
           npm test
 
+      - name: Pruebas de CoffeeSound (separar voz y sacar la letra)
+        working-directory: CoffeeSound
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+
       - name: Pruebas de CoffeeLatex (vista previa, botones, plantillas, corrector y exportar)
         working-directory: CoffeeLatex
         run: |

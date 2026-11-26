@@ -11,6 +11,7 @@ import { aEstereo44, aMono16, deEstereo44 } from "./senal";
 import { frases } from "./frases";
 import { aLrc, aPalabras, aTxt, esAlucinacion, tiempoCorto, type LineaLetra } from "./letra";
 import { IDIOMAS } from "./whisper";
+import { quedan } from "./tiempo";
 import { Cancelado, complementosVoz, MotorVoz } from "./motor";
 
 const canalesDe = (b: AudioBuffer) => Array.from({ length: b.numberOfChannels }, (_, c) => Float32Array.from(b.getChannelData(c)));
@@ -71,8 +72,9 @@ export const DialogoSeparar: React.FC<{
     const c = new AbortController();
     control.current = c;
     setEstado({ f: 0, t: "Preparando…" });
+    let inicio = 0;
     try {
-      const r = await separarBuffer(buffer, (f) => setEstado({ f, t: `Separando… ${Math.round(f * 100)} %` }), c.signal, (t) => setEstado({ f: 0, t }));
+      const r = await separarBuffer(buffer, (f) => { inicio ||= performance.now(); setEstado({ f, t: `Separando… ${Math.round(f * 100)} %${quedan(f, performance.now() - inicio)}` }); }, c.signal, (t) => setEstado({ f: 0, t }));
       setRes(r);
     } catch (e) {
       if (!(e instanceof Cancelado)) setError(e instanceof Error ? e.message : String(e));
@@ -107,7 +109,7 @@ export const DialogoSeparar: React.FC<{
         )
       }
     >
-      <p className="text-[#c9c9cf]">Divide «{sinExt(nombre)}» en dos audios nuevos: <b>la voz</b> y <b>la música</b>. El original no cambia. Una canción de 3 minutos tarda unos minutos.</p>
+      <p className="text-[#c9c9cf]">Divide «{sinExt(nombre)}» en dos audios nuevos: <b>la voz</b> y <b>la música</b>. El original no cambia. Se hace en tu equipo y tarda: una canción de 3 minutos puede llevar varios minutos; la barra muestra cuánto falta.</p>
       {hay === false && <Falta nombre="Separar voz y música" tam="~65 MB" onInstalar={() => void ensureAddon("separarvoz", "CoffeeSound").then((ok) => ok && setHay(true))} />}
       {estado && <Barra fraccion={estado.f} texto={estado.t} />}
       {res && <div className="text-[#8ce99a] flex items-center gap-2" data-testid="separado"><Music2 size={14} /> Listo: «{sinExt(nombre)} — Voz» y «{sinExt(nombre)} — Música».</div>}
@@ -142,13 +144,14 @@ export const DialogoLetra: React.FC<{
     setAviso(null);
     const c = new AbortController();
     control.current = c;
+    const inicio = performance.now();
     try {
       // 1. La voz: la del archivo si ya está separada; si no, se separa (o se avisa).
       let voz = buffer;
       if (!esVoz) {
         if (hay?.separarvoz) {
           setEstado({ f: 0, t: "Separando la voz…" });
-          voz = (await separarBuffer(buffer, (f) => setEstado({ f: f * 0.4, t: `Separando la voz… ${Math.round(f * 100)} %` }), c.signal, (t) => setEstado({ f: 0, t }))).voz;
+          voz = (await separarBuffer(buffer, (f) => setEstado({ f: f * 0.4, t: `Separando la voz… ${Math.round(f * 100)} %${quedan(f * 0.4, performance.now() - inicio)}` }), c.signal, (t) => setEstado({ f: 0, t }))).voz;
         } else setAviso("Sin «Separar voz y música» la letra se saca con la música encima y saldrá menos precisa.");
       }
       // 2. Frases y transcripción
@@ -160,7 +163,8 @@ export const DialogoLetra: React.FC<{
       setLineas([]);
       for (const [i, f] of fr.entries()) {
         if (c.signal.aborted) throw new Cancelado();
-        setEstado({ f: base + ((1 - base) * i) / Math.max(1, fr.length), t: `Escuchando la frase ${i + 1} de ${fr.length}…` });
+        const f0 = base + ((1 - base) * i) / Math.max(1, fr.length);
+        setEstado({ f: f0, t: `Escuchando la frase ${i + 1} de ${fr.length}…${quedan(f0, performance.now() - inicio)}` });
         const trozo = x16.subarray(Math.floor(f.ini * 16000), Math.ceil(f.fin * 16000));
         const t = await motor().transcribir(Float32Array.from(trozo), lang || undefined, c.signal, (txt) => setEstado({ f: base, t: txt }));
         if (!lang && t.idioma) lang = t.idioma; // la primera frase fija el idioma de las demás
