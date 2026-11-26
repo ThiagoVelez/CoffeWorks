@@ -62,3 +62,10 @@ test("prosa en markdown excluye código y fórmulas", () => {
   assert.ok(t.includes("Texto") && t.includes("final"));
   for (const w of ["codigo", "formula", "inline", "bloque"]) assert.ok(!t.includes(w), w);
 });
+
+test("prosa no revisa el preámbulo salvo título, autor y fecha", () => {
+  const src = "\\documentclass{article}\n\\sisetup{output-decimal-marker={,}}\n\\title{Caida libre}\n\\author{Ana}\n\\begin{document}\nHola";
+  const t = textoDe(src, rangosDeProsa(src, "latex"));
+  assert.ok(!t.includes("output") && !t.includes("decimal") && !t.includes("article"), t);
+  assert.ok(t.includes("Caida libre") && t.includes("Ana") && t.includes("Hola"), t);
+});

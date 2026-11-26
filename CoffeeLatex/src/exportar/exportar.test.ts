@@ -44,6 +44,16 @@ test("registro vacío da lista vacía", () => {
   assert.deepEqual(texErrors(""), []);
 });
 
+test("incrustarFuentes reconoce las rutas que reescribe Vite", () => {
+  const fuentes = { "KaTeX_Main-Regular.woff2": "data:font/woff2;base64,AAA" };
+  for (const url of ["fonts/KaTeX_Main-Regular.woff2", "/node_modules/katex/dist/fonts/KaTeX_Main-Regular.woff2", "/assets/KaTeX_Main-Regular-DRggAlZN.woff2"]) {
+    const css = `@font-face{font-family:KaTeX_Main;src:url(${url}) format("woff2"),url(x.woff) format("woff");font-weight:400}`;
+    const r = incrustarFuentes(css, fuentes);
+    assert.ok(r.includes("data:font/woff2;base64,AAA"), url);
+    assert.ok(!r.includes(".woff)"), url);
+  }
+});
+
 test("exportarHtml no depende de internet", () => {
   const dir = join(process.cwd(), "node_modules/katex/dist");
   const css = readFileSync(join(dir, "katex.min.css"), "utf8");

@@ -108,6 +108,23 @@ function prosaMarkdown(s: string): Rango[] {
   return r;
 }
 
+/** En el preámbulo solo se revisan \title, \author y \date. */
+function sinPreambulo(src: string, r: Rango[]): Rango[] {
+  const inicio = src.indexOf("\\begin{document}");
+  if (inicio < 0) return r;
+  const permitidas: Rango[] = [];
+  for (const m of src.slice(0, inicio).matchAll(/\\(?:title|author|date)\{/g)) {
+    const ini = m.index! + m[0].length - 1;
+    permitidas.push({ ini, fin: saltarGrupo(src, ini) });
+  }
+  return r.flatMap((x) => {
+    if (x.ini >= inicio) return [x];
+    return permitidas
+      .map((p) => ({ ini: Math.max(x.ini, p.ini), fin: Math.min(x.fin, p.fin, inicio) }))
+      .filter((y) => y.fin > y.ini);
+  });
+}
+
 export function rangosDeProsa(src: string, modo: Modo): Rango[] {
-  return modo === "latex" ? prosaLatex(src) : prosaMarkdown(src);
+  return modo === "latex" ? sinPreambulo(src, prosaLatex(src)) : prosaMarkdown(src);
 }

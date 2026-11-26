@@ -9,10 +9,18 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
  * data URL). Solo se conservan las woff2; las demás variantes se quitan.
  */
 export function incrustarFuentes(css: string, fuentes: Record<string, string>): string {
+  const nombres = Object.keys(fuentes);
+  // La ruta puede ser «fonts/X.woff2», «/node_modules/…/X.woff2» (desarrollo) o «/assets/X-hash.woff2».
+  const buscar = (archivo: string) => {
+    const base = archivo.replace(/\.woff2$/, "");
+    const k = nombres.find((n) => n === archivo) ?? nombres.find((n) => base.startsWith(`${n.replace(/\.woff2$/, "")}-`));
+    return k ? fuentes[k] : undefined;
+  };
   return css.replace(/src:([^;}]*)/g, (decl, lista: string) => {
-    const woff2 = /url\(["']?fonts\/([^)"']+\.woff2)["']?\)/.exec(lista);
+    if (/url\(["']?data:font\/woff2/.test(lista)) return decl;
+    const woff2 = /url\(["']?([^)"']*\/)?([^/)"']+\.woff2)["']?\)/.exec(lista);
     if (!woff2) return decl;
-    const dato = fuentes[woff2[1]];
+    const dato = buscar(woff2[2]);
     return dato ? `src:url(${dato}) format("woff2")` : "src:local(serif)";
   });
 }
@@ -25,6 +33,13 @@ export const HOJA_CSS = `
 .hoja h3{font-size:1.1em;margin:1em 0 .3em}
 .hoja h4{font-size:1em;margin:.8em 0 .2em}
 .hoja p{margin:.5em 0;text-align:justify;hyphens:auto}
+.hoja ul,.hoja ol{margin:.5em 0;padding-left:2em}
+.hoja ul{list-style:disc}
+.hoja ol{list-style:decimal}
+.hoja li{margin:.2em 0}
+.hoja li>p{margin:0}
+.hoja strong{font-weight:bold}
+.hoja em{font-style:italic}
 .hoja .titulo-doc{text-align:center;margin-bottom:1.6em}
 .hoja .titulo-doc .autor,.hoja .titulo-doc .fecha{margin-top:.3em}
 .hoja .ecuacion{position:relative;margin:.8em 0;padding:0 3em}
