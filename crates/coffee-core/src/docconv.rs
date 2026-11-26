@@ -70,10 +70,10 @@ fn version_pandoc(salida: &str) -> Option<(u32, u32)> {
     Some((partes.next()??, partes.next().flatten().unwrap_or(0)))
 }
 
-/// `--sandbox` (Pandoc 2.15 o posterior) impide que el documento lea otros archivos del equipo.
-fn admite_sandbox(exe: &Path) -> bool {
-    static CACHE: std::sync::OnceLock<std::sync::Mutex<std::collections::HashMap<PathBuf, bool>>> =
-        std::sync::OnceLock::new();
+/// Versión de un Pandoc (se pregunta una vez por ejecutable).
+fn version_de(exe: &Path) -> Option<(u32, u32)> {
+    type Cache = std::sync::Mutex<std::collections::HashMap<PathBuf, Option<(u32, u32)>>>;
+    static CACHE: std::sync::OnceLock<Cache> = std::sync::OnceLock::new();
     let cache = CACHE.get_or_init(Default::default);
     if let Some(v) = cache.lock().ok().and_then(|c| c.get(exe).copied()) {
         return v;
@@ -83,12 +83,107 @@ fn admite_sandbox(exe: &Path) -> bool {
     let v = hidden(&mut cmd)
         .output()
         .ok()
-        .and_then(|o| version_pandoc(&String::from_utf8_lossy(&o.stdout)))
-        .is_some_and(|v| v >= (2, 15));
+        .and_then(|o| version_pandoc(&String::from_utf8_lossy(&o.stdout)));
     if let Ok(mut c) = cache.lock() {
         c.insert(exe.to_path_buf(), v);
     }
     v
+}
+
+/// Comandos de LaTeX que leen otros archivos, con cuántos argumentos {…} llevan.
+const INCLUSIONES: &[(&str, usize)] = &[
+    ("input", 1),
+    ("include", 1),
+    ("includeonly", 1),
+    ("InputIfFileExists", 3),
+    ("subfile", 1),
+    ("import", 2),
+    ("subimport", 2),
+    ("includefrom", 2),
+    ("subincludefrom", 2),
+    ("lstinputlisting", 1),
+    ("verbatiminput", 1),
+    ("VerbatimInput", 1),
+    ("inputminted", 2),
+    ("includepdf", 1),
+];
+
+/// Quita del documento los comandos que leen otros archivos del equipo (\input, \include…),
+/// para que una conversión nunca meta archivos ajenos al documento. Funciona con cualquier
+/// versión de Pandoc; donde existe, `--sandbox` lo refuerza.
+fn quitar_inclusiones(texto: &str) -> String {
+    let b = texto.as_bytes();
+    let mut out = String::with_capacity(texto.len());
+    let mut copiado = 0;
+    let mut i = 0;
+    let saltar_espacios = |mut j: usize| {
+        while j < b.len() && (b[j] == b' ' || b[j] == b'\t') {
+            j += 1;
+        }
+        j
+    };
+    let saltar_grupo = |j: usize, abre: u8, cierra: u8| -> usize {
+        let mut nivel = 0usize;
+        let mut k = j;
+        while k < b.len() {
+            if b[k] == b'\\' {
+                k += 2;
+                continue;
+            }
+            if b[k] == abre {
+                nivel += 1;
+            } else if b[k] == cierra {
+                nivel = nivel.saturating_sub(1);
+                if nivel == 0 {
+                    return k + 1;
+                }
+            }
+            k += 1;
+        }
+        b.len()
+    };
+    while i < b.len() {
+        if b[i] != b'\\' {
+            i += 1;
+            continue;
+        }
+        let mut j = i + 1;
+        while j < b.len() && b[j].is_ascii_alphabetic() {
+            j += 1;
+        }
+        let nombre = &texto[i + 1..j];
+        let Some(&(_, args)) = INCLUSIONES.iter().find(|(n, _)| *n == nombre) else {
+            i = if j == i + 1 { i + 2 } else { j };
+            continue;
+        };
+        let mut k = saltar_espacios(j);
+        if k < b.len() && b[k] == b'*' {
+            k += 1;
+        }
+        while k < b.len() && b[k] == b'[' {
+            k = saltar_espacios(saltar_grupo(k, b'[', b']'));
+        }
+        if k < b.len() && b[k] == b'{' {
+            for _ in 0..args {
+                k = saltar_espacios(k);
+                if k < b.len() && b[k] == b'{' {
+                    k = saltar_grupo(k, b'{', b'}');
+                } else {
+                    break;
+                }
+            }
+        } else {
+            // Forma de TeX: \input archivo
+            while k < b.len() && !b[k].is_ascii_whitespace() && b[k] != b'}' {
+                k += 1;
+            }
+        }
+        out.push_str(&texto[copiado..i]);
+        copiado = k.min(b.len());
+        i = copiado;
+    }
+    out.push_str(&texto[copiado..]);
+    out
 }
 
 /// Carpeta temporal propia que se borra al terminar.
@@ -233,8 +328,13 @@ pub fn convertir_pandoc(entrada: &[u8], desde: &str, hacia: &str) -> Result<Vec<
     }
     let entrada_ruta = tmp.0.join(format!("entrada.{}", ext(desde)));
     let salida_ruta = tmp.0.join(format!("salida.{}", ext(hacia)));
-    fs::write(&entrada_ruta, entrada).map_err(|e| e.to_string())?;
-    let sandbox = admite_sandbox(&exe);
+    let limpio = quitar_inclusiones(&String::from_utf8_lossy(entrada));
+    fs::write(&entrada_ruta, limpio).map_err(|e| e.to_string())?;
+    let version = version_de(&exe);
+    // `--sandbox` (Pandoc 2.15 o posterior) impide además leer cualquier otro archivo.
+    let sandbox = version.is_some_and(|v| v >= (2, 15));
+    // Antes de Pandoc 2.11 los títulos de Markdown salen subrayados («====») si no se pide «#».
+    let titulos_atx = hacia == "markdown" && version.is_some_and(|v| v < (2, 11));
     // Word y ODT: en algunos sistemas (Debian) Pandoc no puede leer sus propias plantillas en modo
     // aislado. Se lee el documento aislado a JSON y después se escribe el archivo sin aislar.
     let (lector_desde, lector_hacia, lector_salida) = if sandbox && matches!(hacia, "docx" | "odt")
@@ -284,6 +384,9 @@ pub fn convertir_pandoc(entrada: &[u8], desde: &str, hacia: &str) -> Result<Vec<
                 cmd.arg("--standalone");
             }
             _ => {}
+        }
+        if titulos_atx {
+            cmd.arg("--atx-headers");
         }
         cmd.arg(&entrada_ruta);
     })?;
@@ -404,6 +507,22 @@ mod tests {
         assert!(
             texto.contains("Antes") && !texto.contains("SECRETO123"),
             "{texto}"
+        );
+    }
+
+    #[test]
+    fn quita_los_comandos_que_incluyen_archivos() {
+        let t = "A \\input{/etc/x} B \\include{c} C \\lstinputlisting[language=C]{/s.c} D \\import{/a/}{b} E \\inputx{y} F \\input /etc/y\nG";
+        let r = quitar_inclusiones(t);
+        for prohibido in ["/etc/x", "{c}", "/s.c", "/a/", "/etc/y"] {
+            assert!(!r.contains(prohibido), "{r}");
+        }
+        for queda in ["A ", " B ", " C ", " D ", " E ", "\\inputx{y}", " F ", "G"] {
+            assert!(r.contains(queda), "{queda} en {r}");
+        }
+        assert_eq!(
+            quitar_inclusiones("sin nada \\textbf{x}"),
+            "sin nada \\textbf{x}"
         );
     }
 
