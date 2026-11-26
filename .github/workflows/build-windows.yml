@@ -74,7 +74,15 @@ jobs:
             if (-not $condition) { throw "FALLO: $message" } else { Write-Host "OK: $message" }
           }
           function Run($exe, $arguments) {
-            $process = Start-Process $exe -ArgumentList $arguments -Wait -PassThru
+            # Se guarda lo que escribe el programa: el Launcher es una app de ventana y si no,
+            # sus mensajes de error no se ven en el registro.
+            $out = New-TemporaryFile; $err = New-TemporaryFile
+            $process = Start-Process $exe -ArgumentList $arguments -Wait -PassThru -RedirectStandardOutput $out -RedirectStandardError $err
+            if ($process.ExitCode -ne 0) {
+              Write-Host "--- salida de $exe $arguments (código $($process.ExitCode)) ---"
+              Get-Content $out, $err | Write-Host
+            }
+            Remove-Item $out, $err -ErrorAction SilentlyContinue
             return $process.ExitCode
           }
 
