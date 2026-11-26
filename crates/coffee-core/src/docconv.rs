@@ -436,11 +436,54 @@ pub async fn doc_pandoc(datos: String, desde: String, hacia: String) -> Result<S
     .map_err(|e| format!("La conversión se interrumpió: {e}"))?
 }
 
+/// Archivos del complemento «latexocr» que la app puede pedir.
+const ARCHIVOS_OCR: &[&str] = &[
+    "encoder.onnx",
+    "decoder.onnx",
+    "image_resizer.onnx",
+    "tokenizer.json",
+];
+
+/// Ruta de un archivo del complemento «latexocr» (solo los de la lista).
+pub fn archivo_ocr(nombre: &str) -> Result<PathBuf, String> {
+    if !ARCHIVOS_OCR.contains(&nombre) {
+        return Err(format!("Archivo no permitido: {nombre}"));
+    }
+    let dir = addon_executable("latexocr")
+        .and_then(|p| p.parent().map(Path::to_path_buf))
+        .ok_or("Instala el complemento «Fórmulas desde foto» desde el Launcher › Complementos.")?;
+    let ruta = dir.join(nombre);
+    if ruta.is_file() {
+        Ok(ruta)
+    } else {
+        Err(format!(
+            "Falta {nombre} en el complemento «Fórmulas desde foto». Vuelve a instalarlo."
+        ))
+    }
+}
+
+/// Un modelo de «Desde foto», en binario (sin base64: son decenas de MB).
+#[tauri::command]
+pub async fn doc_ocr_modelo(nombre: String) -> Result<tauri::ipc::Response, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let ruta = archivo_ocr(&nombre)?;
+        fs::read(&ruta)
+            .map(tauri::ipc::Response::new)
+            .map_err(|e| format!("No se pudo leer {nombre}: {e}"))
+    })
+    .await
+    .map_err(|e| format!("La lectura se interrumpió: {e}"))?
+}
+
 #[derive(Debug, Serialize)]
 pub struct Herramientas {
     /// «tectonic», «xelatex» o nada.
     pub latex: Option<Motor>,
     pub pandoc: bool,
+    /// Modelos de «Desde foto» (complemento «latexocr»).
+    pub ocr: bool,
+    /// Tesseract para el texto de los renglones (complemento «pdfcheck»).
+    pub tesseract: bool,
 }
 
 #[tauri::command]
@@ -448,6 +491,8 @@ pub fn doc_herramientas() -> Herramientas {
     Herramientas {
         latex: motor_latex().map(|(_, m)| m),
         pandoc: pandoc().is_some(),
+        ocr: addon_executable("latexocr").is_some(),
+        tesseract: addon_executable("pdfcheck").is_some(),
     }
 }
 
@@ -534,6 +579,22 @@ mod tests {
         );
         assert_eq!(version_pandoc("pandoc.exe 2.9.2.1"), Some((2, 9)));
         assert_eq!(version_pandoc(""), None);
+    }
+
+    #[test]
+    fn ocr_solo_entrega_sus_archivos() {
+        for malo in [
+            "../secreto",
+            "/etc/passwd",
+            "encoder.onnx/../x",
+            "otro.onnx",
+            "",
+        ] {
+            assert!(
+                archivo_ocr(malo).unwrap_err().contains("no permitido"),
+                "{malo}"
+            );
+        }
     }
 
     #[test]

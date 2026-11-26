@@ -17,6 +17,7 @@ import { compilarPdf, convertir, ErrorDeCompilacion, herramientas, type Hacia } 
 import { SuiteHeader, type MenuDefinition } from "./studio/SuiteHeader";
 import { DialogHost, showMessage, toast } from "./studio/Dialogs";
 import { ensureAddon } from "./studio/addons";
+import { DesdeFoto } from "./foto/DesdeFoto";
 import { appWindow, isTauri, openExternal, pickOpenFile, readFileBytes, saveFileAs, writeFileBytes } from "./studio/desktop";
 import { SpellIndicator, SpellStyles, useSpellCheck } from "./spell/useSpellCheck";
 import { ThemeSwitch } from "./theme/ThemeSwitch";
@@ -45,7 +46,6 @@ export const App: React.FC = () => {
   const [registro, setRegistro] = useState("");
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [menuExportar, setMenuExportar] = useState(false);
-  const [aviso, setAviso] = useState<string | null>(null);
   const [imagenes, setImagenes] = useState<Record<string, string>>({});
   const hoja = useRef<HTMLDivElement>(null);
 
@@ -236,7 +236,8 @@ export const App: React.FC = () => {
     if (ruta !== null) toast("Copia guardada");
   });
 
-  const desdeFoto = () => setAviso("«Desde foto» llega en la próxima versión: convertirá la foto de tus notas a mano en LaTeX, con un corrector de física y matemáticas para las dudas.");
+  const [verFoto, setVerFoto] = useState(false);
+  const desdeFoto = () => setVerFoto(true);
 
   // ---------- Atajos ----------
 
@@ -411,14 +412,16 @@ export const App: React.FC = () => {
         {ocupado && <span className="text-[#0d5e6f] font-semibold">{ocupado}</span>}
         <div className="ml-auto"><SpellIndicator spell={spell} /></div>
       </footer>
-      {aviso && (
-        <div className="fixed inset-0 z-[90] bg-black/30 flex items-center justify-center" onMouseDown={() => setAviso(null)}>
-          <div className="w-[420px] rounded-xl bg-white dark:bg-[#1b2427] p-5 shadow-2xl" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-label="Desde foto">
-            <div className="flex items-center gap-2 font-semibold text-[15px] mb-2"><Camera size={17} className="text-[#0d5e6f]" /> Desde foto</div>
-            <p className="text-[13.5px] leading-relaxed text-[#3d5359] dark:text-[#b5c6cb]">{aviso}</p>
-            <div className="mt-4 flex justify-end"><button type="button" onClick={() => setAviso(null)} className="h-8 px-4 rounded-md bg-[#0d5e6f] text-white text-[13px] font-semibold">Entendido</button></div>
-          </div>
-        </div>
+      {verFoto && (
+        <DesdeFoto
+          modo={modo}
+          onCerrar={() => setVerFoto(false)}
+          onInsertar={(t) => {
+            setVerFoto(false);
+            setTimeout(() => editor.current?.pegar(t), 0);
+            toast("Insertado en el documento");
+          }}
+        />
       )}
       {spell.menu}
       <DialogHost />

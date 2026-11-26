@@ -19,6 +19,7 @@
     "lucide-react": "^1.16.0",
     "marked": "^15.0.12",
     "nspell": "^2.1.5",
+    "onnxruntime-web": "^1.31.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
@@ -29,6 +30,7 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "onnxruntime-node": "^1.31.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.16",
     "tsx": "^4.23.15",

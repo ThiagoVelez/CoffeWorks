@@ -10,6 +10,9 @@ import assert from "node:assert/strict";
 const { chromium } = createRequire(import.meta.url)("playwright");
 const URL_APP = "http://localhost:1444/";
 const DICCIONARIOS = fileURLToPath(new URL("../../dictionaries/", import.meta.url));
+// Carpeta con los modelos de «Desde foto» (opcional): OCR_MODELOS=/ruta npm run e2e. Vite los
+// sirve en /modelos-ocr/ (vite.config.ts); el ruteo de Playwright no aguanta archivos tan grandes.
+const MODELOS = process.env.OCR_MODELOS;
 
 async function servidor() {
   try {
@@ -112,9 +115,34 @@ try {
 
   // Desde foto
   await p.getByRole("button", { name: "Desde foto" }).click();
-  await p.getByText("llega en la próxima versión").waitFor();
-  await p.getByRole("button", { name: "Entendido" }).click();
-  paso("«Desde foto» avisa que llega en la próxima versión");
+  const foto = p.getByTestId("desde-foto");
+  await foto.waitFor();
+  await foto.getByTestId("foto-archivo").setInputFiles(fileURLToPath(new URL("./muestras/hoja.png", import.meta.url)));
+  await foto.locator("[data-renglon]").first().waitFor();
+  assert.equal(await foto.locator("[data-renglon]").count(), 2, "dos renglones en la foto");
+  paso("«Desde foto» separa la hoja en sus dos renglones");
+  if (MODELOS) {
+    await foto.getByTestId("reconocer").click();
+    const resultado = foto.getByLabel("Resultado reconocido");
+    await p.waitForFunction(() => {
+      const t = document.querySelector('[aria-label="Resultado reconocido"]');
+      return t && t.value.includes("\\frac{1}{2}") && t.value.includes("F=m");
+    }, null, { timeout: 120000 });
+    const leido = await resultado.inputValue();
+    assert.ok(leido.startsWith("\\[\n  F=m"), leido);
+    await foto.getByTestId("foto-vista").locator(".katex-display").nth(1).waitFor();
+    paso(`reconoce las fórmulas con los modelos: ${JSON.stringify(leido)}`);
+    // Una duda a mano: se edita el texto y la vista previa sigue
+    await resultado.fill(leido.replace("F=m a", "F=m\\,a"));
+    await foto.getByRole("button", { name: "Insertar en el documento" }).click();
+    await foto.waitFor({ state: "detached" });
+    assert.ok((await area.inputValue()).includes("\\frac{1}{2}"));
+    paso("«Insertar en el documento» pone el resultado en el editor");
+  } else {
+    await foto.getByText("Fórmulas desde foto").first().waitFor();
+    await foto.getByRole("button", { name: "Cerrar" }).click();
+    paso("sin los modelos, «Desde foto» ofrece instalar el complemento");
+  }
 
   // Exportar HTML
   await p.getByRole("button", { name: /Exportar…/ }).click();
@@ -164,6 +192,10 @@ try {
 
   assert.deepEqual(errores, [], `errores en la página: ${errores.join(" | ")}`);
   console.log("\nTodo bien.");
+} catch (e) {
+  // Captura de lo que había en pantalla al fallar
+  if (captura) await navegador.contexts()[0]?.pages()[0]?.screenshot({ path: `${captura}/fallo.png` }).catch(() => undefined);
+  throw e;
 } finally {
   await navegador.close();
   vite?.kill();

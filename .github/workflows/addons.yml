@@ -9,6 +9,7 @@ name: Complementos
 # - coffee-potrace: calco vectorial (Potrace) para CoffeeVector y CoffeePaint.
 # - coffee-latex: Motor LaTeX (Tectonic) para CoffeeLatex y CoffeeConvert.
 # - coffee-pandoc: conversor de documentos (Pandoc) para CoffeeLatex y CoffeeConvert.
+# - coffee-latexocr: modelos de pix2tex (ONNX) para «Desde foto» de CoffeeLatex.
 # - coffee-puppetcompat: motor de seguimiento facial sin SIMD para CoffeePuppet.
 # - coffee-ca3d-piezas: pack de piezas para CoffeeAnimate3D (archivos .ca3d).
 # En las pull requests solo se compila y se prueba. En main (o a mano) se
@@ -18,9 +19,9 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["addons/**", ".github/workflows/addons.yml", "CoffeeAnimate3D/src/pieces.ts"]
+    paths: ["addons/**", ".github/workflows/addons.yml", "CoffeeAnimate3D/src/pieces.ts", "CoffeeLatex/src/foto/**"]
   pull_request:
-    paths: ["addons/**", ".github/workflows/addons.yml", "CoffeeAnimate3D/src/pieces.ts"]
+    paths: ["addons/**", ".github/workflows/addons.yml", "CoffeeAnimate3D/src/pieces.ts", "CoffeeLatex/src/foto/**"]
 
 permissions:
   contents: write
@@ -400,6 +401,65 @@ jobs:
           prerelease: false
           make_latest: false
           files: coffee-pandoc-win64.zip
+
+  latexocr:
+    name: Fórmulas desde foto (pix2tex ONNX)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Descargar y comprobar los modelos
+        run: |
+          set -e
+          mkdir -p dist
+          base=https://github.com/RapidAI/RapidLaTeXOCR/releases/download/v0.0.0
+          for f in encoder.onnx decoder.onnx image_resizer.onnx tokenizer.json; do
+            curl -fsSL --retry 3 -o "dist/$f" "$base/$f"
+          done
+          cd dist
+          cat > ../huellas.txt <<'HUELLAS'
+          bd695497bf1b22279b7626f5916c79226e1e244c84355f8da7edfd2d921d0072  decoder.onnx
+          01bf5dc25539ca0cd5b1bd29296ea495977a6ba5f629dc4178277809d26e5e7d  encoder.onnx
+          e0b075c39700f64d50400f39c8fc186bbb3b5d84d31864008313f376603aca9d  image_resizer.onnx
+          1dc27b18d6a518d0d5ff3f4bb7bd98521fe80ad39e5b2a246d4109f1bb9d5019  tokenizer.json
+          HUELLAS
+          sed -i 's/^ *//' ../huellas.txt
+          sha256sum -c ../huellas.txt
+          cp ../addons/coffee-latexocr/README.md LEEME.md
+          curl -fsSL --retry 3 -o LICENCIA-pix2tex.txt https://raw.githubusercontent.com/lukas-blecher/LaTeX-OCR/main/LICENSE
+          curl -fsSL --retry 3 -o LICENCIA-RapidLaTeXOCR.txt https://raw.githubusercontent.com/RapidAI/RapidLaTeXOCR/main/LICENSE
+          zip -q -9 ../coffee-latexocr.zip *
+          ls -la ../coffee-latexocr.zip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Probar el reconocimiento con fórmulas de muestra
+        working-directory: CoffeeLatex
+        run: |
+          npm ci --no-audit --no-fund
+          mkdir -p "$RUNNER_TEMP/latexocr"
+          unzip -q ../coffee-latexocr.zip -d "$RUNNER_TEMP/latexocr"
+          OCR_MODELOS="$RUNNER_TEMP/latexocr" npx tsx --test src/foto/latexocr.test.ts | tee salida.txt
+          grep -q "^# pass 3" salida.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coffee-latexocr
+          path: coffee-latexocr.zip
+
+      - name: Publicar en la versión «addons»
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: addons
+          name: Complementos de CoffeeWorks
+          body: Complementos opcionales que el Launcher descarga desde «Complementos». No hace falta descargarlos a mano.
+          prerelease: false
+          make_latest: false
+          files: coffee-latexocr.zip
 
   puppetcompat:
     name: Compatibilidad de CoffeePuppet (MediaPipe sin SIMD)

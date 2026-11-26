@@ -211,6 +211,21 @@ pub const ADDONS: &[CatalogAddon] = &[
         manual_hint: "Instala TeX Live con el gestor de paquetes del sistema: sudo apt install texlive-xetex texlive-lang-spanish texlive-science",
     },
     CatalogAddon {
+        id: "latexocr",
+        name: "Fórmulas desde foto",
+        summary: "Pasa fotos de notas y fórmulas a LaTeX en CoffeeLatex («Desde foto»)",
+        description: "Reconoce fórmulas en fotos de tus apuntes y las convierte en LaTeX editable, con las dudas marcadas y sugerencias de un diccionario de física y matemáticas. Funciona sin internet, dentro de CoffeeLatex. Lee mejor la letra clara; con letra desordenada o páginas muy llenas comete más errores, y por eso marca lo dudoso. El texto de los renglones se lee con el complemento «Revisión del PDF original» (Tesseract), si está instalado.",
+        apps: &["coffeelatex"],
+        version: "pix2tex 0.1",
+        download_size: "~165 MB",
+        publisher: "pix2tex (Lukas Blecher) · RapidLaTeXOCR (RapidAI)",
+        license: "MIT",
+        // Complemento de datos: el «ejecutable» es el archivo que se comprueba
+        executable: "encoder.onnx",
+        downloads: &["https://github.com/ThiagoVelez/CoffeWorks/releases/download/addons/coffee-latexocr.zip"],
+        manual_hint: "Este complemento se instala desde el Launcher de CoffeeWorks › Complementos.",
+    },
+    CatalogAddon {
         id: "pandoc",
         name: "Conversor de documentos (Pandoc)",
         summary: "Convierte LaTeX y Markdown a Word, ODT, HTML y entre sí, conservando las fórmulas",
