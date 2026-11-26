@@ -17,7 +17,7 @@ import { compilarPdf, convertir, ErrorDeCompilacion, herramientas, type Hacia } 
 import { SuiteHeader, type MenuDefinition } from "./studio/SuiteHeader";
 import { DialogHost, showMessage, toast } from "./studio/Dialogs";
 import { ensureAddon } from "./studio/addons";
-import { appWindow, isTauri, pickOpenFile, readFileBytes, saveFileAs, writeFileBytes } from "./studio/desktop";
+import { appWindow, isTauri, openExternal, pickOpenFile, readFileBytes, saveFileAs, writeFileBytes } from "./studio/desktop";
 import { SpellIndicator, SpellStyles, useSpellCheck } from "./spell/useSpellCheck";
 import { ThemeSwitch } from "./theme/ThemeSwitch";
 
@@ -375,7 +375,19 @@ export const App: React.FC = () => {
           )}
         </div>
         <div className="w-1/2 min-w-0 overflow-auto vista" data-testid="vista">
-          <div ref={hoja} className="hoja" dangerouslySetInnerHTML={{ __html: vista.html }} />
+          <div
+            ref={hoja}
+            className="hoja"
+            dangerouslySetInnerHTML={{ __html: vista.html }}
+            onClick={(e) => {
+              // Los enlaces nunca cambian la ventana de la app: se abren en el navegador del sistema.
+              const a = (e.target as HTMLElement).closest("a");
+              if (!a) return;
+              e.preventDefault();
+              const href = a.getAttribute("href") ?? "";
+              if (/^(https?|mailto):/i.test(href)) void openExternal(href);
+            }}
+          />
         </div>
       </div>
       <footer className="h-7 shrink-0 flex items-center gap-4 px-3 border-t border-[#dbe5e8] dark:border-[#263236] bg-[#f4f8f9] dark:bg-[#182024] text-[11.5px] text-[#4d646b] dark:text-[#93a7ad]">

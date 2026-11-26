@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createDocStore, type OpenedDocument } from "./studio/docStore";
-import { extensionOf, getLaunchArgs, isTauri, listRecent, pickOpenFile, saveFileAs, setPinned, stripExtension, type PickedFile, type RecentEntry } from "./studio/desktop";
+import { extensionOf, getLaunchArgs, isTauri, listRecent, pickOpenFile, renameInVault, saveFileAs, setPinned, stripExtension, type PickedFile, type RecentEntry } from "./studio/desktop";
 import type { SaveStatus } from "./studio/SuiteHeader";
 import { showMessage } from "./studio/Dialogs";
 import type { Modo } from "./editor/insertar";
@@ -111,7 +111,7 @@ export function useDocumento() {
 
   const abrirElegido = useCallback(async (f: PickedFile) => {
     const texto = new TextDecoder().decode(f.bytes);
-    const modo = modoDe(f.name);
+    const modo = extensionOf(f.name) === "txt" ? adivinarModo(texto) : modoDe(f.name);
     if (extensionOf(f.name) === STORES[modo].extension && f.path) {
       await cargar({ name: f.name, doc: texto, location: f.path, docId: STORES[modo].newDocId() }, modo);
     } else {
@@ -147,7 +147,18 @@ export function useDocumento() {
   const setTitulo = useCallback((t: string) => {
     meta.current.titulo = t;
     setTituloState(t);
-    if (docRef.current) cambiar(docRef.current.texto);
+    // En la Bóveda el archivo se renombra con el título (como en las demás apps).
+    const loc = meta.current.ubicacion;
+    const d = docRef.current;
+    if (isTauri && d && loc && !loc.startsWith("web:")) {
+      void renameInVault(loc, STORES[d.modo].ensureExtension(t), meta.current.docId)
+        .then((ruta) => {
+          meta.current.ubicacion = ruta;
+          setUbicacion(ruta);
+        })
+        .catch(() => undefined);
+    }
+    if (d) cambiar(d.texto);
   }, [cambiar]);
 
   const guardarComo = useCallback(async () => {
@@ -171,7 +182,11 @@ export function useDocumento() {
   }, []);
 
   // Al iniciar: archivo de «Abrir con», plantilla del Launcher o documento del navegador.
+  // Solo una vez (en desarrollo React ejecuta los efectos dos veces).
+  const iniciado = useRef(false);
   useEffect(() => {
+    if (iniciado.current) return;
+    iniciado.current = true;
     void (async () => {
       await refrescarRecientes();
       const a = await getLaunchArgs();

@@ -1,10 +1,34 @@
 // Vista previa de Markdown: `marked` con las fórmulas $…$ y $$…$$ dibujadas por KaTeX.
 // Las fórmulas se protegen antes de pasar por `marked`, para que sus «_» y «*» no se vuelvan cursiva.
+// Un .md puede venir de cualquier parte: el HTML escrito a mano se muestra como texto y los enlaces
+// solo pueden ser http(s), mailto, anclas o rutas relativas (nunca javascript: ni data:).
 
-import { marked } from "marked";
+import { Marked, type Tokens } from "marked";
 import { mathHtml } from "./latex";
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/** Si un destino de enlace o imagen es seguro. */
+export function urlSegura(url: string): boolean {
+  const u = url.trim().replace(/[\u0000-\u001f\s]+/g, "").toLowerCase();
+  const esquema = /^([a-z][a-z0-9+.-]*):/.exec(u);
+  return !esquema || ["http", "https", "mailto"].includes(esquema[1]);
+}
+
+const marked = new Marked({
+  gfm: true,
+  breaks: false,
+  async: false,
+  walkTokens(t) {
+    if (t.type === "link" || t.type === "image") {
+      const l = t as Tokens.Link | Tokens.Image;
+      if (!urlSegura(l.href)) l.href = "#";
+    }
+  },
+  renderer: {
+    html: ({ text }: Tokens.HTML | Tokens.Tag) => esc(text),
+  },
+});
 
 export function markdownToHtml(md: string): string {
   const formulas: string[] = [];
@@ -19,16 +43,9 @@ export function markdownToHtml(md: string): string {
   t = t.replace(/\u0003C(\d+)\u0003/g, (_, n: string) => codigos[+n]);
   let html: string;
   try {
-    html = marked.parse(t, { async: false, gfm: true, breaks: false, renderer: rendererSeguro() }) as string;
+    html = marked.parse(t) as string;
   } catch {
     html = `<pre>${esc(md)}</pre>`;
   }
   return html.replace(/\u0002F(\d+)\u0002/g, (_, n: string) => formulas[+n]);
-}
-
-function rendererSeguro() {
-  const r = new marked.Renderer();
-  // El HTML escrito a mano se muestra como texto: la vista previa nunca ejecuta nada.
-  r.html = ({ text }: { text: string }) => esc(text);
-  return r;
 }

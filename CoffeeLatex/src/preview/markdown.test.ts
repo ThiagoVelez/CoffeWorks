@@ -19,6 +19,14 @@ test("escapa HTML crudo", () => {
   assert.ok(!html.includes("<script>"));
 });
 
+test("los enlaces peligrosos no se vuelven enlaces", () => {
+  for (const md of ["[clic](javascript:alert(1))", "[x](JAVASCRIPT:alert(1))", "![i](javascript:alert(1))", "[d](data:text/html,<script>alert(1)</script>)", "[v](vbscript:msgbox)"]) {
+    const html = markdownToHtml(md);
+    assert.ok(!/(href|src)="\s*(javascript|data|vbscript):/i.test(html), `${md} → ${html}`);
+  }
+  assert.ok(markdownToHtml("[web](https://ejemplo.org)").includes('href="https://ejemplo.org"'));
+});
+
 test("dinero sin cierre no rompe", () => {
   assert.doesNotThrow(() => markdownToHtml("cuesta $5 y nada más"));
 });

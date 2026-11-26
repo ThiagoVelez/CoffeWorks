@@ -142,6 +142,20 @@ try {
   paso("plantilla Markdown con títulos y fórmulas aparte");
   if (captura) await p.screenshot({ path: `${captura}/markdown.png` });
 
+  // Enlaces: los peligrosos se anulan y ninguno cambia la ventana de la app
+  const areaMd = p.getByLabel("Código del documento");
+  await areaMd.click();
+  await p.keyboard.press("Control+End");
+  await p.keyboard.type("\n[malo](javascript:alert(1)) y [web](https://ejemplo.org)\n");
+  await p.locator(".vista a", { hasText: "web" }).waitFor();
+  assert.equal(await p.locator(".vista a", { hasText: "malo" }).getAttribute("href"), "#");
+  const antes = p.url();
+  await p.locator(".vista a", { hasText: "web" }).click();
+  await p.locator(".vista a", { hasText: "malo" }).click();
+  await p.waitForTimeout(300);
+  assert.equal(p.url(), antes, "la app no navega");
+  paso("enlaces seguros: javascript: anulado y la ventana no navega");
+
   // Recientes en el inicio
   await p.locator('img[alt=""]').first().click();
   await p.getByText("Recientes").waitFor();
