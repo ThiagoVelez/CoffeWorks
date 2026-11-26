@@ -39,3 +39,4 @@ Thumbs.db
 installer/Output/
 installer/build/
 installer/deb/
+.superpowers/

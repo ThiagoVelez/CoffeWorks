@@ -446,6 +446,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "coffeedrawteam"
+version = "2.14.1"
+dependencies = [
+ "coffee-core",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+]
+
+[[package]]
 name = "coffeeedit"
 version = "2.14.1"
 dependencies = [
