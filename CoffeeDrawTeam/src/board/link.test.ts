@@ -25,3 +25,18 @@ test("leerLink rechaza basura", () => {
   assert.equal(leerLink("hola"), null);
   assert.equal(leerLink("coffeedrawteam://unirse/abc#def"), null);
 });
+
+test("leerLink tolera espacios y saltos dentro del link, %23 y mayúsculas", () => {
+  const s = crearSala();
+  const l = aLink(s);
+  const partido = `${l.slice(0, 30)} \n ${l.slice(30)}`;
+  assert.deepEqual(leerLink(partido), s);
+  assert.deepEqual(leerLink(l.replace("#", "%23")), s);
+  assert.deepEqual(leerLink(l.replace("coffeedrawteam://unirse/", "CoffeeDrawTeam://Unirse/")), s);
+});
+
+test("el link puede llevar la llave del anfitrión", () => {
+  const s = { ...crearSala(), llave: "A".repeat(43) };
+  assert.ok(aLink(s).endsWith(`.${"A".repeat(43)}`));
+  assert.deepEqual(leerLink(`mira: ${aLink(s)}`), s);
+});

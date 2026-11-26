@@ -5,7 +5,7 @@
 mod red;
 
 use base64::Engine as _;
-use red::cifrado::{etiqueta_sala, ClaveSala};
+use red::cifrado::{etiqueta_sala, firma_desde, nueva_llave, publica_desde, ClaveSala};
 use red::par::{EventoRed, Nodo, STUN_PUBLICOS};
 use red::senal::{RelesNostr, Senalizacion};
 use serde_json::json;
@@ -33,18 +33,26 @@ fn stun() -> Vec<String> {
     STUN_PUBLICOS.iter().map(|s| s.to_string()).collect()
 }
 
-/// Reenvía los eventos de la red a la interfaz.
-fn reenviar(app: AppHandle, mut rx: mpsc::UnboundedReceiver<EventoRed>) {
+/// Reenvía los eventos de la red a la interfaz, marcados con el id de la conexión
+/// (la interfaz ignora los de una conexión anterior).
+fn reenviar(app: AppHandle, nodo: String, mut rx: mpsc::UnboundedReceiver<EventoRed>) {
     tauri::async_runtime::spawn(async move {
         while let Some(e) = rx.recv().await {
             let _ = match e {
-                EventoRed::Entra(peer) => app.emit("red:entra", json!({ "peer": peer })),
-                EventoRed::Sale(peer) => app.emit("red:sale", json!({ "peer": peer })),
-                EventoRed::Dato(peer, datos) => app.emit("red:dato", json!({ "peer": peer, "datos": b64().encode(datos) })),
-                EventoRed::Estado(estado, mensaje) => app.emit("red:estado", json!({ "estado": estado, "mensaje": mensaje })),
+                EventoRed::Entra(peer) => app.emit("red:entra", json!({ "nodo": nodo, "peer": peer })),
+                EventoRed::Sale(peer) => app.emit("red:sale", json!({ "nodo": nodo, "peer": peer })),
+                EventoRed::Dato(peer, datos) => app.emit("red:dato", json!({ "nodo": nodo, "peer": peer, "datos": b64().encode(datos) })),
+                EventoRed::Estado(estado, mensaje) => app.emit("red:estado", json!({ "nodo": nodo, "estado": estado, "mensaje": mensaje })),
             };
         }
     });
+}
+
+/// Llave nueva del anfitrión para un tablero: {secreto, publica}.
+#[tauri::command]
+fn red_nueva_llave() -> serde_json::Value {
+    let (secreto, publica) = nueva_llave();
+    json!({ "secreto": secreto, "publica": publica })
 }
 
 async fn cerrar_red(red: &Red) {
@@ -57,26 +65,30 @@ async fn cerrar_red(red: &Red) {
 }
 
 #[tauri::command]
-async fn red_anfitrion(app: AppHandle, red: State<'_, Red>, sala: String, clave: String) -> Result<String, String> {
+async fn red_anfitrion(app: AppHandle, red: State<'_, Red>, nodo: String, sala: String, clave: String, llave: Option<String>) -> Result<String, String> {
     cerrar_red(&red).await;
     let clave = ClaveSala::desde_link(&clave)?;
+    let firma = llave.as_deref().map(firma_desde).transpose()?;
     let reles = reles_de(&sala).await?;
-    let (nodo, rx) = Nodo::anfitrion(reles.clone() as Arc<dyn Senalizacion>, clave, stun()).await;
-    let id = nodo.id().to_string();
-    reenviar(app, rx);
+    let (n, rx) = Nodo::anfitrion(reles.clone() as Arc<dyn Senalizacion>, clave, stun(), firma).await;
+    let id = n.id().to_string();
+    reenviar(app, nodo, rx);
+    let nodo = n;
     *red.nodo.lock().await = Some(Arc::new(nodo));
     red.reles.lock().await.push(reles);
     Ok(id)
 }
 
 #[tauri::command]
-async fn red_unirse(app: AppHandle, red: State<'_, Red>, sala: String, clave: String) -> Result<String, String> {
+async fn red_unirse(app: AppHandle, red: State<'_, Red>, nodo: String, sala: String, clave: String, llave: Option<String>) -> Result<String, String> {
     cerrar_red(&red).await;
     let clave = ClaveSala::desde_link(&clave)?;
+    let publica = llave.as_deref().map(publica_desde).transpose()?;
     let reles = reles_de(&sala).await?;
-    let (nodo, rx) = Nodo::invitado(reles.clone() as Arc<dyn Senalizacion>, clave, stun()).await?;
-    let id = nodo.id().to_string();
-    reenviar(app, rx);
+    let (n, rx) = Nodo::invitado(reles.clone() as Arc<dyn Senalizacion>, clave, stun(), publica).await?;
+    let id = n.id().to_string();
+    reenviar(app, nodo, rx);
+    let nodo = n;
     *red.nodo.lock().await = Some(Arc::new(nodo));
     red.reles.lock().await.push(reles);
     Ok(id)
@@ -144,8 +156,9 @@ fn probar_red() -> i32 {
             let clave = ClaveSala::desde_link(&clave_txt)?;
             let ra = reles_de(&sala).await?;
             let ri = reles_de(&sala).await?;
-            let (anf, mut ea) = Nodo::anfitrion(ra as Arc<dyn Senalizacion>, clave.clone(), stun()).await;
-            let (inv, _ei) = Nodo::invitado(ri as Arc<dyn Senalizacion>, clave, stun()).await?;
+            let (secreto, publica) = nueva_llave();
+            let (anf, mut ea) = Nodo::anfitrion(ra as Arc<dyn Senalizacion>, clave.clone(), stun(), Some(firma_desde(&secreto)?)).await;
+            let (inv, _ei) = Nodo::invitado(ri as Arc<dyn Senalizacion>, clave, stun(), Some(publica_desde(&publica)?)).await?;
             loop {
                 match ea.recv().await {
                     Some(EventoRed::Entra(_)) => break,
@@ -210,7 +223,7 @@ fn main() {
             });
             Ok(())
         })
-        .invoke_handler(coffee_core::editor_handler!(red_anfitrion, red_unirse, red_enviar, red_cortar, red_cambiar_sala, red_cerrar, enlace_inicial))
+        .invoke_handler(coffee_core::editor_handler!(red_anfitrion, red_unirse, red_enviar, red_cortar, red_cambiar_sala, red_cerrar, enlace_inicial, red_nueva_llave))
         .run(tauri::generate_context!())
         .expect("Error al iniciar CoffeeDrawTeam");
 }

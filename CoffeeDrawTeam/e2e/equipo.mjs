@@ -135,7 +135,11 @@ try {
   // El guardado automático guarda el nombre completo (sin salir del tablero)
   await A.waitForTimeout(4000);
   await A.reload();
-  await A.locator("[data-inicio]").waitFor();
+  await A.locator("[data-inicio]").waitFor({ timeout: 8000 }).catch(async (e) => {
+    await A.screenshot({ path: "/tmp/claude-0/e2e-fallo.png" });
+    console.log("texto:", (await A.locator("body").innerText()).slice(0, 300));
+    throw e;
+  });
   assert.ok(await A.getByText("Feria 2026", { exact: true }).count() >= 1, "nombre guardado completo");
   assert.equal(await A.getByText("Feria 202", { exact: true }).count(), 0, "sin la última letra");
   paso("El guardado automático guarda «Feria 2026» completo");

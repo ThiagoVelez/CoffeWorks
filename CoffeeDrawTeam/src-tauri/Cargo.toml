@@ -36,3 +36,4 @@ hex = "0.4"
 futures = "0.3"
 tauri-plugin-deep-link = "2"
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+ed25519-dalek = { version = "2", features = ["rand_core"] }

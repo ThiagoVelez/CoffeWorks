@@ -11,6 +11,8 @@ import type { Sala } from "../board/link";
 export interface MetaTablero {
   nombre: string;
   link?: Sala;
+  /** Llave secreta del anfitrión (firma sus respuestas); nunca va en el link. */
+  secreto?: string;
   personas: Persona[];
 }
 

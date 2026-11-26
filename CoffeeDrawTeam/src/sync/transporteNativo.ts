@@ -1,7 +1,6 @@
 // Transporte real: la red nativa de la app (Rust) a través de comandos y eventos de Tauri.
 
-import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import type { UnlistenFn } from "@tauri-apps/api/event";
 import type { EstadoRed, Transporte } from "./transporte";
 import { crearCola } from "./cola";
 
@@ -18,7 +17,28 @@ function deBase64(t: string): Uint8Array {
   return b;
 }
 
-export async function crearTransporteNativo(modo: "anfitrion" | "invitado", sala: string, clave: string): Promise<Transporte> {
+/** Lo que se usa de Tauri (se puede cambiar en las pruebas). */
+export interface ApiTauri {
+  invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T>;
+  listen<T>(evento: string, f: (e: { payload: T }) => void): Promise<UnlistenFn>;
+}
+
+const apiReal: ApiTauri = {
+  invoke: async (cmd, args) => (await import("@tauri-apps/api/core")).invoke(cmd, args),
+  listen: async (ev, f) => (await import("@tauri-apps/api/event")).listen(ev, f),
+};
+
+export async function crearTransporteNativo(
+  modo: "anfitrion" | "invitado",
+  sala: string,
+  clave: string,
+  llave?: string,
+  api: ApiTauri = apiReal,
+): Promise<Transporte> {
+  const { invoke, listen } = api;
+  // Los eventos llevan el id de esta conexión: los de una conexión anterior se ignoran.
+  const nodo = `n-${Math.random().toString(36).slice(2, 12)}`;
+  const mio = (p: { nodo?: string }) => p?.nodo === nodo;
   const recibir: ((o: string, d: Uint8Array) => void)[] = [];
   const entrar: ((p: string) => void)[] = [];
   const salir: ((p: string) => void)[] = [];
@@ -29,13 +49,15 @@ export async function crearTransporteNativo(modo: "anfitrion" | "invitado", sala
   let listo = false;
   const entregar = (_lista: unknown[], f: () => void) => (listo ? f() : pendientes.push(f));
   const quitar: UnlistenFn[] = await Promise.all([
-    listen<{ peer: string; datos: string }>("red:dato", (e) => {
+    listen<{ nodo: string; peer: string; datos: string }>("red:dato", (e) => {
+      if (!mio(e.payload)) return;
       const d = deBase64(e.payload.datos);
       entregar(recibir, () => recibir.forEach((f) => f(e.payload.peer, d)));
     }),
-    listen<{ peer: string }>("red:entra", (e) => entregar(entrar, () => entrar.forEach((f) => f(e.payload.peer)))),
-    listen<{ peer: string }>("red:sale", (e) => entregar(salir, () => salir.forEach((f) => f(e.payload.peer)))),
-    listen<{ estado: string; mensaje?: string | null }>("red:estado", (e) => {
+    listen<{ nodo: string; peer: string }>("red:entra", (e) => mio(e.payload) && entregar(entrar, () => entrar.forEach((f) => f(e.payload.peer)))),
+    listen<{ nodo: string; peer: string }>("red:sale", (e) => mio(e.payload) && entregar(salir, () => salir.forEach((f) => f(e.payload.peer)))),
+    listen<{ nodo: string; estado: string; mensaje?: string | null }>("red:estado", (e) => {
+      if (!mio(e.payload)) return;
       const { estado: tipo, mensaje } = e.payload;
       const ev: EstadoRed =
         tipo === "error" ? { tipo: "error", mensaje: mensaje || "Error de conexión" } :
@@ -46,7 +68,7 @@ export async function crearTransporteNativo(modo: "anfitrion" | "invitado", sala
     }),
   ]);
   try {
-    await invoke<string>(modo === "anfitrion" ? "red_anfitrion" : "red_unirse", { sala, clave });
+    await invoke<string>(modo === "anfitrion" ? "red_anfitrion" : "red_unirse", { nodo, sala, clave, llave: llave ?? null });
   } catch (e) {
     quitar.forEach((q) => q());
     throw new Error(String(e));

@@ -3,7 +3,8 @@
 //! cifrada por una `Senalizacion`; luego los datos van directos por un canal fiable y
 //! ordenado, troceados en partes de 16 KB.
 
-use super::cifrado::ClaveSala;
+use super::cifrado::{firmar, verificar, ClaveSala};
+use ed25519_dalek::{SigningKey, VerifyingKey};
 use super::senal::Senalizacion;
 use bytes::Bytes;
 use rand::RngCore;
@@ -50,6 +51,52 @@ struct MensajeSenal {
     tipo: String,
     sdp: String,
     t: u64,
+    /// Firma del anfitrión en las respuestas (si el link trae su llave).
+    #[serde(default)]
+    firma: String,
+}
+
+impl MensajeSenal {
+    fn a_firmar(&self) -> Vec<u8> {
+        format!("{}|{}|{}|{}|{}", self.de, self.para, self.tipo, self.t, self.sdp).into_bytes()
+    }
+}
+
+/// Ofertas ya atendidas: una repetida (por ejemplo, reenviada por alguien) no crea otra conexión.
+#[derive(Default)]
+struct OfertasVistas {
+    vistas: HashMap<(String, u64), std::time::Instant>,
+}
+
+impl OfertasVistas {
+    const MAX: usize = 256;
+
+    /// `true` si la oferta es nueva (y la recuerda).
+    fn nueva(&mut self, de: &str, sdp: &str) -> bool {
+        use std::hash::{Hash, Hasher};
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        sdp.hash(&mut h);
+        let k = (de.to_string(), h.finish());
+        let ahora = std::time::Instant::now();
+        self.vistas.retain(|_, t| ahora.duration_since(*t).as_secs() <= VIGENCIA_S);
+        if self.vistas.contains_key(&k) {
+            return false;
+        }
+        while self.vistas.len() >= Self::MAX {
+            let viejo = self.vistas.iter().min_by_key(|(_, t)| **t).map(|(k, _)| k.clone());
+            match viejo {
+                Some(v) => self.vistas.remove(&v),
+                None => break,
+            };
+        }
+        self.vistas.insert(k, ahora);
+        true
+    }
+
+    #[cfg(test)]
+    fn len(&self) -> usize {
+        self.vistas.len()
+    }
 }
 
 fn ahora_s() -> u64 {
@@ -135,6 +182,10 @@ struct Interior {
     id: String,
     /// Los invitados avisan «conectado» cuando abre el canal con el anfitrión.
     invitado: bool,
+    /// Anfitrión: firma sus respuestas. Invitado: solo acepta respuestas firmadas con esta llave.
+    firma: Option<SigningKey>,
+    llave: Option<VerifyingKey>,
+    vistas: Mutex<OfertasVistas>,
     pares: Mutex<HashMap<String, Par>>,
     eventos: mpsc::UnboundedSender<EventoRed>,
     stun: Vec<String>,
@@ -176,8 +227,23 @@ impl Interior {
         }
     }
 
-    /// Prepara los avisos de un canal de datos ya asociado a `peer`.
-    fn preparar_canal(self: &Arc<Self>, peer: String, dc: Arc<RTCDataChannel>) {
+    /// Quita el par solo si sigue siendo esa misma conexión (una vieja que se cierra
+    /// tarde no debe quitar a la nueva del mismo invitado).
+    async fn quitar_si(self: &Arc<Self>, peer: &str, pc: &std::sync::Weak<RTCPeerConnection>) {
+        let mismo = {
+            let pares = self.pares.lock().await;
+            match (pares.get(peer), pc.upgrade()) {
+                (Some(par), Some(pc)) => Arc::ptr_eq(&par.pc, &pc),
+                _ => false,
+            }
+        };
+        if mismo {
+            self.quitar(peer).await;
+        }
+    }
+
+    /// Prepara los avisos de un canal de datos ya asociado a `peer` y a la conexión `pc`.
+    fn preparar_canal(self: &Arc<Self>, peer: String, dc: Arc<RTCDataChannel>, pc: std::sync::Weak<RTCPeerConnection>) {
         let yo = Arc::downgrade(self);
         let p = peer.clone();
         dc.on_open(Box::new(move || {
@@ -206,9 +272,10 @@ impl Interior {
         dc.on_close(Box::new(move || {
             let yo = yo.clone();
             let p = peer.clone();
+            let pc = pc.clone();
             Box::pin(async move {
                 if let Some(yo) = yo.upgrade() {
-                    yo.quitar(&p).await;
+                    yo.quitar_si(&p, &pc).await;
                 }
             })
         }));
@@ -216,16 +283,18 @@ impl Interior {
 
     fn vigilar_conexion(self: &Arc<Self>, peer: String, pc: &Arc<RTCPeerConnection>) {
         let yo = Arc::downgrade(self);
+        let debil = Arc::downgrade(pc);
         pc.on_peer_connection_state_change(Box::new(move |s| {
             let yo = yo.clone();
             let p = peer.clone();
+            let pc = debil.clone();
             Box::pin(async move {
                 if let Some(yo) = yo.upgrade() {
                     // El invitado no espera los ~30 s de «Failed»: sin anfitrión, lo que edite se perdería.
                     let perdida = matches!(s, RTCPeerConnectionState::Failed | RTCPeerConnectionState::Closed)
                         || (yo.invitado && s == RTCPeerConnectionState::Disconnected);
                     if perdida {
-                        yo.quitar(&p).await;
+                        yo.quitar_si(&p, &pc).await;
                     }
                 }
             })
@@ -233,13 +302,27 @@ impl Interior {
     }
 
     fn sellado(&self, clave: &ClaveSala, para: &str, tipo: &str, sdp: String) -> Vec<u8> {
-        let m = MensajeSenal { de: self.id.clone(), para: para.to_string(), tipo: tipo.to_string(), sdp, t: ahora_s() };
+        let mut m = MensajeSenal { de: self.id.clone(), para: para.to_string(), tipo: tipo.to_string(), sdp, t: ahora_s(), firma: String::new() };
+        if let Some(k) = &self.firma {
+            m.firma = firmar(k, &m.a_firmar());
+        }
         clave.sellar(&serde_json::to_vec(&m).unwrap_or_default())
     }
 
     fn abrir(&self, clave: &ClaveSala, datos: &[u8]) -> Option<MensajeSenal> {
         let m: MensajeSenal = serde_json::from_slice(&clave.abrir(datos)?).ok()?;
-        (m.de != self.id && ahora_s().abs_diff(m.t) <= VIGENCIA_S).then_some(m)
+        if m.de == self.id || ahora_s().abs_diff(m.t) > VIGENCIA_S {
+            return None;
+        }
+        // Con la llave del link, solo vale una respuesta firmada por el anfitrión de verdad.
+        if m.tipo == "respuesta" {
+            if let Some(v) = &self.llave {
+                if !verificar(v, &m.a_firmar(), &m.firma) {
+                    return None;
+                }
+            }
+        }
+        Some(m)
     }
 
     /// Anfitrión: responde a una oferta (o repite la respuesta si la oferta ya se atendió).
@@ -255,6 +338,9 @@ impl Interior {
                 }
             }
         }
+        if !self.pares.lock().await.contains_key(&m.de) && !self.vistas.lock().await.nueva(&m.de, &m.sdp) {
+            return Ok(());
+        }
         {
             let pares = self.pares.lock().await;
             let sin_conectar = pares.values().filter(|p| p.dc.is_none()).count();
@@ -268,15 +354,17 @@ impl Interior {
         self.vigilar_conexion(peer.clone(), &pc);
         let yo = Arc::downgrade(self);
         let p = peer.clone();
+        let debil = Arc::downgrade(&pc);
         pc.on_data_channel(Box::new(move |dc: Arc<RTCDataChannel>| {
             let yo = yo.clone();
             let p = p.clone();
+            let pc = debil.clone();
             Box::pin(async move {
                 if let Some(yo) = yo.upgrade() {
                     if let Some(par) = yo.pares.lock().await.get_mut(&p) {
                         par.dc = Some(dc.clone());
                     }
-                    yo.preparar_canal(p, dc);
+                    yo.preparar_canal(p, dc, pc);
                 }
             })
         }));
@@ -297,11 +385,14 @@ impl Interior {
 }
 
 impl Nodo {
-    fn nuevo(stun: Vec<String>, invitado: bool) -> (Self, mpsc::UnboundedReceiver<EventoRed>) {
+    fn nuevo(stun: Vec<String>, invitado: bool, firma: Option<SigningKey>, llave: Option<VerifyingKey>) -> (Self, mpsc::UnboundedReceiver<EventoRed>) {
         let (tx, rx) = mpsc::unbounded_channel();
         let interior = Arc::new(Interior {
             id: id_aleatorio(),
             invitado,
+            firma,
+            llave,
+            vistas: Mutex::new(OfertasVistas::default()),
             pares: Mutex::new(HashMap::new()),
             eventos: tx,
             stun,
@@ -315,8 +406,8 @@ impl Nodo {
     }
 
     /// Crea el anfitrión y empieza a escuchar ofertas en la sala.
-    pub async fn anfitrion(senal: Arc<dyn Senalizacion>, clave: ClaveSala, stun: Vec<String>) -> (Self, mpsc::UnboundedReceiver<EventoRed>) {
-        let (nodo, rx) = Self::nuevo(stun, false);
+    pub async fn anfitrion(senal: Arc<dyn Senalizacion>, clave: ClaveSala, stun: Vec<String>, firma: Option<SigningKey>) -> (Self, mpsc::UnboundedReceiver<EventoRed>) {
+        let (nodo, rx) = Self::nuevo(stun, false, firma, None);
         nodo.escuchar(senal, clave).await;
         nodo.interior.emitir(EventoRed::Estado("conectado".into(), None));
         (nodo, rx)
@@ -352,8 +443,8 @@ impl Nodo {
     }
 
     /// Crea un invitado que busca al anfitrión de la sala.
-    pub async fn invitado(senal: Arc<dyn Senalizacion>, clave: ClaveSala, stun: Vec<String>) -> Result<(Self, mpsc::UnboundedReceiver<EventoRed>), String> {
-        let (nodo, rx) = Self::nuevo(stun, true);
+    pub async fn invitado(senal: Arc<dyn Senalizacion>, clave: ClaveSala, stun: Vec<String>, llave: Option<VerifyingKey>) -> Result<(Self, mpsc::UnboundedReceiver<EventoRed>), String> {
+        let (nodo, rx) = Self::nuevo(stun, true, None, llave);
         let interior = nodo.interior.clone();
         interior.emitir(EventoRed::Estado("conectando".into(), None));
         let pc = interior.nueva_conexion().await?;
@@ -394,7 +485,7 @@ impl Nodo {
                             anfitrion.clone(),
                             Par { pc: pc.clone(), dc: Some(dc.clone()), oferta: sdp.clone(), respuesta: None },
                         );
-                        interior.preparar_canal(anfitrion, dc.clone());
+                        interior.preparar_canal(anfitrion, dc.clone(), Arc::downgrade(&pc));
                         if let Err(e) = pc.set_remote_description(resp).await {
                             interior.emitir(EventoRed::Estado("error".into(), Some(format!("No se pudo conectar: {e}"))));
                             return;
@@ -462,6 +553,7 @@ impl Nodo {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::red::cifrado::{firma_desde, nueva_llave, publica_desde};
     use crate::red::senal::BusMemoria;
 
     const CLAVE: &str = "AAAAAAAAAAAAAAAAAAAAAA";
@@ -500,6 +592,40 @@ mod tests {
     }
 
     #[test]
+    fn ofertas_repetidas_se_ignoran() {
+        let mut v = OfertasVistas::default();
+        assert!(v.nueva("a", "sdp1"));
+        assert!(!v.nueva("a", "sdp1"));
+        assert!(v.nueva("a", "sdp2"));
+        assert!(v.nueva("b", "sdp1"));
+        for i in 0..1000 {
+            v.nueva("x", &format!("s{i}"));
+        }
+        assert!(v.len() <= 256);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn invitado_solo_acepta_al_anfitrion_de_la_llave() {
+        let bus = BusMemoria::nuevo();
+        let clave = ClaveSala::desde_link(CLAVE).unwrap();
+        let (secreto, _) = nueva_llave();
+        let (_, publica_otra) = nueva_llave();
+        // Un impostor con el link (pero sin la llave) responde: el invitado no se conecta.
+        let (impostor, mut ra) = Nodo::anfitrion(Arc::new(bus.nodo()), clave.clone(), vec![], Some(firma_desde(&secreto).unwrap())).await;
+        let (_inv, _ri) = Nodo::invitado(Arc::new(bus.nodo()), clave, vec![], Some(publica_desde(&publica_otra).unwrap())).await.unwrap();
+        let r = tokio::time::timeout(Duration::from_secs(6), async {
+            loop {
+                if let Some(EventoRed::Entra(_)) = ra.recv().await {
+                    return;
+                }
+            }
+        })
+        .await;
+        assert!(r.is_err(), "el invitado no debe conectarse con quien no tiene la llave");
+        impostor.cerrar().await;
+    }
+
+    #[test]
     fn rearmar_rechaza_basura() {
         let mut r = Rearmado::default();
         assert!(r.meter(&[1, 2, 3]).is_none());
@@ -524,8 +650,9 @@ mod tests {
     async fn dos_nodos_hablan() {
         let bus = BusMemoria::nuevo();
         let clave = ClaveSala::desde_link(CLAVE).unwrap();
-        let (anf, mut ra) = Nodo::anfitrion(Arc::new(bus.nodo()), clave.clone(), vec![]).await;
-        let (inv, mut ri) = Nodo::invitado(Arc::new(bus.nodo()), clave, vec![]).await.unwrap();
+        let (secreto, publica) = nueva_llave();
+        let (anf, mut ra) = Nodo::anfitrion(Arc::new(bus.nodo()), clave.clone(), vec![], Some(firma_desde(&secreto).unwrap())).await;
+        let (inv, mut ri) = Nodo::invitado(Arc::new(bus.nodo()), clave, vec![], Some(publica_desde(&publica).unwrap())).await.unwrap();
 
         let EventoRed::Entra(quien) = esperar(&mut ra, |e| matches!(e, EventoRed::Entra(_))).await else { unreachable!() };
         assert_eq!(quien, inv.id());
@@ -555,8 +682,8 @@ mod tests {
         let bus = BusMemoria::nuevo();
         let buena = ClaveSala::desde_link(CLAVE).unwrap();
         let vieja = ClaveSala::desde_link("BBBBBBBBBBBBBBBBBBBBBA").unwrap();
-        let (anf, mut ra) = Nodo::anfitrion(Arc::new(bus.nodo()), buena, vec![]).await;
-        let (_inv, _ri) = Nodo::invitado(Arc::new(bus.nodo()), vieja, vec![]).await.unwrap();
+        let (anf, mut ra) = Nodo::anfitrion(Arc::new(bus.nodo()), buena, vec![], None).await;
+        let (_inv, _ri) = Nodo::invitado(Arc::new(bus.nodo()), vieja, vec![], None).await.unwrap();
         let r = tokio::time::timeout(Duration::from_secs(6), async {
             loop {
                 if let Some(EventoRed::Entra(_)) = ra.recv().await {

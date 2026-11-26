@@ -7,6 +7,7 @@ use chacha20poly1305::aead::{Aead, KeyInit};
 use chacha20poly1305::{XChaCha20Poly1305, XNonce};
 use hkdf::Hkdf;
 use rand::RngCore;
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use sha2::{Digest, Sha256};
 
 #[derive(Clone)]
@@ -49,6 +50,44 @@ pub fn etiqueta_sala(sala: &str) -> String {
     hex::encode(Sha256::digest(format!("coffeedrawteam:{sala}").as_bytes()))
 }
 
+/// Llave nueva del anfitrión: (secreto en base64, pública en base64url de 43 caracteres para el link).
+pub fn nueva_llave() -> (String, String) {
+    let k = SigningKey::generate(&mut rand::rngs::OsRng);
+    (
+        base64::engine::general_purpose::STANDARD.encode(k.to_bytes()),
+        base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(k.verifying_key().to_bytes()),
+    )
+}
+
+pub fn firma_desde(secreto: &str) -> Result<SigningKey, String> {
+    let b: [u8; 32] = base64::engine::general_purpose::STANDARD
+        .decode(secreto.trim())
+        .ok()
+        .and_then(|v| v.try_into().ok())
+        .ok_or("La llave del anfitrión no es válida")?;
+    Ok(SigningKey::from_bytes(&b))
+}
+
+pub fn publica_desde(publica: &str) -> Result<VerifyingKey, String> {
+    let b: [u8; 32] = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(publica.trim())
+        .ok()
+        .and_then(|v| v.try_into().ok())
+        .ok_or("La llave del link no es válida")?;
+    VerifyingKey::from_bytes(&b).map_err(|_| "La llave del link no es válida".to_string())
+}
+
+pub fn firmar(k: &SigningKey, msg: &[u8]) -> String {
+    base64::engine::general_purpose::STANDARD.encode(k.sign(msg).to_bytes())
+}
+
+pub fn verificar(v: &VerifyingKey, msg: &[u8], firma: &str) -> bool {
+    let Some(b) = base64::engine::general_purpose::STANDARD.decode(firma).ok().and_then(|v| <[u8; 64]>::try_from(v).ok()) else {
+        return false;
+    };
+    v.verify(msg, &Signature::from_bytes(&b)).is_ok()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -86,6 +125,20 @@ mod tests {
         assert!(!e.contains(sala));
         assert_eq!(e.len(), 64);
         assert_ne!(e, etiqueta_sala("abcdefghijklmnopqrstuw"));
+    }
+
+    #[test]
+    fn firma_del_anfitrion() {
+        let (secreto, publica) = nueva_llave();
+        assert_eq!(publica.len(), 43);
+        let firma = firma_desde(&secreto).unwrap();
+        let llave = publica_desde(&publica).unwrap();
+        let f = firmar(&firma, b"respuesta");
+        assert!(verificar(&llave, b"respuesta", &f));
+        assert!(!verificar(&llave, b"otra cosa", &f));
+        let (_, otra) = nueva_llave();
+        assert!(!verificar(&publica_desde(&otra).unwrap(), b"respuesta", &f));
+        assert!(!verificar(&llave, b"respuesta", "basura"));
     }
 
     #[test]

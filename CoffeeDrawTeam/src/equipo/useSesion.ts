@@ -17,8 +17,9 @@ const QUIETO_MS = 5000;
 /** En el navegador (o con ?red=memoria) se usa el canal entre pestañas. */
 const usarMemoria = () => !isTauri || new URLSearchParams(window.location.search).get("red") === "memoria";
 
-async function crearTransporte(modo: "anfitrion" | "invitado", sala: Sala, yo: string): Promise<Transporte> {
-  return usarMemoria() ? crearTransporteBroadcast(modo, sala.sala, yo) : crearTransporteNativo(modo, sala.sala, sala.clave);
+/** `llave`: el secreto del anfitrión (al compartir) o la llave pública del link (al unirse). */
+async function crearTransporte(modo: "anfitrion" | "invitado", sala: Sala, yo: string, llave?: string): Promise<Transporte> {
+  return usarMemoria() ? crearTransporteBroadcast(modo, sala.sala, yo) : crearTransporteNativo(modo, sala.sala, sala.clave, llave);
 }
 
 export interface EstadoSesion {
@@ -71,11 +72,11 @@ export function useSesion() {
 
   useEffect(() => () => sesion.current?.cerrar(), []);
 
-  const anfitrion = useCallback(async (doc: Y.Doc, yo: Persona, sala: Sala) => {
+  const anfitrion = useCallback(async (doc: Y.Doc, yo: Persona, sala: Sala, secreto?: string | null) => {
     cerrar();
     setEstado({ ...INICIAL, modo: "anfitrion", red: { tipo: "conectando" }, link: sala, personas: [yo], miId: yo.id });
     try {
-      const t = await crearTransporte("anfitrion", sala, yo.id);
+      const t = await crearTransporte("anfitrion", sala, yo.id, secreto ?? undefined);
       t.alEstado((red) => setEstado((e) => ({ ...e, red })));
       const s = new SesionAnfitrion(doc, t, yo, sala);
       sesion.current = s;
@@ -91,7 +92,7 @@ export function useSesion() {
     setEstado({ ...INICIAL, modo: "invitado", red: { tipo: "conectando" }, link: sala });
     try {
       const id = `inv-${Math.random().toString(36).slice(2, 10)}`;
-      const t = await crearTransporte("invitado", sala, id);
+      const t = await crearTransporte("invitado", sala, id, sala.llave);
       t.alEstado((red) => setEstado((e) => ({ ...e, red: e.fin ? e.red : red })));
       const s = new SesionInvitado(doc, t, yo, sala);
       sesion.current = s;

@@ -7,7 +7,7 @@ import * as Y from "yjs";
 import * as encoding from "lib0/encoding";
 import * as decoding from "lib0/decoding";
 import * as sync from "y-protocols/sync";
-import { elementosDe, historialDe, metaDe, type Kind } from "../board/model";
+import { elementoValido, elementosDe, historialDe, imagenesDe, leerElemento, MAX_BYTES_IMAGEN, metaDe, type Kind } from "../board/model";
 import { registrar, type Entrada } from "../board/history";
 import { colorLibre, nombreValido, PALETA, type Persona } from "../board/personas";
 import { crearSala, type Sala } from "../board/link";
@@ -118,6 +118,7 @@ export class SesionAnfitrion {
 
   private vigilar = (tr: Y.Transaction) => {
     if (typeof tr.origin !== "string" || !this.admitidos.has(tr.origin)) return;
+    this.revisar(tr);
     const protegidos = [historialDe(this.doc), metaDe(this.doc)] as unknown as Y.AbstractType<Y.YEvent<any>>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
     if (!protegidos.some((t) => tr.changed.has(t) || tr.changedParentTypes.has(t))) return;
     queueMicrotask(() => {
@@ -125,6 +126,32 @@ export class SesionAnfitrion {
       this.guardia.clear();
     });
   };
+
+  /** Quita lo que un invitado mande mal formado o demasiado grande (podría romper el tablero de todos). */
+  private revisar(tr: Y.Transaction) {
+    const elementos = elementosDe(this.doc), imagenes = imagenesDe(this.doc);
+    const ids = new Set<string>([...(tr.changed.get(elementos as never) ?? [])].filter((k): k is string => typeof k === "string"));
+    for (const tipo of tr.changed.keys()) {
+      if ((tipo as unknown) !== elementos && tipo.parent === (elementos as unknown)) ids.add((tipo as unknown as Y.Map<unknown>).get("id") as string);
+      if (tipo instanceof Y.Text && tipo.parent?.parent === (elementos as unknown)) ids.add((tipo.parent as Y.Map<unknown>).get("id") as string);
+    }
+    const imgs = [...(tr.changed.get(imagenes as never) ?? [])].filter((k): k is string => typeof k === "string");
+    queueMicrotask(() => {
+      const malos = [...ids].filter((id) => {
+        const m = elementos.get(id);
+        return m && !(m instanceof Y.Map && elementoValido(leerElemento(m)) && leerElemento(m).id === id);
+      });
+      const grandes = imgs.filter((k) => {
+        const b = imagenes.get(k) as unknown;
+        return b !== undefined && !(b instanceof Uint8Array && b.length <= MAX_BYTES_IMAGEN);
+      });
+      if (!malos.length && !grandes.length) return;
+      this.doc.transact(() => {
+        malos.forEach((id) => elementos.delete(id));
+        grandes.forEach((k) => imagenes.delete(k));
+      }, "revision");
+    });
+  }
 
   personas(): Persona[] {
     return [this.yo, ...this.admitidos.values()];
@@ -180,7 +207,8 @@ export class SesionAnfitrion {
   }
 
   private async rotar(): Promise<Sala> {
-    const nueva = crearSala();
+    // La llave del anfitrión no cambia: es quien es.
+    const nueva: Sala = { ...crearSala(), ...(this.sala.llave ? { llave: this.sala.llave } : {}) };
     try {
       await this.t.cambiarSala(nueva.sala, nueva.clave);
     } catch (e) {

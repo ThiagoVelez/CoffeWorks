@@ -31,6 +31,8 @@ interface Tablero {
   /** Mío (lo guardo y soy anfitrión al compartir) o de otra persona (invitado). */
   propio: boolean;
   link: Sala | null;
+  /** Llave secreta del anfitrión (solo en tableros propios compartidos desde la app de escritorio). */
+  secreto: string | null;
 }
 
 const OPCIONES: OpcionesDibujo = { notaColor: "amarillo", formaTipo: "rect", trazoColor: "#2c1b12", grosor: 4 };
@@ -74,7 +76,7 @@ export const App: React.FC = () => {
     const conocidas = (metaDe(t.doc).get("personas") as Record<string, { nombre: string; color: string }>) ?? {};
     const personas = Object.entries(conocidas).map(([id, p]) => ({ id, ...p }));
     try {
-      const location = await store.persist({ doc: t.doc, meta: { nombre: t.titulo, link: t.link ?? undefined, personas } }, t.titulo, t.docId, t.location);
+      const location = await store.persist({ doc: t.doc, meta: { nombre: t.titulo, link: t.link ?? undefined, secreto: t.secreto ?? undefined, personas } }, t.titulo, t.docId, t.location);
       if (location !== t.location) setTablero((x) => (x && x.docId === t.docId ? { ...x, location } : x));
     } catch {
       avisar("No se pudo guardar el tablero");
@@ -129,7 +131,7 @@ export const App: React.FC = () => {
     setHistorial(false);
     setSiguiendo(null);
     setTablero(t);
-    if (t.propio && t.link && yo) await sesion.anfitrion(t.doc, yo, t.link);
+    if (t.propio && t.link && yo) await sesion.anfitrion(t.doc, yo, t.link, t.secreto);
   }, [sesion, yo]);
 
   const nuevo = useCallback((plantilla: PlantillaId, titulo?: string) => {
@@ -138,17 +140,17 @@ export const App: React.FC = () => {
     const nombre = titulo ?? (plantilla === "blanco" ? "Tablero sin título" : PLANTILLAS.find((p) => p.id === plantilla)!.nombre);
     metaDe(doc).set("nombre", nombre);
     aplicarPlantilla(doc, plantilla, yo.id);
-    const t: Tablero = { doc, titulo: nombre, docId: store.newDocId(), location: null, propio: true, link: null };
+    const t: Tablero = { doc, titulo: nombre, docId: store.newDocId(), location: null, propio: true, link: null, secreto: null };
     void abrirTablero(t);
     void guardar(t);
   }, [yo, abrirTablero, guardar]);
 
-  const abrirArchivo = useCallback(async (abrir: () => Promise<{ doc: { doc: Y.Doc; meta: { nombre: string; link?: Sala } }; docId: string; location: string | null } | null>) => {
+  const abrirArchivo = useCallback(async (abrir: () => Promise<{ doc: { doc: Y.Doc; meta: { nombre: string; link?: Sala; secreto?: string } }; docId: string; location: string | null } | null>) => {
     try {
       const a = await abrir();
       if (!a) return;
       const titulo = a.doc.meta.nombre || nombreDelTablero(a.doc.doc, "Tablero sin título");
-      await abrirTablero({ doc: a.doc.doc, titulo, docId: a.docId, location: a.location, propio: true, link: a.doc.meta.link ?? null });
+      await abrirTablero({ doc: a.doc.doc, titulo, docId: a.docId, location: a.location, propio: true, link: a.doc.meta.link ?? null, secreto: a.doc.meta.secreto ?? null });
     } catch (e) {
       avisar(e instanceof Error ? e.message : "No se pudo abrir el tablero");
     }
@@ -159,7 +161,7 @@ export const App: React.FC = () => {
 
   const entrar = useCallback(async (sala: Sala, quien: { nombre: string; color: string }) => {
     const doc = crearTablero();
-    const t: Tablero = { doc, titulo: "Tablero compartido", docId: store.newDocId(), location: null, propio: false, link: sala };
+    const t: Tablero = { doc, titulo: "Tablero compartido", docId: store.newDocId(), location: null, propio: false, link: sala, secreto: null };
     sesion.cerrar();
     setSeleccion([]);
     setTablero(t);
@@ -208,14 +210,25 @@ export const App: React.FC = () => {
   const empezarACompartir = async () => {
     if (!tablero || !yo) return;
     let link = tablero.link;
+    let secreto = tablero.secreto;
     if (!link) {
       link = crearSala();
-      const t = { ...tablero, link };
+      // En la app de escritorio, el anfitrión firma sus respuestas: la llave pública va en el link.
+      if (isTauri) {
+        try {
+          const k = await invoke<{ secreto: string; publica: string }>("red_nueva_llave");
+          secreto = k.secreto;
+          link = { ...link, llave: k.publica };
+        } catch {
+          /* sin llave: el link funciona igual, sin la comprobación extra */
+        }
+      }
+      const t = { ...tablero, link, secreto };
       setTablero(t);
       void guardar(t);
     }
     setCompartir(true);
-    if (sesion.estado.modo !== "anfitrion") await sesion.anfitrion(tablero.doc, yo, link);
+    if (sesion.estado.modo !== "anfitrion") await sesion.anfitrion(tablero.doc, yo, link, secreto);
   };
 
   // El link cambia al expulsar o al pedir uno nuevo: se guarda en el archivo.
@@ -234,7 +247,7 @@ export const App: React.FC = () => {
     Y.applyUpdate(doc, Y.encodeStateAsUpdate(tablero.doc));
     const titulo = `${tituloVisible} (copia)`;
     metaDe(doc).set("nombre", titulo);
-    const t: Tablero = { doc, titulo, docId: store.newDocId(), location: null, propio: true, link: null };
+    const t: Tablero = { doc, titulo, docId: store.newDocId(), location: null, propio: true, link: null, secreto: null };
     const conectado = !tablero.propio && !sesion.estado.fin;
     // Mientras se está dentro del tablero compartido, la copia se guarda sin salir de él.
     if (conectado) void guardar(t);
@@ -262,7 +275,7 @@ export const App: React.FC = () => {
 
   const reintentar = () => {
     if (!tablero || !yo) return;
-    if (tablero.propio && tablero.link) void sesion.anfitrion(tablero.doc, yo, tablero.link);
+    if (tablero.propio && tablero.link) void sesion.anfitrion(tablero.doc, yo, tablero.link, tablero.secreto);
     else if (!tablero.propio && tablero.link && perfil) void sesion.invitado(tablero.doc, perfil, sesion.estado.link ?? tablero.link);
   };
 

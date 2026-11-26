@@ -168,3 +168,29 @@ export function extremoPos(doc: Y.Doc, e: Extremo): { x: number; y: number } {
   }
   return { x: e.x, y: e.y };
 }
+
+const KINDS = new Set(["nota", "texto", "forma", "conector", "trazo", "imagen"]);
+const num = (v: unknown) => typeof v === "number" && Number.isFinite(v) && Math.abs(v) < 1e7;
+const str = (v: unknown, max = 10_000) => typeof v === "string" && v.length <= max;
+const extremo = (e: unknown) => !!e && typeof e === "object" && ("id" in e ? str((e as { id: unknown }).id, 64) : num((e as Punto2).x) && num((e as Punto2).y));
+type Punto2 = { x: unknown; y: unknown };
+
+/** ¿Es un elemento bien formado? (lo que manda un invitado se revisa antes de quedarse) */
+export function elementoValido(e: unknown): e is Elemento {
+  if (!e || typeof e !== "object") return false;
+  const o = e as Record<string, unknown>;
+  if (!str(o.id, 64) || !KINDS.has(o.kind as string) || !str(o.autor, 64)) return false;
+  if (![o.x, o.y, o.w, o.h, o.z].every(num) || (o.w as number) < 0 || (o.h as number) < 0) return false;
+  switch (o.kind) {
+    case "nota": return (o.color as string) in NOTA_COLORES && str(o.texto);
+    case "texto": return str(o.texto) && num(o.tam) && typeof o.negrita === "boolean" && str(o.color, 32);
+    case "forma": return ["rect", "elipse", "rombo", "flecha"].includes(o.forma as string) && str(o.relleno, 32) && str(o.borde, 32) && str(o.texto);
+    case "conector": return extremo(o.desde) && extremo(o.hasta) && (o.estilo === "recto" || o.estilo === "codo") && typeof o.flecha === "boolean" && str(o.color, 32);
+    case "trazo": return Array.isArray(o.puntos) && o.puntos.length % 2 === 0 && o.puntos.length <= 40_000 && o.puntos.every(num) && num(o.grosor) && str(o.color, 32) && typeof o.marcador === "boolean";
+    case "imagen": return str(o.imagenId, 64);
+  }
+  return false;
+}
+
+/** Tamaño máximo de una imagen en el tablero (las de la app pesan como mucho 1,5 MB). */
+export const MAX_BYTES_IMAGEN = 2_000_000;

@@ -218,3 +218,23 @@ test("si no se puede cambiar el link, expulsar avisa con un error", async () => 
   assert.equal(anfitrion.personas().length, 1);
   anfitrion.cerrar();
 });
+
+import { elementosDe, imagenesDe } from "../board/model";
+import * as Yjs from "yjs";
+
+test("el anfitrión quita lo que un invitado manda mal formado o demasiado grande", async () => {
+  const { docA, anfitrion, invitados: [b] } = montar(1);
+  await esperar();
+  b.doc.transact(() => {
+    const m = new Yjs.Map<unknown>();
+    for (const [k, v] of Object.entries({ id: "malo", kind: "trazo", x: "x", y: 0, w: 1, h: 1, z: 1, autor: "b", puntos: "no", grosor: 2, color: "#000", marcador: false })) m.set(k, v);
+    elementosDe(b.doc).set("malo", m);
+    imagenesDe(b.doc).set("enorme", new Uint8Array(3_000_000));
+  });
+  agregar(b.doc, nota("bueno", "ok"), "local");
+  await esperar(80);
+  assert.ok(!elementosDe(docA).has("malo"));
+  assert.ok(!imagenesDe(docA).has("enorme"));
+  assert.ok(elementosDe(docA).has("bueno"));
+  anfitrion.cerrar();
+});
