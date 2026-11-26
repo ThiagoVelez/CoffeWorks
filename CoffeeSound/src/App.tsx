@@ -9,10 +9,11 @@ import { useStudioDoc } from "./studio/useStudioDoc";
 import { Button, IconButton, Modal, NumberField, STUDIO_CSS, Select, Slider, Toggle, cx } from "./studio/ui";
 import { isTauri, pickOpenFiles, saveFileAs } from "./studio/desktop";
 import { ensureAddon, runAddonFile } from "./studio/addons";
+import { DialogoLetra, DialogoSeparar } from "./voz/PanelVoz";
 import { base64ToBytes } from "./studio/desktop";
 import { WaveformView, fmtTime, type Range, type WaveView } from "./components/WaveformView";
 import { Multitrack } from "./components/Multitrack";
-import { ACCENT, ACCENT_DARK, type Asset, type Effect, type EffectKind, type Session } from "./types";
+import { ACCENT, ACCENT_DARK, type Asset, type Effect, type EffectKind, type Session, type Track } from "./types";
 import { EFFECT_INFO, OPS, audioContext, buildChain, changeSpeed, decodeBytes, defaultEffect, encodeWav, fromBuffer, generate, getBuffer, noiseProfile, reduceNoise, renderEffects, setKeep, slice, splice, subscribe } from "./services/audio";
 import { Player, assetFrom, mixdown, newSession, newTrack, parseSession, serializeSession, sessionLength, sessionTokens, newId } from "./services/session";
 
@@ -36,6 +37,8 @@ type DialogState =
   | { kind: "speed" }
   | { kind: "generate" }
   | { kind: "noise" }
+  | { kind: "separar" }
+  | { kind: "letra" }
   | { kind: "export"; what: "file" | "mix" }
   | null;
 
@@ -555,6 +558,9 @@ export const App: React.FC = () => {
             { divider: true },
             { label: "Reducción de ruido…", action: () => setDialog({ kind: "noise" }), disabled: !buffer },
             { divider: true },
+            { label: "Separar voz y música…", action: () => setDialog({ kind: "separar" }), disabled: !buffer },
+            { label: "Sacar la letra…", action: () => setDialog({ kind: "letra" }), disabled: !buffer },
+            { divider: true },
             ...fxItems,
           ],
         },
@@ -804,6 +810,41 @@ export const App: React.FC = () => {
               setAssetBuffer(asset.id, splice(buffer, cursor, cursor, g));
               setSelection({ a: cursor, b: cursor + sec });
             } else addAsset(g, kind === "tone" ? `Tono ${freq} Hz` : kind === "silence" ? "Silencio" : "Ruido");
+          }}
+        />
+      )}
+      {dialog?.kind === "separar" && buffer && asset && (
+        <DialogoSeparar
+          buffer={buffer}
+          nombre={asset.name}
+          onCerrar={() => setDialog(null)}
+          onListo={(voz, musica, que) => {
+            setDialog(null);
+            const base = asset.name.replace(/\.[^.]+$/, "");
+            const av = addAsset(voz, `${base} — Voz`, que === "voz");
+            const am = addAsset(musica, `${base} — Música`, que === "musica");
+            if (que === "pistas") {
+              const s = cur();
+              const pista = (i: number, nombre: string, a: typeof av): Track => ({
+                ...newTrack(s.tracks.length + i),
+                name: nombre,
+                clips: [{ id: newId("cl"), assetId: a.id, start: 0, offset: 0, duration: a.duration, gain: 0, fadeIn: 0, fadeOut: 0 }],
+              });
+              apply({ ...s, tracks: [...s.tracks, pista(0, "Voz", av), pista(1, "Música", am)], mode: "multitrack" });
+            }
+            toast(que === "pistas" ? "Voz y música en dos pistas nuevas" : "Voz y música separadas");
+          }}
+        />
+      )}
+      {dialog?.kind === "letra" && buffer && asset && (
+        <DialogoLetra
+          buffer={buffer}
+          nombre={asset.name}
+          esVoz={/ — Voz$/.test(asset.name)}
+          onCerrar={() => { stop(); setDialog(null); }}
+          onReproducir={(a, b) => {
+            player.playBuffer(buffer, a, b, false, () => setPlaying(false));
+            setPlaying(true);
           }}
         />
       )}

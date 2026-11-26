@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { aLrc, aTxt, esAlucinacion, type LineaLetra } from "./letra";
+import { aLrc, aPalabras, aTxt, esAlucinacion, type LineaLetra } from "./letra";
 
 const lineas: LineaLetra[] = [
   { ini: 5.2, fin: 8, texto: "La luna brilla", dudas: [] },
@@ -18,6 +18,14 @@ test("aLrc con tiempos [mm:ss.cc] y título", () => {
 
 test("aTxt: una línea por frase, sin tiempos", () => {
   assert.equal(aTxt(lineas), "La luna brilla\nsobre el mar\n");
+});
+
+test("aPalabras amplía las dudas a palabras completas y las une", () => {
+  const texto = "La luna ría son el marío canto";
+  // trozos sueltos: «l» de luna, «r» e «ía» de ría, «io» de marío
+  const d = aPalabras(texto, [{ ini: 3, fin: 4, prob: 0.4 }, { ini: 8, fin: 9, prob: 0.3 }, { ini: 9, fin: 11, prob: 0.2 }, { ini: 22, fin: 24, prob: 0.4 }]);
+  assert.deepEqual(d.map((x) => texto.slice(x.ini, x.fin)), ["luna", "ría", "marío"]);
+  assert.equal(d[1].prob, 0.2); // la peor de las unidas
 });
 
 test("esAlucinacion detecta lo que Whisper inventa en silencios", () => {

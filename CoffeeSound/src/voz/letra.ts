@@ -32,6 +32,21 @@ export function esAlucinacion(texto: string, probMedia: number): boolean {
   return false;
 }
 
+/** Amplía cada duda a la palabra entera y une las que caen en la misma palabra (queda la peor). */
+export function aPalabras(texto: string, dudas: LineaLetra["dudas"]): LineaLetra["dudas"] {
+  const letra = (c: string | undefined) => !!c && /[\p{L}\p{N}'’]/u.test(c);
+  const out: LineaLetra["dudas"] = [];
+  for (const d of [...dudas].sort((a, b) => a.ini - b.ini)) {
+    let ini = Math.max(0, d.ini), fin = Math.min(texto.length, d.fin);
+    while (ini > 0 && letra(texto[ini - 1])) ini--;
+    while (fin < texto.length && letra(texto[fin])) fin++;
+    const prev = out.at(-1);
+    if (prev && ini < prev.fin) { prev.fin = Math.max(prev.fin, fin); prev.prob = Math.min(prev.prob, d.prob); }
+    else out.push({ ini, fin, prob: d.prob });
+  }
+  return out;
+}
+
 const tiempo = (s: number) => {
   const cs = Math.round(Math.max(0, s) * 100);
   const mm = Math.floor(cs / 6000), ss = Math.floor((cs % 6000) / 100), c = cs % 100;
