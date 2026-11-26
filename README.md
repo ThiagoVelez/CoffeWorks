@@ -227,6 +227,9 @@ CoffeeWorks/
 ├── addons/coffee-pdfcheck/  Complemento de revisión del PDF original (Tesseract OCR)
 ├── addons/coffee-latex/     Complemento Motor LaTeX (Tectonic) para CoffeeLatex y CoffeeConvert
 ├── addons/coffee-pandoc/    Complemento Pandoc para CoffeeLatex y CoffeeConvert
+├── addons/coffee-latexocr/  Complemento de fórmulas desde foto (pix2tex ONNX) para CoffeeLatex
+├── addons/coffee-separarvoz/ Complemento para separar voz y música (MDX-Net) en CoffeeSound
+├── addons/coffee-letra/     Complemento para sacar la letra (Whisper small) en CoffeeSound
 ├── installer/CoffeeWorks.iss  Script de Inno Setup
 ├── scripts/                build.mjs, build-windows.ps1, dev.mjs, version.mjs y sync-shared.mjs
 └── .github/workflows/      Compilación y prueba del instalador y de los complementos
@@ -277,7 +280,8 @@ También existen `--install-all` y `--uninstall-all`.
 - *Corrector* de español e inglés, el de CoffeeDoc: subraya solo el texto (no los comandos ni las fórmulas) y sugiere con clic derecho.
 - *Archivos*: `.tex` y `.md` tal cual, para llevarlos a Overleaf u otros programas; aparece en «Abrir con» sin hacerse con esas extensiones.
 - *Exportar*: HTML sin complementos (con las fuentes de las fórmulas dentro del archivo); PDF con el complemento **Motor LaTeX** (Tectonic en Windows, TeX Live en Linux), con los errores del compilador traducidos y «Ir a la línea»; Word, OpenDocument y LaTeX ↔ Markdown con el complemento **Pandoc**.
-- *Desde foto* (notas a mano → LaTeX con corrector de física y matemáticas) llega en la próxima versión. Prueba en el navegador: `npm run e2e` dentro de `CoffeeLatex`.
+- *Desde foto*: la foto de tus apuntes (elegida, arrastrada o pegada con Ctrl+V) se separa en renglones; las fórmulas se leen con el complemento **Fórmulas desde foto** (pix2tex, sin internet) y el texto con Tesseract (complemento de revisión del PDF). Lo dudoso queda en amarillo con sugerencias del diccionario de física y matemáticas (a/α, v/ν, x/×, 1/l…), se avisan llaves sin cerrar y comandos que no existen, y «Insertar en el documento» lo pone en el cursor. Cada renglón se puede marcar como texto o fórmula, quitar, o dibujarse a mano.
+- Prueba en el navegador: `npm run e2e` dentro de `CoffeeLatex` (con `OCR_MODELOS=/carpeta/de/los/modelos` también prueba «Desde foto» con los modelos reales).
 
 **CoffeeDrawTeam** (mandarina, categoría *Equipos*) — tablero infinito para trabajos en grupo y lluvias de ideas, o para usar solo:
 
@@ -387,6 +391,8 @@ Las nueve apps de Ilustración comparten una interfaz oscura, autoguardado, desh
 
 - *Editor de forma de onda* y *espectro de frecuencias*: seleccionar, cortar, copiar, pegar, recortar, silenciar, insertar silencio, fundidos, amplificar, normalizar, invertir, cambiar velocidad, mono y estéreo.
 - *Efectos* con vista previa: ecualizador, compresor, limitador, reverberación, eco, pasa bajos y pasa altos, ganancia, distorsión y coro; *reducción de ruido* con perfil capturado.
+- *Separar voz y música* (Efectos): divide una canción en dos audios nuevos, «Voz» y «Música», que se abren o se ponen en dos pistas de la multipista; complemento **Separar voz y música** (MDX-Net de Ultimate Vocal Remover, sin internet).
+- *Sacar la letra* (Efectos): escucha la voz (separándola antes si hace falta), escribe la letra frase por frase con su tiempo, en el idioma detectado o elegido; las palabras dudosas quedan marcadas, cada frase se escucha con un clic y se guarda como `.txt` o `.lrc` (karaoke). Complemento **Letra de canciones** (Whisper small, sin internet). Prueba en el navegador: `VOZ_MODELOS=/carpeta npm run e2e` dentro de `CoffeeSound`.
 - *Multipista*: pistas con volumen, panorama, silencio, solo y efectos en tiempo real; clips que se mueven entre pistas, se recortan, se dividen y tienen ganancia y fundidos; mezcla final a un archivo nuevo.
 - *Grabación* con el micrófono, generador de tonos y ruido, marcadores, y exportación a WAV de 16 o 24 bits (con FFmpeg, también MP3, OGG y FLAC).
 

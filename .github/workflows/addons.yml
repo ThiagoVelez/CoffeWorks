@@ -9,6 +9,9 @@ name: Complementos
 # - coffee-potrace: calco vectorial (Potrace) para CoffeeVector y CoffeePaint.
 # - coffee-latex: Motor LaTeX (Tectonic) para CoffeeLatex y CoffeeConvert.
 # - coffee-pandoc: conversor de documentos (Pandoc) para CoffeeLatex y CoffeeConvert.
+# - coffee-latexocr: modelos de pix2tex (ONNX) para «Desde foto» de CoffeeLatex.
+# - coffee-separarvoz: separar voz y música (MDX-Net de UVR) para CoffeeSound.
+# - coffee-letra: Whisper small (sherpa-onnx) para sacar la letra en CoffeeSound.
 # - coffee-puppetcompat: motor de seguimiento facial sin SIMD para CoffeePuppet.
 # - coffee-ca3d-piezas: pack de piezas para CoffeeAnimate3D (archivos .ca3d).
 # En las pull requests solo se compila y se prueba. En main (o a mano) se
@@ -18,9 +21,9 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["addons/**", ".github/workflows/addons.yml", "CoffeeAnimate3D/src/pieces.ts"]
+    paths: ["addons/**", ".github/workflows/addons.yml", "CoffeeAnimate3D/src/pieces.ts", "CoffeeLatex/src/foto/**", "CoffeeSound/src/voz/**"]
   pull_request:
-    paths: ["addons/**", ".github/workflows/addons.yml", "CoffeeAnimate3D/src/pieces.ts"]
+    paths: ["addons/**", ".github/workflows/addons.yml", "CoffeeAnimate3D/src/pieces.ts", "CoffeeLatex/src/foto/**", "CoffeeSound/src/voz/**"]
 
 permissions:
   contents: write
@@ -400,6 +403,162 @@ jobs:
           prerelease: false
           make_latest: false
           files: coffee-pandoc-win64.zip
+
+  latexocr:
+    name: Fórmulas desde foto (pix2tex ONNX)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Descargar y comprobar los modelos
+        run: |
+          set -e
+          mkdir -p dist
+          base=https://github.com/RapidAI/RapidLaTeXOCR/releases/download/v0.0.0
+          for f in encoder.onnx decoder.onnx image_resizer.onnx tokenizer.json; do
+            curl -fsSL --retry 3 -o "dist/$f" "$base/$f"
+          done
+          cd dist
+          cat > ../huellas.txt <<'HUELLAS'
+          bd695497bf1b22279b7626f5916c79226e1e244c84355f8da7edfd2d921d0072  decoder.onnx
+          01bf5dc25539ca0cd5b1bd29296ea495977a6ba5f629dc4178277809d26e5e7d  encoder.onnx
+          e0b075c39700f64d50400f39c8fc186bbb3b5d84d31864008313f376603aca9d  image_resizer.onnx
+          1dc27b18d6a518d0d5ff3f4bb7bd98521fe80ad39e5b2a246d4109f1bb9d5019  tokenizer.json
+          HUELLAS
+          sed -i 's/^ *//' ../huellas.txt
+          sha256sum -c ../huellas.txt
+          cp ../addons/coffee-latexocr/README.md LEEME.md
+          curl -fsSL --retry 3 -o LICENCIA-pix2tex.txt https://raw.githubusercontent.com/lukas-blecher/LaTeX-OCR/main/LICENSE
+          curl -fsSL --retry 3 -o LICENCIA-RapidLaTeXOCR.txt https://raw.githubusercontent.com/RapidAI/RapidLaTeXOCR/main/LICENSE
+          zip -q -9 ../coffee-latexocr.zip *
+          ls -la ../coffee-latexocr.zip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Probar el reconocimiento con fórmulas de muestra
+        working-directory: CoffeeLatex
+        run: |
+          npm ci --no-audit --no-fund
+          mkdir -p "$RUNNER_TEMP/latexocr"
+          unzip -q ../coffee-latexocr.zip -d "$RUNNER_TEMP/latexocr"
+          OCR_MODELOS="$RUNNER_TEMP/latexocr" npx tsx --test src/foto/latexocr.test.ts | tee salida.txt
+          grep -q "^# pass 3" salida.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coffee-latexocr
+          path: coffee-latexocr.zip
+
+      - name: Publicar en la versión «addons»
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: addons
+          name: Complementos de CoffeeWorks
+          body: Complementos opcionales que el Launcher descarga desde «Complementos». No hace falta descargarlos a mano.
+          prerelease: false
+          make_latest: false
+          files: coffee-latexocr.zip
+
+  separarvoz:
+    name: Separar voz y música (MDX-Net de UVR)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Descargar y comprobar el modelo
+        run: |
+          set -e
+          mkdir -p dist
+          curl -fsSL --retry 3 -o dist/voc_ft.onnx https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/UVR-MDX-NET-Voc_FT.onnx
+          echo "534b2070fcc7df514b13ef660dc8cbb328679c2374d04354a5c42bb14ecce111  dist/voc_ft.onnx" | sha256sum -c
+          cp addons/coffee-separarvoz/README.md dist/LEEME.md
+          (cd dist && zip -q -9 ../coffee-separarvoz.zip *)
+          ls -la coffee-separarvoz.zip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Probar la separación con la mezcla de muestra
+        working-directory: CoffeeSound
+        run: |
+          npm ci --no-audit --no-fund
+          SEP_MODELOS="$GITHUB_WORKSPACE/dist" npx tsx --test src/voz/separar.test.ts | tee salida.txt
+          grep -q "^# skipped 0" salida.txt
+          grep -q "^# fail 0" salida.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coffee-separarvoz
+          path: coffee-separarvoz.zip
+
+      - name: Publicar en la versión «addons»
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: addons
+          name: Complementos de CoffeeWorks
+          body: Complementos opcionales que el Launcher descarga desde «Complementos». No hace falta descargarlos a mano.
+          prerelease: false
+          make_latest: false
+          files: coffee-separarvoz.zip
+
+  letra:
+    name: Letra de canciones (Whisper small)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Descargar y comprobar el modelo
+        run: |
+          set -e
+          mkdir -p dist
+          curl -fsSL --retry 3 https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-whisper-small.tar.bz2 \
+            | tar xjf - --strip-components=1 -C dist --wildcards '*/small-encoder.int8.onnx' '*/small-decoder.int8.onnx' '*/small-tokens.txt'
+          cd dist
+          printf '%s\n' \
+            "4cbe7b22fa9026b843b60a68640c747de05bafb1a11b57edc0e66c232d9f33a9  small-encoder.int8.onnx" \
+            "acad50b5c782696e91b55914cc5ab4f756f1532f76e22aa6fc615f39fb69a8ee  small-decoder.int8.onnx" \
+            "b34b360dbb493e781e479794586d661700670d65564001f23024971d1f2fa126  small-tokens.txt" | sha256sum -c
+          cp ../addons/coffee-letra/README.md LEEME.md
+          curl -fsSL --retry 3 -o LICENCIA-Whisper.txt https://raw.githubusercontent.com/openai/whisper/main/LICENSE
+          curl -fsSL --retry 3 -o LICENCIA-sherpa-onnx.txt https://raw.githubusercontent.com/k2-fsa/sherpa-onnx/master/LICENSE
+          zip -q -9 ../coffee-letra.zip *
+          ls -la ../coffee-letra.zip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Probar la transcripción con una frase de muestra
+        working-directory: CoffeeSound
+        run: |
+          npm ci --no-audit --no-fund
+          LETRA_MODELOS="$GITHUB_WORKSPACE/dist" npx tsx --test src/voz/whisper.test.ts | tee salida.txt
+          grep -q "^# skipped 0" salida.txt
+          grep -q "^# fail 0" salida.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coffee-letra
+          path: coffee-letra.zip
+
+      - name: Publicar en la versión «addons»
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: addons
+          name: Complementos de CoffeeWorks
+          body: Complementos opcionales que el Launcher descarga desde «Complementos». No hace falta descargarlos a mano.
+          prerelease: false
+          make_latest: false
+          files: coffee-letra.zip
 
   puppetcompat:
     name: Compatibilidad de CoffeePuppet (MediaPipe sin SIMD)

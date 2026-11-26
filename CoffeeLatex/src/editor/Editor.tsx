@@ -11,6 +11,8 @@ export interface EditorApi {
   /** Inserta una plantilla (▮ cursor, § selección) en la posición del cursor. */
   insertar(plantilla: string): void;
   reemplazar(ini: number, fin: number, texto: string): void;
+  /** Pega un texto tal cual donde está el cursor (sin marcas ▮ ni §). */
+  pegar(texto: string): void;
   irALinea(linea: number): void;
   irA(ini: number, fin: number): void;
   enFormula(): boolean;
@@ -110,6 +112,13 @@ export const Editor = forwardRef<EditorApi, Props>(({ texto, modo, onCambio, onT
       const r = insertar(t.value, ini, fin, plantilla);
       const nuevo = r.texto.slice(ini, r.texto.length - (t.value.length - fin));
       reemplazarRango(ini, fin, nuevo, r.cursor);
+    },
+    pegar(nuevo) {
+      const t = area.current;
+      if (!t) return;
+      const ini = t.selectionStart, fin = t.selectionEnd;
+      const antes = ini > 0 && t.value[ini - 1] !== "\n" ? "\n" : "";
+      reemplazarRango(ini, fin, antes + nuevo, ini + antes.length + nuevo.length);
     },
     reemplazar(ini, fin, nuevo) {
       reemplazarRango(ini, fin, nuevo, ini + nuevo.length);

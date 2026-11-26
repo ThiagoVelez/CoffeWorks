@@ -10,6 +10,9 @@ comparten todas las aplicaciones (catálogo en `crates/coffee-core/src/addons.rs
 | `ffmpeg` — Motor de video FFmpeg | CoffeeLive | builds públicos de FFmpeg |
 | `latex` — Motor LaTeX | CoffeeLatex, CoffeeConvert | `addons/coffee-latex` (Tectonic oficial) |
 | `pandoc` — Conversor de documentos | CoffeeLatex, CoffeeConvert | `addons/coffee-pandoc` (Pandoc oficial) |
+| `latexocr` — Fórmulas desde foto | CoffeeLatex | `addons/coffee-latexocr` (pix2tex en ONNX, RapidLaTeXOCR) |
+| `separarvoz` — Separar voz y música | CoffeeSound | `addons/coffee-separarvoz` (MDX-Net de UVR) |
+| `letra` — Letra de canciones | CoffeeSound | `addons/coffee-letra` (Whisper small de sherpa-onnx) |
 
 ## coffee-accdb
 

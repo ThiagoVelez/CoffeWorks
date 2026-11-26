@@ -391,7 +391,9 @@ macro_rules! editor_handler {
             $crate::commands::core_set_theme,
             $crate::docconv::doc_latex_pdf,
             $crate::docconv::doc_pandoc,
-            $crate::docconv::doc_herramientas
+            $crate::docconv::doc_herramientas,
+            $crate::docconv::doc_ocr_modelo,
+            $crate::docconv::doc_audio_modelo
             $(, $extra)*
         ]
     };
