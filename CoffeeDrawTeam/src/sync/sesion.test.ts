@@ -7,7 +7,12 @@ import { crearRedMemoria } from "./transporteMemoria";
 import { SesionAnfitrion, SesionInvitado } from "./sesion";
 import { codificar, TIPO } from "./protocolo";
 
-const esperar = (ms = 20) => new Promise((r) => setTimeout(r, ms));
+const esperar = (ms = 50) => new Promise((r) => setTimeout(r, ms));
+/** Espera hasta que se cumpla la condición (máx. 2 s): en un CI lento 20 ms no alcanzan. */
+async function hasta(cond: () => boolean, ms = 2000) {
+  const fin = Date.now() + ms;
+  while (!cond() && Date.now() < fin) await esperar(5);
+}
 const nota = (id: string, texto = ""): Elemento => ({ id, kind: "nota", x: 0, y: 0, w: 100, h: 100, z: 1, autor: "?", color: "amarillo", texto });
 const SALA = { sala: "s".repeat(22), clave: "k".repeat(22) };
 
@@ -21,7 +26,9 @@ function montar(n: number) {
     const s = new SesionInvitado(doc, red.transporte(id), { nombre: `Inv${i}`, color: PALETA[1] });
     return { id, doc, s };
   });
-  return { red, docA, anfitrion, invitados };
+  /** Hasta que el anfitrión admitió a todos (máximo 10 personas en total). */
+  const listos = () => hasta(() => anfitrion.personas().length === Math.min(n, 9) + 1);
+  return { red, docA, anfitrion, invitados, listos };
 }
 
 test("invitado recibe el tablero al entrar", async () => {
@@ -31,21 +38,22 @@ test("invitado recibe el tablero al entrar", async () => {
   const anfitrion = new SesionAnfitrion(docA, red.transporte("A"), { id: "A", nombre: "Ana", color: PALETA[0] }, SALA);
   const docB = crearTablero();
   const b = new SesionInvitado(docB, red.transporte("B"), { nombre: "Beto", color: PALETA[2] });
-  await esperar();
+  await hasta(() => listar(docB).length === 3 && b.personas().length === 2);
   assert.equal(listar(docB).length, 3);
   assert.deepEqual(b.personas().map((p) => p.nombre).sort(), ["Ana", "Beto"]);
   anfitrion.cerrar();
 });
 
 test("ediciones simultáneas", async () => {
-  const { docA, anfitrion, invitados: [b, c] } = montar(2);
+  const { docA, anfitrion, invitados: [b, c], listos } = montar(2);
+  await listos();
   agregar(docA, nota("x", "hola"), "A");
-  await esperar();
+  await hasta(() => listar(b.doc).length === 1 && listar(c.doc).length === 1);
   actualizar(b.doc, "x", { texto: "Ideas" }, "local");
   actualizar(c.doc, "x", { x: 300 }, "local");
   agregar(b.doc, nota("b1"), "local");
   agregar(c.doc, nota("c1"), "local");
-  await esperar(40);
+  await hasta(() => [docA, b.doc, c.doc].every((d) => listar(d).length === 3 && JSON.stringify(listar(d)) === JSON.stringify(listar(docA))));
   for (const d of [docA, b.doc, c.doc]) {
     const els = listar(d);
     assert.deepEqual(els.map((e) => e.id).sort(), ["b1", "c1", "x"]);
@@ -57,8 +65,8 @@ test("ediciones simultáneas", async () => {
 });
 
 test("nombre lo pone el anfitrión", async () => {
-  const { docA, anfitrion, invitados: [b] } = montar(1);
-  await esperar();
+  const { docA, anfitrion, invitados: [b], listos } = montar(1);
+  await listos();
   agregar(b.doc, { ...nota("n", "Ideas"), autor: "A" }, "local");
   await esperar();
   const e = entradas(docA).find((x) => x.accion === "agrego");
@@ -69,28 +77,29 @@ test("nombre lo pone el anfitrión", async () => {
 });
 
 test("colores sin repetir", async () => {
-  const { anfitrion } = montar(2);
-  await esperar();
+  const { anfitrion, listos } = montar(2);
+  await listos();
   const colores = anfitrion.personas().map((p) => p.color);
   assert.equal(new Set(colores).size, colores.length);
   anfitrion.cerrar();
 });
 
 test("lleno a los 10", async () => {
-  const { anfitrion, invitados } = montar(10);
+  const { anfitrion, invitados, listos } = montar(10);
   const fines: string[] = [];
   invitados.forEach((i) => i.s.alFin((m) => fines.push(`${i.id}:${m}`)));
-  await esperar(60);
+  await listos();
+  await hasta(() => fines.length > 0);
   assert.equal(anfitrion.personas().length, 10);
   assert.deepEqual(fines, ["I9:lleno"]);
   anfitrion.cerrar();
 });
 
 test("expulsar rota el link", async () => {
-  const { red, anfitrion, invitados: [b, c] } = montar(2);
+  const { red, anfitrion, invitados: [b, c], listos } = montar(2);
   const finB: string[] = [];
   b.s.alFin((m) => finB.push(m));
-  await esperar();
+  await listos();
   const nueva = await anfitrion.expulsar(b.id);
   await esperar();
   assert.deepEqual(finB, ["expulsado"]);
@@ -106,10 +115,10 @@ test("expulsar rota el link", async () => {
 });
 
 test("anfitrión se va", async () => {
-  const { anfitrion, invitados: [b] } = montar(1);
+  const { anfitrion, invitados: [b], listos } = montar(1);
   const fin: string[] = [];
   b.s.alFin((m) => fin.push(m));
-  await esperar();
+  await listos();
   anfitrion.cerrar();
   await esperar();
   assert.deepEqual(fin, ["cerrado"]);
@@ -117,8 +126,8 @@ test("anfitrión se va", async () => {
 });
 
 test("invitado ignora a otros invitados", async () => {
-  const { red, anfitrion, invitados: [b, c] } = montar(2);
-  await esperar();
+  const { red, anfitrion, invitados: [b, c], listos } = montar(2);
+  await listos();
   const intruso = crearTablero();
   agregar(intruso, nota("falso"), "x");
   const Y = await import("yjs");
@@ -134,8 +143,8 @@ test("invitado ignora a otros invitados", async () => {
 });
 
 test("bytes basura no rompen", async () => {
-  const { red, anfitrion, invitados: [b] } = montar(1);
-  await esperar();
+  const { red, anfitrion, invitados: [b], listos } = montar(1);
+  await listos();
   red.enviarComo(b.id, "A", new Uint8Array([255, 1, 2]));
   red.enviarComo(b.id, "A", new Uint8Array([TIPO.SYNC, 9, 9, 9]));
   red.enviarComo("A", b.id, new Uint8Array([TIPO.ROSTER, 123]));
@@ -161,8 +170,8 @@ test("presencia limitada a 20 por segundo", async () => {
 });
 
 test("el invitado ve el cursor del anfitrión", async () => {
-  const { anfitrion, invitados: [b] } = montar(1);
-  await esperar();
+  const { anfitrion, invitados: [b], listos } = montar(1);
+  await listos();
   anfitrion.presencia({ x: 5, y: 7, seleccion: ["n"] });
   await esperar(80);
   assert.deepEqual(b.s.presenciaDe("A"), { x: 5, y: 7, seleccion: ["n"] });
@@ -173,8 +182,8 @@ import { historialDe, metaDe } from "../board/model";
 import { registrar } from "../board/history";
 
 test("un invitado no puede escribir el historial ni cambiar nombres", async () => {
-  const { docA, anfitrion, invitados: [b, c] } = montar(2);
-  await esperar();
+  const { docA, anfitrion, invitados: [b, c], listos } = montar(2);
+  await listos();
   const antes = historialDe(docA).length;
   // Cliente modificado: escribe historial falso y renombra al anfitrión
   registrar(b.doc, { personaId: "A", accion: "borro", kind: "nota", t: 1 });
@@ -189,11 +198,12 @@ test("un invitado no puede escribir el historial ni cambiar nombres", async () =
 });
 
 test("el invitado edita texto y el historial lo registra como edición", async () => {
-  const { docA, anfitrion, invitados: [b] } = montar(1);
+  const { docA, anfitrion, invitados: [b], listos } = montar(1);
   agregar(docA, nota("x", "hola"), "A");
-  await esperar();
+  await listos();
+  await hasta(() => listar(b.doc).length === 1);
   actualizar(b.doc, "x", { texto: "hola Sofía" }, "local");
-  await esperar();
+  await hasta(() => entradas(docA).some((x) => x.elementoId === "x" && x.personaId === b.id && x.accion === "edito"));
   const e = entradas(docA).find((x) => x.elementoId === "x" && x.personaId === b.id);
   assert.equal(e?.accion, "edito");
   assert.equal(e?.detalle, "hola Sofía");
@@ -201,8 +211,8 @@ test("el invitado edita texto y el historial lo registra como edición", async (
 });
 
 test("un expulsado no vuelve a entrar con un HOLA nuevo", async () => {
-  const { red, anfitrion, invitados: [b] } = montar(1);
-  await esperar();
+  const { red, anfitrion, invitados: [b], listos } = montar(1);
+  await listos();
   await anfitrion.expulsar(b.id);
   red.enviarComo(b.id, "A", codificar(TIPO.HOLA, { nombre: "Otra vez", color: PALETA[3] }));
   await esperar();
@@ -211,8 +221,8 @@ test("un expulsado no vuelve a entrar con un HOLA nuevo", async () => {
 });
 
 test("si no se puede cambiar el link, expulsar avisa con un error", async () => {
-  const { red, anfitrion, invitados: [b] } = montar(1);
-  await esperar();
+  const { red, anfitrion, invitados: [b], listos } = montar(1);
+  await listos();
   red.fallarCambioDeSala("A");
   await assert.rejects(anfitrion.expulsar(b.id), /link/);
   assert.equal(anfitrion.personas().length, 1);
@@ -223,8 +233,8 @@ import { elementosDe, imagenesDe } from "../board/model";
 import * as Yjs from "yjs";
 
 test("el anfitrión quita lo que un invitado manda mal formado o demasiado grande", async () => {
-  const { docA, anfitrion, invitados: [b] } = montar(1);
-  await esperar();
+  const { docA, anfitrion, invitados: [b], listos } = montar(1);
+  await listos();
   b.doc.transact(() => {
     const m = new Yjs.Map<unknown>();
     for (const [k, v] of Object.entries({ id: "malo", kind: "trazo", x: "x", y: 0, w: 1, h: 1, z: 1, autor: "b", puntos: "no", grosor: 2, color: "#000", marcador: false })) m.set(k, v);
