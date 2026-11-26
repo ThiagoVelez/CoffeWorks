@@ -227,6 +227,7 @@ CoffeeWorks/
 ├── addons/coffee-pdfcheck/  Complemento de revisión del PDF original (Tesseract OCR)
 ├── addons/coffee-latex/     Complemento Motor LaTeX (Tectonic) para CoffeeLatex y CoffeeConvert
 ├── addons/coffee-pandoc/    Complemento Pandoc para CoffeeLatex y CoffeeConvert
+├── addons/coffee-latexocr/  Complemento de fórmulas desde foto (pix2tex ONNX) para CoffeeLatex
 ├── installer/CoffeeWorks.iss  Script de Inno Setup
 ├── scripts/                build.mjs, build-windows.ps1, dev.mjs, version.mjs y sync-shared.mjs
 └── .github/workflows/      Compilación y prueba del instalador y de los complementos
@@ -277,7 +278,8 @@ También existen `--install-all` y `--uninstall-all`.
 - *Corrector* de español e inglés, el de CoffeeDoc: subraya solo el texto (no los comandos ni las fórmulas) y sugiere con clic derecho.
 - *Archivos*: `.tex` y `.md` tal cual, para llevarlos a Overleaf u otros programas; aparece en «Abrir con» sin hacerse con esas extensiones.
 - *Exportar*: HTML sin complementos (con las fuentes de las fórmulas dentro del archivo); PDF con el complemento **Motor LaTeX** (Tectonic en Windows, TeX Live en Linux), con los errores del compilador traducidos y «Ir a la línea»; Word, OpenDocument y LaTeX ↔ Markdown con el complemento **Pandoc**.
-- *Desde foto* (notas a mano → LaTeX con corrector de física y matemáticas) llega en la próxima versión. Prueba en el navegador: `npm run e2e` dentro de `CoffeeLatex`.
+- *Desde foto*: la foto de tus apuntes (elegida, arrastrada o pegada con Ctrl+V) se separa en renglones; las fórmulas se leen con el complemento **Fórmulas desde foto** (pix2tex, sin internet) y el texto con Tesseract (complemento de revisión del PDF). Lo dudoso queda en amarillo con sugerencias del diccionario de física y matemáticas (a/α, v/ν, x/×, 1/l…), se avisan llaves sin cerrar y comandos que no existen, y «Insertar en el documento» lo pone en el cursor. Cada renglón se puede marcar como texto o fórmula, quitar, o dibujarse a mano.
+- Prueba en el navegador: `npm run e2e` dentro de `CoffeeLatex` (con `OCR_MODELOS=/carpeta/de/los/modelos` también prueba «Desde foto» con los modelos reales).
 
 **CoffeeDrawTeam** (mandarina, categoría *Equipos*) — tablero infinito para trabajos en grupo y lluvias de ideas, o para usar solo:
 

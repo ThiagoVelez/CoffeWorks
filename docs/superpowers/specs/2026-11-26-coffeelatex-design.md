@@ -114,14 +114,16 @@ Como en el boceto aprobado:
 - Abre `.tex` y `.md` sin hacerse con ellos: aparece en «Abrir con».
 - Catálogo, Launcher, instalador, CI, README, versión **2.16.0**.
 
-## Entrega 2: «Desde foto» (resumen)
+## Entrega 2: «Desde foto» (hecha)
 
-- **Complemento `latexocr`:** modelos libres en ONNX (detección de fórmulas y reconocimiento de fórmulas, con soporte de escritura a mano), empaquetados por el CI. Corren en la app con **onnxruntime-web**, sin nada nativo. El texto usa Tesseract (el complemento `pdfcheck`).
-- **Pantalla:** la foto a la izquierda; a la derecha, el LaTeX editable con las dudas en amarillo; debajo, la vista previa; botón «Insertar en el documento».
-- **Corrector:**
-  - El diccionario de español e inglés para el texto.
-  - Un diccionario de física y matemáticas: letras griegas, unidades, constantes, operadores y las confusiones típicas (a/α, v/ν, 1/l, x/×, exponentes).
-  - Aviso de llaves y paréntesis sin cerrar, y navegación de una duda a la siguiente.
+Decisiones tomadas al construirla (el usuario pidió «Hazlo» tras fusionar la entrega 1):
+
+- **Modelo de fórmulas:** pix2tex (LaTeX-OCR, MIT) exportado a ONNX por RapidLaTeXOCR (MIT): `image_resizer.onnx`, `encoder.onnx`, `decoder.onnx` y `tokenizer.json` (~165 MB). Es el único modelo libre de fórmulas en ONNX que se puede descargar de una versión de GitHub (Hugging Face no está disponible para el CI de la sesión ni para probar aquí). Lee mejor fórmulas claras que letra muy desordenada; por eso las dudas son la pieza central.
+- **Complemento `latexocr`** («Fórmulas desde foto»): el CI de complementos descarga los cuatro archivos, comprueba sus SHA-256, los prueba con fórmulas de muestra y publica `coffee-latexocr.zip` (el mismo en Windows y Linux). La app los pide con `doc_ocr_modelo`, que devuelve binario (sin base64) y solo esos cuatro nombres.
+- **Ejecución:** onnxruntime-web (solo wasm, un hilo) dentro de un Web Worker; el reconocedor (`src/foto/latexocr.ts`) reproduce el de la referencia en Python y da el mismo LaTeX con las muestras. Funciona sin internet.
+- **Sin modelo de detección:** en lugar de detectar fórmulas con otro modelo, la foto se separa en renglones (umbral local de Bradley, aguanta sombras). Cada renglón es Texto o Fórmula: si está Tesseract (complemento `pdfcheck`) se lee primero como texto y, si parece fórmula, se pasa al reconocedor; la persona puede cambiar el tipo con un clic, quitar renglones o dibujar un recuadro a mano.
+- **Corrector:** las piezas con probabilidad < 50 % son dudas (amarillo) con las alternativas del modelo y el diccionario de física y matemáticas (a/α, v/ν, u/μ, w/ω, x/×/χ, 1/l/I, 0/o/θ, t/+/τ, p/ρ, B/β, e/ε, y/γ, s/5, z/2, g/9, d/∂…); en el texto, las palabras con confianza < 60 % y sugerencias ortográficas. Avisos (subrayado naranja) de llaves y paréntesis sin cerrar y comandos que no existen. «Siguiente duda», «Está bien así» y edición libre (las dudas siguen a su texto al editar).
+- **Resultado:** texto seguido y cada fórmula aparte (`\[ … \]` en LaTeX, `$$ … $$` en Markdown), con vista previa; «Insertar en el documento» lo pone donde está el cursor.
 
 ## Pruebas
 
