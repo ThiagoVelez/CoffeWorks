@@ -3,6 +3,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Y from "yjs";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { ArrowLeft, Download, History, Share2, Copy } from "lucide-react";
 import { crearTablero, elementosDe, imagenesDe, listar, metaDe } from "./board/model";
 import { aplicarPlantilla, PLANTILLAS, type PlantillaId } from "./board/templates";
@@ -165,15 +167,22 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (!perfil) return;
     let hecho = false;
-    void getLaunchArgs().then((args) => {
+    void getLaunchArgs().then(async (args) => {
       if (hecho) return;
-      if (args.file) void abrirArchivo(() => store.openPath(args.file!));
+      const enlace = isTauri ? await invoke<string | null>("enlace_inicial").catch(() => null) : null;
+      if (enlace || args.file?.startsWith("coffeedrawteam://")) setUnirse(enlace ?? args.file);
+      else if (args.file) void abrirArchivo(() => store.openPath(args.file!));
       else if (args.docId) void abrirArchivo(() => store.openWebEntry(args.docId!));
       else if (args.newTitle) nuevo("blanco", args.newTitle);
       const link = new URLSearchParams(window.location.search).get("unirse");
       if (link) setUnirse(link);
     });
-    return () => { hecho = true; };
+    // Link abierto con la app ya abierta
+    const quitar = isTauri ? listen<string>("enlace", (e) => setUnirse(e.payload)) : null;
+    return () => {
+      hecho = true;
+      void quitar?.then((f) => f());
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!perfil]);
 

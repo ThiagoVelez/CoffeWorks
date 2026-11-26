@@ -10,7 +10,8 @@ use red::par::{EventoRed, Nodo, STUN_PUBLICOS};
 use red::senal::{RelesNostr, Senalizacion};
 use serde_json::json;
 use std::sync::Arc;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
+use tauri_plugin_deep_link::DeepLinkExt;
 use tokio::sync::{mpsc, Mutex};
 
 /// La conexión de esta ventana (una sola a la vez: un tablero compartido).
@@ -114,6 +115,13 @@ async fn red_cambiar_sala(red: State<'_, Red>, sala: String, clave: String) -> R
     Ok(())
 }
 
+/// Link `coffeedrawteam://…` con el que se abrió la app (si hay).
+#[tauri::command]
+fn enlace_inicial(app: AppHandle) -> Option<String> {
+    let desde_plugin = app.deep_link().get_current().ok().flatten().and_then(|v| v.first().map(|u| u.to_string()));
+    desde_plugin.or_else(|| std::env::args().find(|a| a.starts_with("coffeedrawteam://")))
+}
+
 #[tauri::command]
 async fn red_cerrar(red: State<'_, Red>) -> Result<(), String> {
     cerrar_red(&red).await;
@@ -179,9 +187,28 @@ fn main() {
     coffee_core::migrate_legacy_dirs();
 
     tauri::Builder::default()
+        // Una sola ventana: un link abierto con la app ya abierta llega a esa ventana.
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.unminimize();
+                let _ = w.set_focus();
+            }
+        }))
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(Red::default())
-        .invoke_handler(coffee_core::editor_handler!(red_anfitrion, red_unirse, red_enviar, red_cortar, red_cambiar_sala, red_cerrar))
+        .setup(|app| {
+            // Registra el esquema coffeedrawteam:// para este usuario (Windows y Linux).
+            let _ = app.deep_link().register_all();
+            let h = app.handle().clone();
+            app.deep_link().on_open_url(move |e| {
+                for u in e.urls() {
+                    let _ = h.emit("enlace", u.to_string());
+                }
+            });
+            Ok(())
+        })
+        .invoke_handler(coffee_core::editor_handler!(red_anfitrion, red_unirse, red_enviar, red_cortar, red_cambiar_sala, red_cerrar, enlace_inicial))
         .run(tauri::generate_context!())
         .expect("Error al iniciar CoffeeDrawTeam");
 }

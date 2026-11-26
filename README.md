@@ -10,6 +10,7 @@ Suite ofimática de escritorio para Windows, de código abierto y sin conexión.
 | **CoffeeView** | Presentaciones | `.csl` | PowerPoint (`.pptx`) | PowerPoint (`.pptx`), HTML, PDF |
 | **CoffeePDF** | Editor de PDF | `.pdf` | PDF | PDF, páginas sueltas, PNG |
 | **CoffeeConvert** *(Office)* | Convertir y organizar documentos (como una caja de herramientas de PDF) | — | PDF, imágenes, TXT, Markdown, HTML, CSV, Word, Excel, PowerPoint, OpenDocument, RTF, EPUB | PDF, Word, Excel, PowerPoint, PNG, JPG, TXT |
+| **CoffeeDrawTeam** *(Equipos)* | Tablero para trabajar en grupo o solo, compartido con un link | `.cdteam` | `.cdteam`, imágenes | `.cdteam`, PNG, PDF |
 | **CoffeePage** | Cuaderno de notas | `.cpg` | Cuadernos `.cpg`; imágenes y texto para insertar | HTML, Markdown, PDF (imprimir) |
 | **CoffeeDataBase** | Bases de datos | `.cdb` (SQLite) | SQLite (`.db`, `.sqlite`); importa Excel, CSV y `.accdb`/`.mdb` | Excel, CSV, script SQL, informes, Access (`.accdb`/`.mdb`, con complemento) |
 | **CoffeeEdit** *(Multimedia)* | Editor de video | `.ccm` | Video (MP4, WebM, MOV, MKV), audio e imágenes | Video MP4/WebM |
@@ -159,7 +160,7 @@ npm install
 npm run dev:all
 ```
 
-Antes de la primera vez, instala también las dependencias de cada aplicación (`npm install` dentro de `CoffeeDoc`, `CoffeeCalc`, `CoffeeView`, `CoffeePDF`, `CoffeePage`, `CoffeeBooks`, `CoffeeDataBase`, `CoffeeEdit`, `CoffeeLive`, `CoffeeUIUX`, `CoffeeUML`, `CoffeePhoto`, `CoffeeVector`, `CoffeePaint`, `CoffeeLens`, `CoffeeMotion`, `CoffeeSound`, `CoffeeEncoder`, `CoffeeAnimate`, `CoffeePuppet`, `CoffeeAnimate3D` y `CoffeeConvert`). Los servidores quedan en:
+Antes de la primera vez, instala también las dependencias de cada aplicación (`npm install` dentro de `CoffeeDoc`, `CoffeeCalc`, `CoffeeView`, `CoffeePDF`, `CoffeePage`, `CoffeeBooks`, `CoffeeDataBase`, `CoffeeEdit`, `CoffeeLive`, `CoffeeUIUX`, `CoffeeUML`, `CoffeePhoto`, `CoffeeVector`, `CoffeePaint`, `CoffeeLens`, `CoffeeMotion`, `CoffeeSound`, `CoffeeEncoder`, `CoffeeAnimate`, `CoffeePuppet`, `CoffeeAnimate3D`, `CoffeeConvert` y `CoffeeDrawTeam`). Los servidores quedan en:
 
 | Aplicación | Launcher | CoffeeDoc | CoffeeCalc | CoffeeView | CoffeePDF | CoffeePage | CoffeeEdit | CoffeeLive | CoffeeDataBase |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -173,9 +174,9 @@ Antes de la primera vez, instala también las dependencias de cada aplicación (
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | Puerto | 1435 | 1436 | 1437 | 1438 | 1439 |
 
-| Aplicación | CoffeeBooks | CoffeeAnimate3D | CoffeeConvert |
-| :--- | :--- | :--- | :--- |
-| Puerto | 1440 | 1441 | 1442 |
+| Aplicación | CoffeeBooks | CoffeeAnimate3D | CoffeeConvert | CoffeeDrawTeam |
+| :--- | :--- | :--- | :--- | :--- |
+| Puerto | 1440 | 1441 | 1442 | 1443 |
 
 En el navegador los documentos se guardan en `localStorage` y el Launcher abre las aplicaciones en pestañas; en el ejecutable se usan archivos reales y ventanas nativas.
 
@@ -215,6 +216,7 @@ CoffeeWorks/
 ├── CoffeePuppet/            Personajes en tiempo real (src/ + src-tauri/)
 ├── CoffeeAnimate3D/         Modelado y animación 3D por bloques, con servidor MCP (src/ + src-tauri/)
 ├── CoffeeConvert/           Conversión y organización de documentos (src/ + src-tauri/)
+├── CoffeeDrawTeam/          Tablero en equipo (src/ + src-tauri/ con la red WebRTC)
 ├── crates/coffee-core/      Código Rust compartido: bóveda, recientes, archivos, diálogos, complementos y diccionarios
 ├── shared/spell/            Corrector ortográfico compartido (se copia a cada app con scripts/sync-shared.mjs)
 ├── shared/studio/           Base de las apps de Ilustración: encabezado, controles oscuros, guardado, historial y complementos
@@ -260,6 +262,16 @@ También existen `--install-all` y `--uninstall-all`.
 - *Organizar PDF*: unir, dividir por rangos («1-3, 5, 8-»), rotar, quitar o reordenar páginas, comprimir (básica o fuerte), numerar páginas y marca de agua.
 - *OCR*: texto de PDF escaneados o fotos, con el complemento de revisión del PDF original (Tesseract).
 - Aparece en «Abrir con» para los PDF (CoffeePDF sigue abriéndolos por defecto) y, abierta con un PDF, muestra directamente las herramientas que lo aceptan.
+
+**CoffeeDrawTeam** (mandarina, categoría *Equipos*) — tablero infinito para trabajos en grupo y lluvias de ideas, o para usar solo:
+
+- *Elementos*: notas adhesivas de 6 colores, texto, formas (rectángulo, elipse, rombo, flecha) con texto, conectores rectos o en codo que siguen a lo que unen, lápiz, marcador, borrador de trazos e imágenes (botón, pegar o arrastrar; se reducen a 2048 px y 1,5 MB).
+- *Plantillas*: en blanco, lluvia de ideas, mapa mental, pros y contras y Kanban. Zoom de 10 % a 400 %, minimapa y «Ajustar».
+- *Compartir*: «Compartir» da un link `coffeedrawteam://unirse/…`; quien lo recibe (con CoffeeWorks instalado) lo abre o lo pega en «Unirse a un tablero», escribe su nombre y entra. Hasta 10 personas a la vez, cada una con su **cursor de color y su nombre**; cada quien deshace solo lo suyo (`Ctrl+Z`).
+- *Historial*: quién hizo qué y cuándo, con filtro por persona; un clic lleva al elemento.
+- *Anfitrión*: el tablero vive en el equipo de quien lo creó; si cierra la app, los demás ven «El anfitrión cerró el tablero» y vuelven a entrar cuando lo abra. Puede expulsar a alguien (el link cambia) o pedir un link nuevo. Los invitados no guardan nada salvo «Guardar una copia».
+- *Red*: conexión directa y cifrada entre equipos (WebRTC), presentada por servidores públicos Nostr con los mensajes cifrados; sin cuentas. En redes muy cerradas la conexión directa puede fallar. `CoffeeDrawTeam --probar-red` comprueba la conexión con los servidores reales.
+- Exporta a PNG y PDF (todo o lo seleccionado). Prueba con dos ventanas: `npm run e2e` dentro de `CoffeeDrawTeam`.
 
 **CoffeePDF** — añadir y editar texto, reemplazar texto existente, resaltar, tachar con corrector blanco, rectángulos, elipses, líneas, flechas, dibujo a mano, imágenes y firmas (dibujadas o escritas); rellenar formularios; buscar texto y resaltar los resultados; reordenar, girar, duplicar, eliminar e insertar páginas; unir otros PDF, extraer páginas, exportar páginas a PNG, imprimir y editar las propiedades del documento.
 

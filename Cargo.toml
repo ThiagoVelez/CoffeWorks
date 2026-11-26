@@ -32,7 +32,7 @@ members = [
 ]
 
 [workspace.package]
-version = "2.14.1"
+version = "2.15.0"
 authors = ["CoffeeWorks OpenSource Team"]
 edition = "2021"
 
