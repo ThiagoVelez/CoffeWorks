@@ -7,6 +7,8 @@ name: Complementos
 #   con los idiomas español e inglés, en una sola carpeta.
 # - coffee-raw: revelado RAW (LibRaw dcraw_emu) para CoffeeLens y CoffeePhoto.
 # - coffee-potrace: calco vectorial (Potrace) para CoffeeVector y CoffeePaint.
+# - coffee-latex: Motor LaTeX (Tectonic) para CoffeeLatex y CoffeeConvert.
+# - coffee-pandoc: conversor de documentos (Pandoc) para CoffeeLatex y CoffeeConvert.
 # - coffee-puppetcompat: motor de seguimiento facial sin SIMD para CoffeePuppet.
 # - coffee-ca3d-piezas: pack de piezas para CoffeeAnimate3D (archivos .ca3d).
 # En las pull requests solo se compila y se prueba. En main (o a mano) se
@@ -287,6 +289,117 @@ jobs:
           prerelease: false
           make_latest: false
           files: coffee-potrace-win64.zip
+
+  latex:
+    name: Motor LaTeX (Tectonic)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Conseguir Tectonic
+        shell: pwsh
+        timeout-minutes: 8
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          $dir = "$env:RUNNER_TEMP\tectonic"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          $v = "0.15.0"
+          Invoke-WebRequest -Uri "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%40$v/tectonic-$v-x86_64-pc-windows-msvc.zip" -OutFile "$dir\t.zip"
+          Expand-Archive "$dir\t.zip" -DestinationPath "$dir\x" -Force
+          $exe = Get-ChildItem "$dir\x" -Recurse -Filter tectonic.exe | Select-Object -First 1
+          if (-not $exe) { throw "No se encontró tectonic.exe" }
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item $exe.FullName dist/
+          Copy-Item addons/coffee-latex/README.md dist/LEEME.md
+          Compress-Archive -Path dist/* -DestinationPath coffee-latex-win64.zip -Force
+          Get-Item coffee-latex-win64.zip | Select-Object Name, Length
+
+      - name: Probar el paquete
+        shell: pwsh
+        timeout-minutes: 8
+        run: |
+          Expand-Archive coffee-latex-win64.zip -DestinationPath "$env:RUNNER_TEMP\latest" -Force
+          & "$env:RUNNER_TEMP\latest\tectonic.exe" --version
+          if ($LASTEXITCODE -ne 0) { throw "Tectonic no arranca" }
+          Copy-Item addons/coffee-latex/test/muestra.tex "$env:RUNNER_TEMP\latest\documento.tex"
+          Push-Location "$env:RUNNER_TEMP\latest"
+          & .\tectonic.exe -X compile --keep-logs documento.tex
+          if ($LASTEXITCODE -ne 0) { throw "Tectonic no pudo compilar la muestra" }
+          Pop-Location
+          if (-not (Test-Path "$env:RUNNER_TEMP\latest\documento.pdf")) { throw "No se generó el PDF" }
+          Write-Host "Compilación correcta"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coffee-latex-win64
+          path: coffee-latex-win64.zip
+
+      - name: Publicar en la versión «addons»
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: addons
+          name: Complementos de CoffeeWorks
+          body: Complementos opcionales que el Launcher descarga desde «Complementos». No hace falta descargarlos a mano.
+          prerelease: false
+          make_latest: false
+          files: coffee-latex-win64.zip
+
+  pandoc:
+    name: Conversor de documentos (Pandoc)
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Conseguir Pandoc
+        shell: pwsh
+        timeout-minutes: 8
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          $dir = "$env:RUNNER_TEMP\pandoc"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          $v = "3.5"
+          Invoke-WebRequest -Uri "https://github.com/jgm/pandoc/releases/download/$v/pandoc-$v-windows-x86_64.zip" -OutFile "$dir\p.zip"
+          Expand-Archive "$dir\p.zip" -DestinationPath "$dir\x" -Force
+          $exe = Get-ChildItem "$dir\x" -Recurse -Filter pandoc.exe | Select-Object -First 1
+          if (-not $exe) { throw "No se encontró pandoc.exe" }
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item $exe.FullName dist/
+          Get-ChildItem $exe.DirectoryName -Filter COPYING* | Copy-Item -Destination dist/
+          Copy-Item addons/coffee-pandoc/README.md dist/LEEME.md
+          Compress-Archive -Path dist/* -DestinationPath coffee-pandoc-win64.zip -Force
+          Get-Item coffee-pandoc-win64.zip | Select-Object Name, Length
+
+      - name: Probar el paquete
+        shell: pwsh
+        timeout-minutes: 3
+        run: |
+          Expand-Archive coffee-pandoc-win64.zip -DestinationPath "$env:RUNNER_TEMP\pantest" -Force
+          $exe = "$env:RUNNER_TEMP\pantest\pandoc.exe"
+          & $exe --version
+          & $exe -f latex -t docx -o "$env:RUNNER_TEMP\out.docx" addons/coffee-latex/test/muestra.tex
+          if ($LASTEXITCODE -ne 0) { throw "Pandoc no pudo convertir la muestra" }
+          $md = & $exe -f latex -t markdown addons/coffee-latex/test/muestra.tex | Out-String
+          if ($md -notmatch 'Caída libre') { throw "La conversión a Markdown no trae el texto" }
+          Write-Host "Conversión correcta"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coffee-pandoc-win64
+          path: coffee-pandoc-win64.zip
+
+      - name: Publicar en la versión «addons»
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: addons
+          name: Complementos de CoffeeWorks
+          body: Complementos opcionales que el Launcher descarga desde «Complementos». No hace falta descargarlos a mano.
+          prerelease: false
+          make_latest: false
+          files: coffee-pandoc-win64.zip
 
   puppetcompat:
     name: Compatibilidad de CoffeePuppet (MediaPipe sin SIMD)

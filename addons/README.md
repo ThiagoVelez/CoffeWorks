@@ -8,6 +8,8 @@ comparten todas las aplicaciones (catálogo en `crates/coffee-core/src/addons.rs
 |---|---|---|
 | `accdb` — Compatibilidad con Access | CoffeeDataBase | `addons/coffee-accdb` (este repositorio) |
 | `ffmpeg` — Motor de video FFmpeg | CoffeeLive | builds públicos de FFmpeg |
+| `latex` — Motor LaTeX | CoffeeLatex, CoffeeConvert | `addons/coffee-latex` (Tectonic oficial) |
+| `pandoc` — Conversor de documentos | CoffeeLatex, CoffeeConvert | `addons/coffee-pandoc` (Pandoc oficial) |
 
 ## coffee-accdb
 

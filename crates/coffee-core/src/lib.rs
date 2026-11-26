@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod addons;
 pub mod commands;
+pub mod docconv;
 pub mod jobs;
 pub mod mcp;
 pub mod spell;
@@ -387,7 +388,10 @@ macro_rules! editor_handler {
             $crate::jobs::core_remove_temp,
             $crate::jobs::core_addon_dir,
             $crate::commands::core_get_theme,
-            $crate::commands::core_set_theme
+            $crate::commands::core_set_theme,
+            $crate::docconv::doc_latex_pdf,
+            $crate::docconv::doc_pandoc,
+            $crate::docconv::doc_herramientas
             $(, $extra)*
         ]
     };

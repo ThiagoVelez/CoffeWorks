@@ -30,6 +30,8 @@ import {
   X,
   ListOrdered,
   FileDown,
+  FileCode2,
+  Sigma,
 } from "lucide-react";
 import JSZip from "jszip";
 import { DialogHost, showMessage, toast } from "./components/Dialogs";
@@ -57,6 +59,13 @@ const TOOL_ICON: Record<string, React.ComponentType<{ size?: number; className?:
   number: Hash,
   watermark: Stamp,
   ocr: ScanText,
+  "latex-pdf": FileDown,
+  "latex-docx": FileText,
+  "latex-html": FileCode2,
+  "latex-md": FileType2,
+  "md-docx": FileText,
+  "md-html": FileCode2,
+  "md-latex": Sigma,
 };
 
 const sizeText = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`);

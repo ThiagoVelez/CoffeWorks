@@ -4,6 +4,7 @@
 
 import { PAINT_TEMPLATES, PHOTO_TEMPLATES, VECTOR_TEMPLATES } from "./artTemplates";
 import { BOOKS_TEMPLATES } from "./booksTemplates";
+import { PLANTILLAS as LATEX_PLANTILLAS } from "../../CoffeeLatex/src/editor/plantillas";
 const uid = (prefix: string) => `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
 export interface ExtraTemplate {
@@ -930,11 +931,17 @@ export function buildExtraTemplate(templateId: string, appId: string, title: str
   if (appId === "coffeephoto" && PHOTO_TEMPLATES[templateId]) return { extension: "cph", prefix: "cph", contents: PHOTO_TEMPLATES[templateId]() };
   if (appId === "coffeevector" && VECTOR_TEMPLATES[templateId]) return { extension: "cvc", prefix: "cvc", contents: VECTOR_TEMPLATES[templateId]() };
   if (appId === "coffeepaint" && PAINT_TEMPLATES[templateId]) return { extension: "cpt", prefix: "cpt", contents: PAINT_TEMPLATES[templateId]() };
+  if (appId === "coffeelatex") {
+    // Las mismas plantillas que muestra CoffeeLatex en su inicio.
+    const p = LATEX_PLANTILLAS.find((x) => `latex-${x.id}` === templateId);
+    if (p) return p.modo === "latex" ? { extension: "tex", prefix: "tex", contents: p.contenido } : { extension: "md", prefix: "md", contents: p.contenido };
+  }
   return null;
 }
 
 /** Para las pruebas: genera todas las plantillas. */
 export const EXTRA_TEMPLATE_IDS = {
+  coffeelatex: LATEX_PLANTILLAS.filter((p) => !p.id.includes("blanco")).map((p) => `latex-${p.id}`),
   coffeepdf: Object.keys(PDF_TEMPLATES),
   coffeepage: Object.keys(PAGE_TEMPLATES),
   coffeebooks: Object.keys(BOOKS_TEMPLATES),

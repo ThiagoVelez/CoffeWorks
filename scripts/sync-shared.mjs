@@ -10,9 +10,9 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 // Carpeta de shared/ → apps que la usan (se copia en src/<carpeta>)
 const GROUPS = {
-  spell: ["CoffeeDoc", "CoffeeView", "CoffeePDF", "CoffeeCalc", "CoffeePage", "CoffeeDataBase"],
-  theme: [".", "CoffeeDoc", "CoffeeBooks", "CoffeeCalc", "CoffeeView", "CoffeePDF", "CoffeeConvert", "CoffeePage", "CoffeeDataBase", "CoffeeUIUX", "CoffeeUML", "CoffeeEdit", "CoffeeLive", "CoffeeDrawTeam"],
-  studio: ["CoffeePhoto", "CoffeeVector", "CoffeePaint", "CoffeeLens", "CoffeeMotion", "CoffeeSound", "CoffeeEncoder", "CoffeeAnimate", "CoffeeAnimate3D", "CoffeePuppet", "CoffeeDrawTeam"],
+  spell: ["CoffeeDoc", "CoffeeView", "CoffeePDF", "CoffeeCalc", "CoffeePage", "CoffeeDataBase", "CoffeeLatex"],
+  theme: [".", "CoffeeDoc", "CoffeeBooks", "CoffeeCalc", "CoffeeView", "CoffeePDF", "CoffeeConvert", "CoffeePage", "CoffeeDataBase", "CoffeeUIUX", "CoffeeUML", "CoffeeEdit", "CoffeeLive", "CoffeeDrawTeam", "CoffeeLatex"],
+  studio: ["CoffeePhoto", "CoffeeVector", "CoffeePaint", "CoffeeLens", "CoffeeMotion", "CoffeeSound", "CoffeeEncoder", "CoffeeAnimate", "CoffeeAnimate3D", "CoffeePuppet", "CoffeeDrawTeam", "CoffeeLatex"],
 };
 const check = process.argv.includes("--check");
 let stale = 0;

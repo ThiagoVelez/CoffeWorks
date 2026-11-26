@@ -28,11 +28,12 @@ members = [
   "CoffeeAnimate3D/src-tauri",
   "CoffeeConvert/src-tauri",
   "CoffeeDrawTeam/src-tauri",
+  "CoffeeLatex/src-tauri",
   "CoffeePuppet/src-tauri",
 ]
 
 [workspace.package]
-version = "2.15.0"
+version = "2.16.0"
 authors = ["CoffeeWorks OpenSource Team"]
 edition = "2021"
 

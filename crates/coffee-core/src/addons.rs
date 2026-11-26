@@ -196,6 +196,34 @@ pub const ADDONS: &[CatalogAddon] = &[
         downloads: &[],
         manual_hint: "Instala LibreOffice desde https://www.libreoffice.org/download (gratis) y vuelve a CoffeeConvert: se detecta solo.",
     },
+    CatalogAddon {
+        id: "latex",
+        name: "Motor LaTeX",
+        summary: "Compila documentos LaTeX a PDF en CoffeeLatex y CoffeeConvert",
+        description: "Convierte los documentos de CoffeeLatex en un PDF con el aspecto de LaTeX: fórmulas, ecuaciones numeradas, tablas, figuras y referencias. En Windows es Tectonic, que la primera vez descarga de internet los paquetes que el documento usa y después funciona sin conexión. En Linux se instala TeX Live (XeLaTeX) con los paquetes de español y de ciencias.",
+        apps: &["coffeelatex", "coffeeconvert"],
+        version: "0.15",
+        download_size: "~25 MB (Windows) · ~400 MB (Linux, TeX Live)",
+        publisher: "Proyecto Tectonic · TeX Live",
+        license: "MIT (Tectonic) · LPPL (TeX Live)",
+        executable: "tectonic",
+        downloads: &["https://github.com/ThiagoVelez/CoffeWorks/releases/download/addons/coffee-latex-win64.zip"],
+        manual_hint: "Instala TeX Live con el gestor de paquetes del sistema: sudo apt install texlive-xetex texlive-lang-spanish texlive-science",
+    },
+    CatalogAddon {
+        id: "pandoc",
+        name: "Conversor de documentos (Pandoc)",
+        summary: "Convierte LaTeX y Markdown a Word, ODT, HTML y entre sí, conservando las fórmulas",
+        description: "CoffeeLatex lo usa para exportar a Word (.docx), OpenDocument (.odt) y para pasar de LaTeX a Markdown y al revés. CoffeeConvert lo usa en los apartados «Desde LaTeX» y «Desde Markdown». Las fórmulas se convierten en ecuaciones editables de Word.",
+        apps: &["coffeelatex", "coffeeconvert"],
+        version: "3.x",
+        download_size: "~40 MB",
+        publisher: "John MacFarlane y colaboradores",
+        license: "GPL-2.0",
+        executable: "pandoc",
+        downloads: &["https://github.com/ThiagoVelez/CoffeWorks/releases/download/addons/coffee-pandoc-win64.zip"],
+        manual_hint: "Instala Pandoc con el gestor de paquetes del sistema: sudo apt install pandoc",
+    },
 ];
 
 /// Dónde está LibreOffice en Windows (se usa el instalado en el equipo).
@@ -205,7 +233,10 @@ fn windows_soffice() -> Option<PathBuf> {
         .filter_map(|v| std::env::var_os(v).map(PathBuf::from))
         .collect();
     roots.push(PathBuf::from(r"C:\Program Files"));
-    roots.into_iter().map(|r| r.join("LibreOffice").join("program").join("soffice.exe")).find(|p| p.is_file())
+    roots
+        .into_iter()
+        .map(|r| r.join("LibreOffice").join("program").join("soffice.exe"))
+        .find(|p| p.is_file())
 }
 
 /// Archivo que marca como activado un complemento de servicio.
@@ -253,9 +284,17 @@ pub fn addon_executable(id: &str) -> Option<PathBuf> {
     if cfg!(windows) || is_data_file(addon.executable) {
         return None;
     }
+    // En Linux el «Motor LaTeX» es el XeLaTeX de TeX Live (Tectonic no está en apt).
+    let alternativos: &[&str] = if addon.id == "latex" {
+        &["xelatex"]
+    } else {
+        &[]
+    };
     std::env::var_os("PATH").and_then(|paths| {
-        std::env::split_paths(&paths)
-            .map(|dir| dir.join(addon.executable))
+        let dirs: Vec<PathBuf> = std::env::split_paths(&paths).collect();
+        std::iter::once(addon.executable)
+            .chain(alternativos.iter().copied())
+            .flat_map(|exe| dirs.iter().map(move |dir| dir.join(exe)))
             .find(|candidate| candidate.is_file())
     })
 }
@@ -311,8 +350,15 @@ pub fn addon_info(addon: &CatalogAddon) -> AddonInfo {
         publisher: addon.publisher.into(),
         license: addon.license.into(),
         installed,
-        installed_bytes: if installed { dir_size(&addons_dir().join(addon.id)) } else { 0 },
-        can_install: (cfg!(windows) && !addon.downloads.is_empty()) || addon.executable.is_empty() || is_data_file(addon.executable) || !linux_packages(addon.id).is_empty(),
+        installed_bytes: if installed {
+            dir_size(&addons_dir().join(addon.id))
+        } else {
+            0
+        },
+        can_install: (cfg!(windows) && !addon.downloads.is_empty())
+            || addon.executable.is_empty()
+            || is_data_file(addon.executable)
+            || !linux_packages(addon.id).is_empty(),
         manual_hint: addon.manual_hint.into(),
     }
 }
@@ -343,7 +389,14 @@ pub fn ps_quote(value: &str) -> String {
 pub fn powershell_command(script: &str) -> Command {
     let mut cmd = Command::new("powershell");
     hidden(&mut cmd)
-        .args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script])
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            script,
+        ])
         .env_remove("PSModulePath")
         .stdin(Stdio::null());
     cmd
@@ -372,13 +425,17 @@ pub fn ps_unzip_script(zip: &str, dest: &str) -> String {
 /// Ejecuta un script de PowerShell oculto y devuelve su salida.
 pub fn run_powershell(script: &str) -> Result<String, String> {
     let output = powershell_command(script)
-    .output()
-    .map_err(|e| format!("No se pudo iniciar PowerShell: {e}"))?;
+        .output()
+        .map_err(|e| format!("No se pudo iniciar PowerShell: {e}"))?;
     if output.status.success() {
         Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
     } else {
         let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        Err(err.lines().last().unwrap_or("Error desconocido").to_string())
+        Err(err
+            .lines()
+            .last()
+            .unwrap_or("Error desconocido")
+            .to_string())
     }
 }
 
@@ -389,7 +446,13 @@ pub fn linux_packages(id: &str) -> &'static [&'static str] {
         "pdfcheck" => &["tesseract-ocr", "tesseract-ocr-spa", "tesseract-ocr-eng"],
         "raw" => &["libraw-bin"],
         "potrace" => &["potrace"],
-        "officeconv" => &["libreoffice-writer", "libreoffice-calc", "libreoffice-impress"],
+        "officeconv" => &[
+            "libreoffice-writer",
+            "libreoffice-calc",
+            "libreoffice-impress",
+        ],
+        "latex" => &["texlive-xetex", "texlive-lang-spanish", "texlive-science"],
+        "pandoc" => &["pandoc"],
         _ => &[],
     }
 }
@@ -408,7 +471,11 @@ fn apt_install(packages: &[&str]) -> Result<(), String> {
         Err("Se canceló la instalación (no se dio la contraseña).".into())
     } else {
         let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        Err(format!("apt no pudo instalar {}: {}", packages.join(", "), err.lines().last().unwrap_or("error desconocido")))
+        Err(format!(
+            "apt no pudo instalar {}: {}",
+            packages.join(", "),
+            err.lines().last().unwrap_or("error desconocido")
+        ))
     }
 }
 
@@ -425,7 +492,10 @@ pub fn download_file(url: &str, target: &Path) -> Result<(), String> {
         return if output.status.success() {
             Ok(())
         } else {
-            Err(format!("No se pudo descargar {url}: {}", String::from_utf8_lossy(&output.stderr).trim()))
+            Err(format!(
+                "No se pudo descargar {url}: {}",
+                String::from_utf8_lossy(&output.stderr).trim()
+            ))
         };
     }
     let script = format!(
@@ -435,7 +505,9 @@ pub fn download_file(url: &str, target: &Path) -> Result<(), String> {
         url = ps_quote(url),
         out = ps_quote(&target.to_string_lossy()),
     );
-    run_powershell(&script).map(|_| ()).map_err(|e| format!("No se pudo descargar {url}: {e}"))
+    run_powershell(&script)
+        .map(|_| ())
+        .map_err(|e| format!("No se pudo descargar {url}: {e}"))
 }
 
 /// Descarga e instala un complemento. Prueba cada descarga en orden.
@@ -444,27 +516,37 @@ pub fn install_addon(id: &str) -> Result<AddonInfo, String> {
     if addon.executable.is_empty() {
         // Complemento de servicio: solo se activa
         let dir = addons_dir().join(addon.id);
-        fs::create_dir_all(&dir).map_err(|e| format!("No se pudo activar «{}»: {e}", addon.name))?;
+        fs::create_dir_all(&dir)
+            .map_err(|e| format!("No se pudo activar «{}»: {e}", addon.name))?;
         fs::write(dir.join(SERVICE_MARKER), addon.description)
             .map_err(|e| format!("No se pudo activar «{}»: {e}", addon.name))?;
         return Ok(addon_info(addon));
     }
     // Programas que se usan ya instalados en Windows (LibreOffice): solo se comprueban.
     if cfg!(windows) && addon.downloads.is_empty() {
-        return if addon_executable(addon.id).is_some() { Ok(addon_info(addon)) } else { Err(addon.manual_hint.to_string()) };
+        return if addon_executable(addon.id).is_some() {
+            Ok(addon_info(addon))
+        } else {
+            Err(addon.manual_hint.to_string())
+        };
     }
     if !cfg!(windows) {
         // Linux: los programas vienen de apt; los complementos de datos se descargan
         let packages = linux_packages(addon.id);
         if !packages.is_empty() {
             apt_install(packages)?;
-            return if addon_executable(addon.id).is_some() { Ok(addon_info(addon)) } else { Err(addon.manual_hint.to_string()) };
+            return if addon_executable(addon.id).is_some() {
+                Ok(addon_info(addon))
+            } else {
+                Err(addon.manual_hint.to_string())
+            };
         }
         if !is_data_file(addon.executable) {
             return Err(addon.manual_hint.to_string());
         }
         let target_dir = addons_dir().join(addon.id);
-        fs::create_dir_all(&target_dir).map_err(|e| format!("No se pudo preparar la carpeta: {e}"))?;
+        fs::create_dir_all(&target_dir)
+            .map_err(|e| format!("No se pudo preparar la carpeta: {e}"))?;
         let zip = std::env::temp_dir().join(format!("coffeeworks-addon-{}.zip", addon.id));
         let mut last = String::new();
         for url in addon.downloads {
@@ -472,10 +554,18 @@ pub fn install_addon(id: &str) -> Result<AddonInfo, String> {
                 last = e;
                 continue;
             }
-            let out = Command::new("unzip").args(["-o", "-j", "-q"]).arg(&zip).arg("-d").arg(&target_dir).stdin(Stdio::null()).output();
+            let out = Command::new("unzip")
+                .args(["-o", "-j", "-q"])
+                .arg(&zip)
+                .arg("-d")
+                .arg(&target_dir)
+                .stdin(Stdio::null())
+                .output();
             let _ = fs::remove_file(&zip);
             match out {
-                Ok(o) if o.status.success() && addon_executable(addon.id).is_some() => return Ok(addon_info(addon)),
+                Ok(o) if o.status.success() && addon_executable(addon.id).is_some() => {
+                    return Ok(addon_info(addon))
+                }
                 Ok(o) => last = String::from_utf8_lossy(&o.stderr).trim().to_string(),
                 Err(e) => last = format!("No se pudo ejecutar unzip: {e}"),
             }
@@ -508,8 +598,8 @@ pub fn install_addon(id: &str) -> Result<AddonInfo, String> {
             unzip = ps_unzip_script(&zip.to_string_lossy(), &unpack.to_string_lossy()),
         );
         let output = powershell_command(&script)
-        .output()
-        .map_err(|e| format!("No se pudo iniciar PowerShell: {e}"))?;
+            .output()
+            .map_err(|e| format!("No se pudo iniciar PowerShell: {e}"))?;
         let _ = fs::remove_file(&zip);
         let _ = fs::remove_dir_all(&unpack);
         if output.status.success() && target_dir.join(&exe).is_file() {
@@ -529,7 +619,10 @@ pub fn uninstall_addon(id: &str) -> Result<AddonInfo, String> {
     let dir = addons_dir().join(addon.id);
     if dir.exists() {
         fs::remove_dir_all(&dir).map_err(|e| {
-            format!("No se pudo quitar «{}» (¿se está usando ahora mismo?): {e}", addon.name)
+            format!(
+                "No se pudo quitar «{}» (¿se está usando ahora mismo?): {e}",
+                addon.name
+            )
         })?;
     }
     Ok(addon_info(addon))
@@ -543,17 +636,37 @@ pub fn run_addon(id: &str, args: &[String], input: Option<&str>) -> Result<Strin
 
 /// Como [`run_addon`], pero con una entrada binaria (por ejemplo, una imagen)
 /// que se guarda con la extensión indicada.
-pub fn run_addon_with(id: &str, args: &[String], input: Option<&[u8]>, extension: &str) -> Result<String, String> {
+pub fn run_addon_with(
+    id: &str,
+    args: &[String],
+    input: Option<&[u8]>,
+    extension: &str,
+) -> Result<String, String> {
     let addon = find_addon(id).ok_or_else(|| format!("Complemento desconocido: {id}"))?;
-    let exe = addon_executable(id).ok_or_else(|| format!("El complemento «{}» no está instalado.", addon.name))?;
-    let extension: String = extension.chars().filter(|c| c.is_ascii_alphanumeric()).take(8).collect();
-    let input_path = std::env::temp_dir().join(format!("coffeeworks-{}-{}.{}", addon.id, crate::now_millis(), extension));
+    let exe = addon_executable(id)
+        .ok_or_else(|| format!("El complemento «{}» no está instalado.", addon.name))?;
+    let extension: String = extension
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .take(8)
+        .collect();
+    let input_path = std::env::temp_dir().join(format!(
+        "coffeeworks-{}-{}.{}",
+        addon.id,
+        crate::now_millis(),
+        extension
+    ));
     if let Some(data) = input {
-        fs::write(&input_path, data).map_err(|e| format!("No se pudo preparar el archivo temporal: {e}"))?;
+        fs::write(&input_path, data)
+            .map_err(|e| format!("No se pudo preparar el archivo temporal: {e}"))?;
     }
     let path_text = input_path.to_string_lossy().to_string();
     // `{output}`: el programa escribe un archivo y se devuelve su contenido en base64
-    let output_path = std::env::temp_dir().join(format!("coffeeworks-{}-{}-out", addon.id, crate::now_millis()));
+    let output_path = std::env::temp_dir().join(format!(
+        "coffeeworks-{}-{}-out",
+        addon.id,
+        crate::now_millis()
+    ));
     let wants_output = args.iter().any(|a| a.contains("{output}"));
     // `{stdout-base64}`: no se pasa al programa; su salida estándar se devuelve en base64
     let stdout_binary = args.iter().any(|a| a == "{stdout-base64}");
@@ -561,13 +674,20 @@ pub fn run_addon_with(id: &str, args: &[String], input: Option<&[u8]>, extension
     let args: Vec<String> = args
         .iter()
         .filter(|a| *a != "{stdout-base64}")
-        .map(|a| a.replace("{input}", &path_text).replace("{output}", &out_text))
+        .map(|a| {
+            a.replace("{input}", &path_text)
+                .replace("{output}", &out_text)
+        })
         .collect();
     let mut command = Command::new(&exe);
     // Los datos que acompañan al programa (p. ej., los idiomas del OCR) van a su lado.
     if let Some(dir) = exe.parent() {
         let has_data = fs::read_dir(dir)
-            .map(|entries| entries.flatten().any(|e| e.path().extension().is_some_and(|x| x == "traineddata")))
+            .map(|entries| {
+                entries
+                    .flatten()
+                    .any(|e| e.path().extension().is_some_and(|x| x == "traineddata"))
+            })
             .unwrap_or(false);
         if has_data {
             command.env("TESSDATA_PREFIX", dir);
@@ -581,7 +701,8 @@ pub fn run_addon_with(id: &str, args: &[String], input: Option<&[u8]>, extension
     let output = output?;
     if output.status.success() && wants_output {
         use base64::Engine as _;
-        let bytes = fs::read(&output_path).map_err(|_| format!("«{}» no generó ningún resultado.", addon.name))?;
+        let bytes = fs::read(&output_path)
+            .map_err(|_| format!("«{}» no generó ningún resultado.", addon.name))?;
         let _ = fs::remove_file(&output_path);
         Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
     } else if output.status.success() && stdout_binary {
@@ -592,7 +713,11 @@ pub fn run_addon_with(id: &str, args: &[String], input: Option<&[u8]>, extension
     } else {
         let _ = fs::remove_file(&output_path);
         let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        Err(if err.is_empty() { format!("«{}» terminó con un error.", addon.name) } else { err })
+        Err(if err.is_empty() {
+            format!("«{}» terminó con un error.", addon.name)
+        } else {
+            err
+        })
     }
 }
 
@@ -605,7 +730,9 @@ mod tests {
         // Si se hereda PSModulePath de PowerShell 7, Windows PowerShell carga un
         // Expand-Archive incompatible (MethodCountCouldNotFindBest).
         let cmd = powershell_command("Write-Output 1");
-        assert!(cmd.get_envs().any(|(k, v)| k == "PSModulePath" && v.is_none()));
+        assert!(cmd
+            .get_envs()
+            .any(|(k, v)| k == "PSModulePath" && v.is_none()));
         assert_eq!(cmd.get_program(), "powershell");
     }
 
@@ -614,7 +741,10 @@ mod tests {
         let s = ps_unzip_script("C:\\tmp\\a.zip", "C:\\tmp\\destino");
         assert!(!s.contains("Expand-Archive"));
         assert!(s.contains("System.IO.Compression"));
-        assert!(s.contains("StartsWith"), "comprueba que nada se escriba fuera del destino");
+        assert!(
+            s.contains("StartsWith"),
+            "comprueba que nada se escriba fuera del destino"
+        );
         assert!(s.contains("'C:\\tmp\\a.zip'") && s.contains("'C:\\tmp\\destino'"));
     }
 
