@@ -209,8 +209,23 @@ export const App: React.FC = () => {
   });
 
   const exportarHtmlArchivo = () => trabajo("Exportando a HTML…", async () => {
-    const cuerpo = hoja.current?.innerHTML ?? vista.html;
-    const html = exportarHtml(d.titulo, cuerpo.replace(/ src="blob:[^"]*"/g, ""));
+    // Las imágenes de las figuras van dentro del archivo (data:), para que se vea igual en otro equipo.
+    const copia = document.createElement("div");
+    copia.innerHTML = hoja.current?.innerHTML ?? vista.html;
+    for (const img of Array.from(copia.querySelectorAll<HTMLImageElement>("img[src^='blob:']"))) {
+      try {
+        const blob = await (await fetch(img.getAttribute("src")!)).blob();
+        img.src = await new Promise<string>((ok, mal) => {
+          const r = new FileReader();
+          r.onload = () => ok(String(r.result));
+          r.onerror = () => mal(r.error);
+          r.readAsDataURL(blob);
+        });
+      } catch {
+        img.removeAttribute("src");
+      }
+    }
+    const html = exportarHtml(d.titulo, copia.innerHTML);
     const ruta = await saveFileAs(`${nombreBase}.html`, [{ name: "Página web", extensions: ["html"] }], html, "Exportar a HTML");
     if (ruta !== null) toast("Exportado a HTML");
   });

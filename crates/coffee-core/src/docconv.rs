@@ -63,6 +63,34 @@ pub fn pandoc() -> Option<PathBuf> {
     addon_executable("pandoc").or_else(|| en_path("pandoc"))
 }
 
+/// Versión «mayor.menor» de la primera línea de `pandoc --version` («pandoc 3.1.3»).
+fn version_pandoc(salida: &str) -> Option<(u32, u32)> {
+    let v = salida.lines().next()?.split_whitespace().nth(1)?;
+    let mut partes = v.split('.').map(|p| p.parse::<u32>().ok());
+    Some((partes.next()??, partes.next().flatten().unwrap_or(0)))
+}
+
+/// `--sandbox` (Pandoc 2.15 o posterior) impide que el documento lea otros archivos del equipo.
+fn admite_sandbox(exe: &Path) -> bool {
+    static CACHE: std::sync::OnceLock<std::sync::Mutex<std::collections::HashMap<PathBuf, bool>>> =
+        std::sync::OnceLock::new();
+    let cache = CACHE.get_or_init(Default::default);
+    if let Some(v) = cache.lock().ok().and_then(|c| c.get(exe).copied()) {
+        return v;
+    }
+    let mut cmd = Command::new(exe);
+    cmd.arg("--version").stdin(Stdio::null());
+    let v = hidden(&mut cmd)
+        .output()
+        .ok()
+        .and_then(|o| version_pandoc(&String::from_utf8_lossy(&o.stdout)))
+        .is_some_and(|v| v >= (2, 15));
+    if let Ok(mut c) = cache.lock() {
+        c.insert(exe.to_path_buf(), v);
+    }
+    v
+}
+
 /// Carpeta temporal propia que se borra al terminar.
 struct Temporal(PathBuf);
 
@@ -206,42 +234,70 @@ pub fn convertir_pandoc(entrada: &[u8], desde: &str, hacia: &str) -> Result<Vec<
     let entrada_ruta = tmp.0.join(format!("entrada.{}", ext(desde)));
     let salida_ruta = tmp.0.join(format!("salida.{}", ext(hacia)));
     fs::write(&entrada_ruta, entrada).map_err(|e| e.to_string())?;
-    let mut cmd = Command::new(exe);
-    cmd.arg("-f")
-        .arg(desde)
-        .arg("-t")
-        .arg(hacia)
-        .arg("-o")
-        .arg(&salida_ruta);
-    match hacia {
-        "html" => {
-            cmd.args([
-                "--standalone",
-                "--mathml",
-                "--metadata",
-                "pagetitle=Documento",
-            ]);
+    let sandbox = admite_sandbox(&exe);
+    // Word y ODT: en algunos sistemas (Debian) Pandoc no puede leer sus propias plantillas en modo
+    // aislado. Se lee el documento aislado a JSON y después se escribe el archivo sin aislar.
+    let (lector_desde, lector_hacia, lector_salida) = if sandbox && matches!(hacia, "docx" | "odt")
+    {
+        ("json_intermedio", "json", tmp.0.join("intermedio.json"))
+    } else {
+        ("", hacia, salida_ruta.clone())
+    };
+    let ejecutar = |args: &mut dyn FnMut(&mut Command)| -> Result<(), String> {
+        let mut cmd = Command::new(&exe);
+        args(&mut cmd);
+        cmd.current_dir(&tmp.0).stdin(Stdio::null());
+        let out = hidden(&mut cmd)
+            .output()
+            .map_err(|e| format!("No se pudo ejecutar Pandoc: {e}"))?;
+        if out.status.success() {
+            Ok(())
+        } else {
+            let msg = String::from_utf8_lossy(&out.stderr).trim().to_string();
+            Err(if msg.is_empty() {
+                "Pandoc no pudo convertir el documento.".into()
+            } else {
+                format!("Pandoc: {msg}")
+            })
         }
-        "latex" => {
-            cmd.arg("--standalone");
+    };
+    ejecutar(&mut |cmd| {
+        if sandbox {
+            cmd.arg("--sandbox");
         }
-        _ => {}
+        cmd.arg("-f")
+            .arg(desde)
+            .arg("-t")
+            .arg(lector_hacia)
+            .arg("-o")
+            .arg(&lector_salida);
+        match lector_hacia {
+            "html" => {
+                cmd.args([
+                    "--standalone",
+                    "--mathml",
+                    "--metadata",
+                    "pagetitle=Documento",
+                ]);
+            }
+            "latex" => {
+                cmd.arg("--standalone");
+            }
+            _ => {}
+        }
+        cmd.arg(&entrada_ruta);
+    })?;
+    if !lector_desde.is_empty() {
+        ejecutar(&mut |cmd| {
+            cmd.args(["-f", "json", "-t", hacia, "-o"])
+                .arg(&salida_ruta)
+                .arg(&lector_salida);
+        })?;
     }
-    cmd.arg(&entrada_ruta)
-        .current_dir(&tmp.0)
-        .stdin(Stdio::null());
-    let out = hidden(&mut cmd)
-        .output()
-        .map_err(|e| format!("No se pudo ejecutar Pandoc: {e}"))?;
-    if out.status.success() && salida_ruta.is_file() {
+    if salida_ruta.is_file() {
         fs::read(&salida_ruta).map_err(|e| e.to_string())
     } else {
-        let msg = String::from_utf8_lossy(&out.stderr).trim().to_string();
-        Err(if msg.is_empty() {
-            "Pandoc no pudo convertir el documento.".into()
-        } else {
-            format!("Pandoc: {msg}")
-        })
+        Err("Pandoc no pudo convertir el documento.".into())
     }
 }
 
@@ -318,6 +374,47 @@ mod tests {
             String::from_utf8(convertir_pandoc(b"# T\n\n$E=mc^2$\n", "markdown", "latex").unwrap())
                 .unwrap();
         assert!(tex.contains("\\begin{document}"));
+    }
+
+    #[test]
+    fn pandoc_no_lee_archivos_del_equipo() {
+        if pandoc().is_none() {
+            eprintln!("sin pandoc: se omite");
+            return;
+        }
+        let tmp = Temporal::nueva("secreto").unwrap();
+        let secreto = tmp.0.join("secreto.tex");
+        fs::write(&secreto, "SECRETO123").unwrap();
+        let ruta = secreto.to_string_lossy().replace('\\', "/");
+        let tex = format!("\\documentclass{{article}}\n\\begin{{document}}\nAntes\n\\input{{{ruta}}}\n\\end{{document}}\n");
+        let md = convertir_pandoc(tex.as_bytes(), "latex", "markdown")
+            .map(|b| String::from_utf8_lossy(&b).to_string())
+            .unwrap_or_default();
+        assert!(!md.contains("SECRETO123"), "{md}");
+        // Word: se lee de vuelta con Pandoc para buscar el texto.
+        let docx = convertir_pandoc(tex.as_bytes(), "latex", "docx").unwrap();
+        let ruta_docx = tmp.0.join("salida.docx");
+        fs::write(&ruta_docx, docx).unwrap();
+        let texto = Command::new(pandoc().unwrap())
+            .args(["-f", "docx", "-t", "plain"])
+            .arg(&ruta_docx)
+            .output()
+            .unwrap();
+        let texto = String::from_utf8_lossy(&texto.stdout);
+        assert!(
+            texto.contains("Antes") && !texto.contains("SECRETO123"),
+            "{texto}"
+        );
+    }
+
+    #[test]
+    fn lee_la_version_de_pandoc() {
+        assert_eq!(
+            version_pandoc("pandoc 3.1.3\nFeatures: +server"),
+            Some((3, 1))
+        );
+        assert_eq!(version_pandoc("pandoc.exe 2.9.2.1"), Some((2, 9)));
+        assert_eq!(version_pandoc(""), None);
     }
 
     #[test]

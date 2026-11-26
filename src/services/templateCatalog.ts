@@ -12,6 +12,7 @@ export const APP_STYLE: Record<string, { name: string; color: string; bg: string
   coffeepdf: { name: "CoffeePDF", color: "#c62828", bg: "#fdecea" },
   coffeepage: { name: "CoffeePage", color: "#7b1fa2", bg: "#f3e5f5" },
   coffeebooks: { name: "CoffeeBooks", color: "#2f2f2f", bg: "#f1f1ef" },
+  coffeelatex: { name: "CoffeeLatex", color: "#0d5e6f", bg: "#dcf0f3" },
   coffeedatabase: { name: "CoffeeDataBase", color: "#9b111e", bg: "#fbe9eb" },
   coffeeedit: { name: "CoffeeEdit", color: "#26a680", bg: "#e3f6ef" },
   coffeelive: { name: "CoffeeLive", color: "#ef6c00", bg: "#fff1e5" },
@@ -215,6 +216,36 @@ ${table(["Concepto", "Valor"], [["Personal", ""], ["Equipos y licencias", ""], [
     category: "Eventos & Educación",
     description: "Certificado con marco decorativo, nombre del participante, texto del evento, firmas y fecha. Complétalo y fírmalo en CoffeePDF.",
     features: ["Marco doble en color", "Espacios para nombre, horas y fechas", "Dos firmas"],
+  }),
+
+  // --- CoffeeLatex ---
+  item("coffeelatex", {
+    id: "latex-informe",
+    title: "Informe de Laboratorio (LaTeX)",
+    category: "Eventos & Educación",
+    description: "Informe de física con objetivos, marco teórico con ecuación numerada, procedimiento, tabla de resultados y conclusiones. Se exporta a PDF con el aspecto de LaTeX.",
+    features: ["Ecuaciones numeradas y referencias", "Tabla de mediciones", "Unidades con siunitx"],
+  }),
+  item("coffeelatex", {
+    id: "latex-taller",
+    title: "Taller de Ejercicios Resueltos",
+    category: "Eventos & Educación",
+    description: "Enunciados de cinemática y dinámica con su solución paso a paso, fórmulas alineadas y unidades.",
+    features: ["Soluciones con align", "Fracciones y unidades", "Listo para agregar ejercicios"],
+  }),
+  item("coffeelatex", {
+    id: "latex-articulo",
+    title: "Artículo Científico",
+    category: "Eventos & Educación",
+    description: "Título, autores, resumen, secciones de introducción, método, resultados y conclusiones, y bibliografía con citas numeradas.",
+    features: ["Resumen y secciones", "Citas [n] y bibliografía", "Ecuaciones numeradas"],
+  }),
+  item("coffeelatex", {
+    id: "latex-md-notas",
+    title: "Notas de Clase con Fórmulas (Markdown)",
+    category: "Eventos & Educación",
+    description: "Apuntes en Markdown con títulos, listas y fórmulas $…$ y $$…$$ de movimiento rectilíneo.",
+    features: ["Markdown sencillo", "Fórmulas en línea y aparte", "Exporta a Word o PDF"],
   }),
 
   // --- CoffeeBooks ---
