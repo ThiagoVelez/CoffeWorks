@@ -22,19 +22,25 @@ export async function crearTransporteNativo(modo: "anfitrion" | "invitado", sala
   const entrar: ((p: string) => void)[] = [];
   const salir: ((p: string) => void)[] = [];
   const estado: ((e: EstadoRed) => void)[] = [];
+  // Lo que llega antes de que la sesión se suscriba no se pierde.
+  const pendientes: (() => void)[] = [];
+  let ultimoEstado: EstadoRed | null = null;
+  let listo = false;
+  const entregar = (_lista: unknown[], f: () => void) => (listo ? f() : pendientes.push(f));
   const quitar: UnlistenFn[] = await Promise.all([
     listen<{ peer: string; datos: string }>("red:dato", (e) => {
       const d = deBase64(e.payload.datos);
-      recibir.forEach((f) => f(e.payload.peer, d));
+      entregar(recibir, () => recibir.forEach((f) => f(e.payload.peer, d)));
     }),
-    listen<{ peer: string }>("red:entra", (e) => entrar.forEach((f) => f(e.payload.peer))),
-    listen<{ peer: string }>("red:sale", (e) => salir.forEach((f) => f(e.payload.peer))),
+    listen<{ peer: string }>("red:entra", (e) => entregar(entrar, () => entrar.forEach((f) => f(e.payload.peer)))),
+    listen<{ peer: string }>("red:sale", (e) => entregar(salir, () => salir.forEach((f) => f(e.payload.peer)))),
     listen<{ estado: string; mensaje?: string | null }>("red:estado", (e) => {
       const { estado: tipo, mensaje } = e.payload;
       const ev: EstadoRed =
         tipo === "error" ? { tipo: "error", mensaje: mensaje || "Error de conexión" } :
         tipo === "conectado" ? { tipo: "conectado" } :
         tipo === "cerrado" ? { tipo: "cerrado" } : { tipo: "conectando" };
+      ultimoEstado = ev;
       estado.forEach((f) => f(ev));
     }),
   ]);
@@ -44,6 +50,11 @@ export async function crearTransporteNativo(modo: "anfitrion" | "invitado", sala
     quitar.forEach((q) => q());
     throw new Error(String(e));
   }
+  // La sesión se suscribe justo después de recibir el transporte; entonces se entrega lo guardado.
+  setTimeout(() => {
+    listo = true;
+    pendientes.splice(0).forEach((f) => f());
+  }, 0);
   return {
     enviar(destino, datos) {
       void invoke("red_enviar", { destino: destino === "todos" ? null : destino, datos: aBase64(datos) });
@@ -51,7 +62,10 @@ export async function crearTransporteNativo(modo: "anfitrion" | "invitado", sala
     alRecibir: (cb) => void recibir.push(cb),
     alEntrar: (cb) => void entrar.push(cb),
     alSalir: (cb) => void salir.push(cb),
-    alEstado: (cb) => void estado.push(cb),
+    alEstado: (cb) => {
+      estado.push(cb);
+      if (ultimoEstado) cb(ultimoEstado);
+    },
     cortar: (peer) => void invoke("red_cortar", { peer }),
     cambiarSala: (s, c) => invoke("red_cambiar_sala", { sala: s, clave: c }),
     cerrar() {

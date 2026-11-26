@@ -199,8 +199,13 @@ export function Lienzo(p: Props) {
         }
       }
     };
+    const desdeBoton = (e: Event) => void insertarImagen((e as CustomEvent<File>).detail);
     window.addEventListener("paste", pegar);
-    return () => window.removeEventListener("paste", pegar);
+    window.addEventListener("cdt-insertar-imagen", desdeBoton);
+    return () => {
+      window.removeEventListener("paste", pegar);
+      window.removeEventListener("cdt-insertar-imagen", desdeBoton);
+    };
   }, [insertarImagen, editando]);
 
   // ---- Teclado ----
@@ -255,6 +260,8 @@ export function Lienzo(p: Props) {
       return;
     }
     if (e.button !== 0) return;
+    // Sin esto, el clic le quita el foco al cuadro de texto que se acaba de abrir.
+    e.preventDefault();
     setEditando(null);
     const pt = puntoDe(e);
     const bajo = elementoBajo(e);
