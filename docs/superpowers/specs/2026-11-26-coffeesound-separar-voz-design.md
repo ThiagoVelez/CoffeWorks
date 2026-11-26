@@ -41,7 +41,7 @@ El usuario quiere, en CoffeeSound, **separar una canción en voz y música** y, 
 ### Complementos (catálogo en `coffee-core/src/addons.rs`, armados por `addons.yml`)
 
 - `separarvoz` «Separar voz y música» (~65 MB): `UVR-MDX-NET-Voc_FT.onnx` de la versión `all_public_uvr_models` del repositorio de modelos de UVR (descargable desde GitHub), con su huella SHA-256 y su licencia. Complemento de datos, el mismo zip en Windows y Linux.
-- `letra` «Letra de canciones» (~250 MB): Whisper **small** multilingüe en ONNX con pesos int8, de `sherpa-onnx` (`asr-models`: `small-encoder.int8.onnx`, `small-decoder.int8.onnx`, `small-tokens.txt`), licencias MIT (Whisper) y Apache-2.0 (sherpa-onnx).
+- `letra` «Letra de canciones» (~375 MB): Whisper **small** multilingüe en ONNX con pesos int8, de `sherpa-onnx` (`asr-models`: `small-encoder.int8.onnx`, `small-decoder.int8.onnx`, `small-tokens.txt`), licencias MIT (Whisper) y Apache-2.0 (sherpa-onnx).
 - Los modelos se entregan a la app en binario con un comando nativo con lista blanca (como `doc_ocr_modelo`).
 
 ### Separación (MDX-Net)
