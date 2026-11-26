@@ -7,6 +7,7 @@ import { canvasBytes, openPdf, readPages, renderPage } from "./pdfReader";
 import { toEmbeddable } from "./media";
 import { ocrImage, officeToPdf } from "./native";
 import { outputName, parseRanges } from "./ranges";
+import { DOC_GROUPS, DOC_TOOLS } from "./docTools";
 
 export interface InputFile {
   name: string;
@@ -18,7 +19,7 @@ export interface OutputFile {
   bytes: Uint8Array;
 }
 
-export type Group = "desde" | "hacia" | "organizar" | "ocr";
+export type Group = "desde" | "hacia" | "latex" | "markdown" | "organizar" | "ocr";
 
 export interface OptionDef {
   id: string;
@@ -42,13 +43,14 @@ export interface Tool {
   min?: number;
   options?: OptionDef[];
   /** Complemento necesario (se comprueba antes de convertir). */
-  addon?: "officeconv" | "pdfcheck";
+  addon?: "officeconv" | "pdfcheck" | "latex" | "pandoc";
   run: (files: InputFile[], opts: Record<string, string>, progress: (f: number, label: string) => void) => Promise<OutputFile[]>;
 }
 
 export const GROUPS: { id: Group; title: string }[] = [
   { id: "desde", title: "Convertir desde PDF" },
   { id: "hacia", title: "Convertir a PDF" },
+  ...DOC_GROUPS,
   { id: "organizar", title: "Organizar PDF" },
   { id: "ocr", title: "Reconocer texto" },
 ];
@@ -301,6 +303,7 @@ export const TOOLS: Tool[] = [
         return [{ name: outputName(f.name, "txt"), bytes: new TextEncoder().encode(pages.map((t) => t.trim()).join("\n\n\f\n\n") + "\n") }];
       }),
   },
+  ...DOC_TOOLS,
 ];
 
 export const toolById = (id: string) => TOOLS.find((t) => t.id === id);

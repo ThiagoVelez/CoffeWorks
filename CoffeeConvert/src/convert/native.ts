@@ -36,3 +36,31 @@ export async function ocrImage(png: Uint8Array): Promise<string> {
   if (!isTauri) throw new Error("El OCR funciona en la app de escritorio.");
   return invoke<string>("core_addon_run_file", { id: "pdfcheck", args: ["{input}", "stdout", "-l", "spa+eng", "--psm", "3"], data: bytesToBase64(png), extension: "png" });
 }
+
+// ---------- LaTeX y Markdown (complementos «Motor LaTeX» y «Pandoc», coffee-core/docconv) ----------
+
+export type Desde = "latex" | "markdown";
+export type Hacia = "docx" | "odt" | "html" | "markdown" | "latex";
+
+/** LaTeX → PDF. Si falla, el error dice el mensaje del compilador y la línea. */
+export async function compilarPdf(tex: string, archivos: { nombre: string; datos: Uint8Array }[] = []): Promise<Uint8Array> {
+  if (!isTauri) throw new Error("La compilación de LaTeX funciona en la app de escritorio.");
+  try {
+    return base64ToBytes(await invoke<string>("doc_latex_pdf", { tex, archivos: archivos.map((a) => [a.nombre, bytesToBase64(a.datos)]) }));
+  } catch (e) {
+    let info: { mensaje?: string; registro?: string } = {};
+    try {
+      info = JSON.parse(String(e));
+    } catch {
+      info = { mensaje: String(e) };
+    }
+    const linea = /^l\.(\d+)/m.exec(info.registro ?? "");
+    throw new Error(`${info.mensaje || "El documento no se pudo compilar."}${linea ? ` (línea ${linea[1]})` : ""}`);
+  }
+}
+
+/** Conversión con Pandoc. */
+export async function convertir(datos: Uint8Array, desde: Desde, hacia: Hacia): Promise<Uint8Array> {
+  if (!isTauri) throw new Error("La conversión con Pandoc funciona en la app de escritorio.");
+  return base64ToBytes(await invoke<string>("doc_pandoc", { datos: bytesToBase64(datos), desde, hacia }));
+}
