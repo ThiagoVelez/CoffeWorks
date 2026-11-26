@@ -946,6 +946,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "coffeelatex"
+version = "2.15.0"
+dependencies = [
+ "coffee-core",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+]
+
+[[package]]
 name = "coffeelens"
 version = "2.15.0"
 dependencies = [
