@@ -2,37 +2,11 @@
 // Todo lo decorativo queda fuera de la zona de lectura o en el centro (como máximo ~15 % del área),
 // y el QR usa corrección H para que siga leyéndose.
 import { matriz, type Nivel } from "./matriz";
-import { tema, type TemaId } from "./adornos";
+import { tema } from "./adornos";
+import type { Diseno, Forma, FormaCentro, FormaOjo, Relleno } from "./diseno";
 
-export type Forma = "cuadrado" | "redondeado" | "puntos" | "gotas" | "diamantes" | "estrellas" | "barrasV" | "barrasH" | "liquido";
-export type FormaOjo = "cuadrado" | "redondeado" | "circulo" | "hoja";
-export type FormaCentro = "cuadrado" | "punto" | "redondeado" | "hoja";
-export type EstiloMarco = "abajo" | "burbuja" | "ninguno";
-
-export type Relleno =
-  | string
-  | { tipo: "lineal"; colores: [string, string]; angulo: number }
-  | { tipo: "radial"; colores: [string, string] };
-
-export interface Diseno {
-  modulo: Forma;
-  ojoMarco: FormaOjo;
-  ojoCentro: FormaCentro;
-  color: Relleno;
-  colorOjos?: string;
-  /** `null` = sin fondo (transparente). */
-  fondo: string | null;
-  /** Zona en blanco alrededor, en módulos (mínimo 2). */
-  margen: number;
-  tema: TemaId | null;
-  adornoCentro: boolean;
-  adornoBorde: boolean;
-  /** Imagen (data URL) para el centro. */
-  logo: string | null;
-  /** Parte del lado del QR que ocupa el centro (se limita a ~15 % del área). */
-  tamanoCentro?: number;
-  marco: { texto: string; color: string; estilo: EstiloMarco };
-}
+export type { Forma, FormaOjo, FormaCentro, EstiloMarco, Relleno, Diseno } from "./diseno";
+export { DISENO_BASE } from "./diseno";
 
 export const FORMAS: { id: Forma; nombre: string }[] = [
   { id: "cuadrado", nombre: "Cuadrado" },
@@ -58,19 +32,7 @@ export const OJOS_CENTRO: { id: FormaCentro; nombre: string }[] = [
   { id: "hoja", nombre: "Hoja" },
 ];
 
-export const DISENO_BASE: Diseno = {
-  modulo: "cuadrado",
-  ojoMarco: "cuadrado",
-  ojoCentro: "cuadrado",
-  color: "#000000",
-  fondo: "#ffffff",
-  margen: 4,
-  tema: null,
-  adornoCentro: false,
-  adornoBorde: false,
-  logo: null,
-  marco: { texto: "", color: "#000000", estilo: "ninguno" },
-};
+
 
 /** Lado máximo del centro como parte del lado del QR: √0,15 ≈ 0,387 → 15 % del área. */
 export const CENTRO_MAXIMO = Math.sqrt(0.15);

@@ -9,6 +9,7 @@ Suite ofimática de escritorio para Windows, de código abierto y sin conexión.
 | **CoffeeCalc** | Hoja de cálculo | `.cfs` | Excel (`.xlsx`, `.xls`), CSV | Excel (`.xlsx`) con formato, CSV, PDF |
 | **CoffeeView** | Presentaciones | `.csl` | PowerPoint (`.pptx`) | PowerPoint (`.pptx`), HTML, PDF |
 | **CoffeePDF** | Editor de PDF | `.pdf` | PDF | PDF, páginas sueltas, PNG |
+| **CoffeeQR** *(Office)* | Códigos QR llamativos (formas, colores, adornos por tema, logo y marco) que se siguen leyendo | `.cqr` | — | PNG con o sin fondo, SVG, PDF, hoja de stickers |
 | **CoffeeLatex** *(Office)* | Documentos científicos y técnicos en LaTeX y Markdown, con las fórmulas a la vista | `.tex`, `.md` | LaTeX (`.tex`), Markdown (`.md`) | PDF (con complemento), HTML, Word y ODT (con complemento), LaTeX ↔ Markdown |
 | **CoffeeConvert** *(Office)* | Convertir y organizar documentos (como una caja de herramientas de PDF) | — | PDF, imágenes, TXT, Markdown, HTML, CSV, Word, Excel, PowerPoint, OpenDocument, RTF, EPUB | PDF, Word, Excel, PowerPoint, PNG, JPG, TXT |
 | **CoffeeDrawTeam** *(Equipos)* | Tablero para trabajar en grupo o solo, compartido con un link | `.cdteam` | `.cdteam`, imágenes | `.cdteam`, PNG, PDF |
@@ -161,7 +162,7 @@ npm install
 npm run dev:all
 ```
 
-Antes de la primera vez, instala también las dependencias de cada aplicación (`npm install` dentro de `CoffeeDoc`, `CoffeeCalc`, `CoffeeView`, `CoffeePDF`, `CoffeePage`, `CoffeeBooks`, `CoffeeDataBase`, `CoffeeEdit`, `CoffeeLive`, `CoffeeUIUX`, `CoffeeUML`, `CoffeePhoto`, `CoffeeVector`, `CoffeePaint`, `CoffeeLens`, `CoffeeMotion`, `CoffeeSound`, `CoffeeEncoder`, `CoffeeAnimate`, `CoffeePuppet`, `CoffeeAnimate3D`, `CoffeeConvert`, `CoffeeDrawTeam` y `CoffeeLatex`). Los servidores quedan en:
+Antes de la primera vez, instala también las dependencias de cada aplicación (`npm install` dentro de `CoffeeDoc`, `CoffeeCalc`, `CoffeeView`, `CoffeePDF`, `CoffeePage`, `CoffeeBooks`, `CoffeeDataBase`, `CoffeeEdit`, `CoffeeLive`, `CoffeeUIUX`, `CoffeeUML`, `CoffeePhoto`, `CoffeeVector`, `CoffeePaint`, `CoffeeLens`, `CoffeeMotion`, `CoffeeSound`, `CoffeeEncoder`, `CoffeeAnimate`, `CoffeePuppet`, `CoffeeAnimate3D`, `CoffeeConvert`, `CoffeeDrawTeam`, `CoffeeLatex` y `CoffeeQR`). Los servidores quedan en:
 
 | Aplicación | Launcher | CoffeeDoc | CoffeeCalc | CoffeeView | CoffeePDF | CoffeePage | CoffeeEdit | CoffeeLive | CoffeeDataBase |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -178,6 +179,10 @@ Antes de la primera vez, instala también las dependencias de cada aplicación (
 | Aplicación | CoffeeBooks | CoffeeAnimate3D | CoffeeConvert | CoffeeDrawTeam | CoffeeLatex |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | Puerto | 1440 | 1441 | 1442 | 1443 | 1444 |
+
+| Aplicación | CoffeeQR |
+| :--- | :--- |
+| Puerto | 1445 |
 
 En el navegador los documentos se guardan en `localStorage` y el Launcher abre las aplicaciones en pestañas; en el ejecutable se usan archivos reales y ventanas nativas.
 
@@ -219,6 +224,7 @@ CoffeeWorks/
 ├── CoffeeConvert/           Conversión y organización de documentos (src/ + src-tauri/)
 ├── CoffeeDrawTeam/          Tablero en equipo (src/ + src-tauri/ con la red WebRTC)
 ├── CoffeeLatex/             Documentos con fórmulas en LaTeX y Markdown (src/ + src-tauri/)
+├── CoffeeQR/                Códigos QR llamativos que se leen (src/ + src-tauri/)
 ├── crates/coffee-core/      Código Rust compartido: bóveda, recientes, archivos, diálogos, complementos y diccionarios
 ├── shared/spell/            Corrector ortográfico compartido (se copia a cada app con scripts/sync-shared.mjs)
 ├── shared/studio/           Base de las apps de Ilustración: encabezado, controles oscuros, guardado, historial y complementos
@@ -282,6 +288,18 @@ También existen `--install-all` y `--uninstall-all`.
 - *Exportar*: HTML sin complementos (con las fuentes de las fórmulas dentro del archivo); PDF con el complemento **Motor LaTeX** (Tectonic en Windows, TeX Live en Linux), con los errores del compilador traducidos y «Ir a la línea»; Word, OpenDocument y LaTeX ↔ Markdown con el complemento **Pandoc**.
 - *Desde foto*: la foto de tus apuntes (elegida, arrastrada o pegada con Ctrl+V) se separa en renglones; las fórmulas se leen con el complemento **Fórmulas desde foto** (pix2tex, sin internet) y el texto con Tesseract (complemento de revisión del PDF). Lo dudoso queda en amarillo con sugerencias del diccionario de física y matemáticas (a/α, v/ν, x/×, 1/l…), se avisan llaves sin cerrar y comandos que no existen, y «Insertar en el documento» lo pone en el cursor. Cada renglón se puede marcar como texto o fórmula, quitar, o dibujarse a mano.
 - Prueba en el navegador: `npm run e2e` dentro de `CoffeeLatex` (con `OCR_MODELOS=/carpeta/de/los/modelos` también prueba «Desde foto» con los modelos reales).
+
+**CoffeeQR** (violeta índigo, categoría *Office*) — códigos QR llamativos para negocios y personas, que se siguen leyendo:
+
+- *Contenido*: enlace; imagen o PDF alojado (el menú de un restaurante o un catálogo en Google Drive, tu web o Instagram: el QR lleva el enlace y la app explica cómo compartir el archivo en Drive); texto; Wi-Fi; contacto (vCard); WhatsApp con mensaje; correo; llamada; SMS y ubicación.
+- *Estilo*: puntos cuadrados, redondeados, redondos, gotas, diamantes, estrellas, barras verticales u horizontales y «líquido»; esquinas cuadradas, redondeadas, en círculo u hoja (cada marco ofrece solo los centros que se leen bien).
+- *Colores*: cualquier color, degradado lineal o radial, otro color para las esquinas y fondo de color o transparente.
+- *Adornos*: plantas, café, comida, música, ropa, mascotas, fiesta, salud y tecnología (dibujos propios) en el centro y alrededor, fuera de la zona de lectura; o tu logo en el centro (como máximo el 15 % del QR, con corrección de errores alta).
+- *Marco con texto*: «Escanéame», «Ver el menú», «Wi-Fi gratis»… en marco o en burbuja.
+- *Semáforo de lectura*: tras cada cambio la app lee el QR como un celular, en grande y en chico, y avisa del poco contraste, de los colores invertidos o de un fondo transparente con puntos claros. Antes de descargar uno en rojo, lo pregunta.
+- *Plantillas por negocio*: tienda de plantas, restaurante, cafetería (Wi-Fi), música o evento, ropa, veterinaria, consultorio, tecnología, fiesta y clásico.
+- *Descargar*: PNG de 512 a 4096 px con o sin fondo, SVG, PDF para imprimir al tamaño elegido y **hoja de stickers** A4 con el QR repetido.
+- Pruebas: `npm test` (cada forma, esquina, degradado, tema, logo y marco se dibuja y se lee con jsQR) y `npm run e2e` en el navegador, dentro de `CoffeeQR`.
 
 **CoffeeDrawTeam** (mandarina, categoría *Equipos*) — tablero infinito para trabajos en grupo y lluvias de ideas, o para usar solo:
 

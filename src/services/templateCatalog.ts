@@ -13,6 +13,7 @@ export const APP_STYLE: Record<string, { name: string; color: string; bg: string
   coffeepage: { name: "CoffeePage", color: "#7b1fa2", bg: "#f3e5f5" },
   coffeebooks: { name: "CoffeeBooks", color: "#2f2f2f", bg: "#f1f1ef" },
   coffeelatex: { name: "CoffeeLatex", color: "#0d5e6f", bg: "#dcf0f3" },
+  coffeeqr: { name: "CoffeeQR", color: "#5f3dc4", bg: "#efeafd" },
   coffeedatabase: { name: "CoffeeDataBase", color: "#9b111e", bg: "#fbe9eb" },
   coffeeedit: { name: "CoffeeEdit", color: "#26a680", bg: "#e3f6ef" },
   coffeelive: { name: "CoffeeLive", color: "#ef6c00", bg: "#fff1e5" },
@@ -246,6 +247,36 @@ ${table(["Concepto", "Valor"], [["Personal", ""], ["Equipos y licencias", ""], [
     category: "Eventos & Educación",
     description: "Apuntes en Markdown con títulos, listas y fórmulas $…$ y $$…$$ de movimiento rectilíneo.",
     features: ["Markdown sencillo", "Fórmulas en línea y aparte", "Exporta a Word o PDF"],
+  }),
+
+  // --- CoffeeQR ---
+  item("coffeeqr", {
+    id: "qr-plantas",
+    title: "QR para Tienda de Plantas",
+    category: "Marketing",
+    description: "Código QR con hojas alrededor, esquinas en forma de hoja y una monstera en el centro, con el marco «Conoce nuestras plantas». Pon el enlace de tu tienda.",
+    features: ["Adornos de plantas que no impiden leerlo", "Degradado verde", "PNG con o sin fondo"],
+  }),
+  item("coffeeqr", {
+    id: "qr-restaurante",
+    title: "QR del Menú del Restaurante",
+    category: "Marketing",
+    description: "Para el menú en PDF o en imagen guardado en Google Drive o en tu web. CoffeeQR te explica cómo compartirlo para que cualquiera lo abra.",
+    features: ["Marco «Ver el menú»", "Insignia de comida", "Hoja de stickers para las mesas"],
+  }),
+  item("coffeeqr", {
+    id: "qr-cafeteria",
+    title: "QR de Wi-Fi para Cafetería",
+    category: "Marketing",
+    description: "Tus clientes se conectan al Wi-Fi sin escribir la clave. Granos de café alrededor y burbuja «Wi-Fi gratis».",
+    features: ["Wi-Fi con WPA o sin clave", "Puntos redondos", "Listo para imprimir"],
+  }),
+  item("coffeeqr", {
+    id: "qr-veterinaria",
+    title: "QR de WhatsApp para Veterinaria",
+    category: "Marketing",
+    description: "Abre un chat de WhatsApp con un mensaje ya escrito para pedir cita. Huellitas alrededor y esquinas redondas.",
+    features: ["Mensaje ya escrito", "Adornos de mascotas", "Semáforo de lectura en verde"],
   }),
 
   // --- CoffeeBooks ---

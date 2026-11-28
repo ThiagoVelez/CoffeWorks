@@ -1,6 +1,6 @@
 // Plantillas por negocio: un diseño listo, el texto del marco y el tipo de contenido que suele llevar.
 import type { Contenido } from "./contenido";
-import { DISENO_BASE, type Diseno } from "./dibujo";
+import { DISENO_BASE, type Diseno } from "./diseno";
 
 export interface Plantilla {
   id: string;

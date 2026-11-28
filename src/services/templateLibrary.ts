@@ -5,6 +5,7 @@
 import { PAINT_TEMPLATES, PHOTO_TEMPLATES, VECTOR_TEMPLATES } from "./artTemplates";
 import { BOOKS_TEMPLATES } from "./booksTemplates";
 import { PLANTILLAS as LATEX_PLANTILLAS } from "../../CoffeeLatex/src/editor/plantillas";
+import { PLANTILLAS as QR_PLANTILLAS } from "../../CoffeeQR/src/qr/plantillas";
 const uid = (prefix: string) => `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
 export interface ExtraTemplate {
@@ -936,12 +937,18 @@ export function buildExtraTemplate(templateId: string, appId: string, title: str
     const p = LATEX_PLANTILLAS.find((x) => `latex-${x.id}` === templateId);
     if (p) return p.modo === "latex" ? { extension: "tex", prefix: "tex", contents: p.contenido } : { extension: "md", prefix: "md", contents: p.contenido };
   }
+  if (appId === "coffeeqr") {
+    // Las mismas plantillas que muestra CoffeeQR al crear un QR (documento .cqr en JSON).
+    const p = QR_PLANTILLAS.find((x) => `qr-${x.id}` === templateId);
+    if (p) return { extension: "cqr", prefix: "cqr", contents: JSON.stringify({ version: 1, contenido: p.contenido, diseno: p.diseno, descarga: { px: 1024, cm: 4, margenMm: 10 } }, null, 2) };
+  }
   return null;
 }
 
 /** Para las pruebas: genera todas las plantillas. */
 export const EXTRA_TEMPLATE_IDS = {
   coffeelatex: LATEX_PLANTILLAS.filter((p) => !p.id.includes("blanco")).map((p) => `latex-${p.id}`),
+  coffeeqr: QR_PLANTILLAS.filter((p) => p.id !== "simple").map((p) => `qr-${p.id}`),
   coffeepdf: Object.keys(PDF_TEMPLATES),
   coffeepage: Object.keys(PAGE_TEMPLATES),
   coffeebooks: Object.keys(BOOKS_TEMPLATES),
