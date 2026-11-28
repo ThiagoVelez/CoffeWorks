@@ -1,0 +1,33 @@
+/* Generado por scripts/make-theme.mjs: no editar a mano. Tema oscuro de CoffeeQR. */
+html[data-theme="dark"] { color-scheme: dark; }
+html[data-theme="dark"] body { background-color: #0b0b0d !important; color: #e6e6ea; }
+html[data-theme="dark"] :is(input, select, textarea):not([data-paper] *):not(.bg-transparent):not([type="color"]):not([type="range"]):not([type="checkbox"]):not([type="radio"]) { background-color: #141417; color: #e6e6ea; border-color: #2c2c32; }
+html[data-theme="dark"] ::-webkit-scrollbar-thumb { background-color: #33333a; }
+html[data-theme="dark"] img[data-invert-dark] { filter: invert(1) hue-rotate(180deg); }
+html[data-theme="dark"] .bg-\[\#4dabf7\]:not([data-paper] *):not([data-paper]) { background-color: hsl(206.8 20.1% 16.2%) !important; }
+html[data-theme="dark"] .bg-\[\#5f3dc4\]:not([data-paper] *):not([data-paper]) { background-color: hsl(255.1 11.7% 20.4%) !important; }
+html[data-theme="dark"] .bg-\[\#c8c8cf\]:not([data-paper] *):not([data-paper]) { background-color: hsl(240.0 1.5% 11.0%) !important; }
+html[data-theme="dark"] .bg-\[\#f0ebff\]:not([data-paper] *):not([data-paper]) { background-color: hsl(255.0 22.0% 5.8%) !important; }
+html[data-theme="dark"] .bg-\[\#f6f3ff\]:not([data-paper] *):not([data-paper]) { background-color: hsl(255.0 22.0% 5.3%) !important; }
+html[data-theme="dark"] .bg-\[\#f7f6fb\]:not([data-paper] *):not([data-paper]) { background-color: hsl(252.0 8.5% 5.3%) !important; }
+html[data-theme="dark"] .bg-\[\#faf9fd\]:not([data-paper] *):not([data-paper]) { background-color: hsl(255.0 11.0% 5.0%) !important; }
+html[data-theme="dark"] .bg-white:not([data-paper] *):not([data-paper]) { background-color: hsl(0.0 0.0% 4.5%) !important; }
+html[data-theme="dark"] .border-\[\#5f3dc4\]:not([data-paper] *):not([data-paper]) { border-color: hsl(255.1 10.7% 30.4%) !important; }
+html[data-theme="dark"] .border-\[\#cfc8ea\]:not([data-paper] *):not([data-paper]) { border-color: hsl(252.4 8.9% 18.2%) !important; }
+html[data-theme="dark"] .border-\[\#d9d4ea\]:not([data-paper] *):not([data-paper]) { border-color: hsl(253.6 6.9% 17.4%) !important; }
+html[data-theme="dark"] .border-\[\#e3dbff\]:not([data-paper] *):not([data-paper]) { border-color: hsl(253.3 20.0% 15.5%) !important; }
+html[data-theme="dark"] .border-\[\#e3dff0\]:not([data-paper] *):not([data-paper]) { border-color: hsl(254.1 7.2% 16.2%) !important; }
+html[data-theme="dark"] .border-\[\#eeeaf7\]:not([data-paper] *):not([data-paper]) { border-color: hsl(258.5 9.0% 15.0%) !important; }
+html[data-theme="dark"] .hover\:bg-\[\#f0ebff\]:not([data-paper] *):not([data-paper]):hover { background-color: hsl(255.0 22.0% 5.8%) !important; }
+html[data-theme="dark"] .hover\:bg-white\/15:not([data-paper] *):not([data-paper]):hover { background-color: hsl(0.0 0.0% 4.5% / 0.15) !important; }
+html[data-theme="dark"] .hover\:border-\[\#5f3dc4\]:not([data-paper] *):not([data-paper]):hover { border-color: hsl(255.1 10.7% 30.4%) !important; }
+html[data-theme="dark"] .hover\:border-\[\#bdb3e6\]:not([data-paper] *):not([data-paper]):hover { border-color: hsl(251.8 10.1% 19.9%) !important; }
+html[data-theme="dark"] .hover\:border-\[\#c92a2a\]:not([data-paper] *):not([data-paper]):hover { border-color: hsl(0.0 13.1% 31.3%) !important; }
+html[data-theme="dark"] .hover\:text-\[\#24213a\]:not([data-paper] *):not([data-paper]):hover { color: hsl(247.2 8.2% 83.2%) !important; }
+html[data-theme="dark"] .hover\:text-\[\#5f3dc4\]:not([data-paper] *):not([data-paper]):hover { color: hsl(255.1 53.4% 66.0%) !important; }
+html[data-theme="dark"] .text-\[\#24213a\]:not([data-paper] *):not([data-paper]) { color: hsl(247.2 8.2% 83.2%) !important; }
+html[data-theme="dark"] .text-\[\#3b3561\]:not([data-paper] *):not([data-paper]) { color: hsl(248.2 8.8% 76.8%) !important; }
+html[data-theme="dark"] .text-\[\#4a4566\]:not([data-paper] *):not([data-paper]) { color: hsl(249.1 5.8% 74.6%) !important; }
+html[data-theme="dark"] .text-\[\#5f3dc4\]:not([data-paper] *):not([data-paper]) { color: hsl(255.1 53.4% 66.0%) !important; }
+html[data-theme="dark"] .text-\[\#6c6788\]:not([data-paper] *):not([data-paper]) { color: hsl(249.1 4.1% 67.2%) !important; }
+html[data-theme="dark"] .text-\[\#b35c00\]:not([data-paper] *):not([data-paper]) { color: hsl(30.8 100.0% 66.0%) !important; }
