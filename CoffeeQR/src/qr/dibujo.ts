@@ -233,31 +233,33 @@ export function dibujarSvg(texto: string, d: Diseno, nivel: Nivel = "H"): Dibujo
   const bandaBorde = d.adornoBorde && t ? 4 : 0;
   const lado = (n + 2 * margen + 2 * bandaBorde) * U; // cuadrado del QR con su margen y adornos
   const conMarco = d.marco.estilo !== "ninguno" && d.marco.texto.trim() !== "";
-  const grosor = conMarco && d.marco.estilo === "abajo" ? 1.2 * U : 0;
-  const altoTexto = conMarco ? 6 * U : 0;
+  // El marco crece con el QR (k = 1 para un QR de 41 módulos de lado con su margen).
+  const k = lado / (41 * U);
+  const grosor = conMarco && d.marco.estilo === "abajo" ? 1.2 * U * k : 0;
+  const altoTexto = conMarco ? 6 * U * k : 0;
   const ancho = lado + 2 * grosor;
-  const alto = lado + 2 * grosor + altoTexto + (conMarco && d.marco.estilo === "burbuja" ? 1.5 * U : 0);
+  const alto = lado + 2 * grosor + altoTexto + (conMarco && d.marco.estilo === "burbuja" ? 1.5 * U * k : 0);
   const ox = grosor + (margen + bandaBorde) * U, oy = ox; // esquina del primer módulo
   const s = n * U;
 
   // Centro reservado (insignia del tema o logo).
   const hayCentro = !!d.logo || (d.adornoCentro && !!t);
-  const k = hayCentro ? ladoCentro(n, d.tamanoCentro) : 0;
-  const c0 = Math.floor((n - k) / 2);
-  const enCentro = (f: number, c: number) => hayCentro && f >= c0 && f < c0 + k && c >= c0 && c < c0 + k;
+  const kc = hayCentro ? ladoCentro(n, d.tamanoCentro) : 0;
+  const c0 = Math.floor((n - kc) / 2);
+  const enCentro = (f: number, c: number) => hayCentro && f >= c0 && f < c0 + kc && c >= c0 && c < c0 + kc;
   const on = (f: number, c: number) => m.oscuro(f, c) && !m.esOjo(f, c) && !m.esAlineacion(f, c) && !enCentro(f, c);
 
   const partes: string[] = [];
   const defs: string[] = [];
   const fondoQr = d.fondo;
 
+  // Con fondo se pinta todo el lienzo (el PNG «con fondo» no tiene ningún píxel transparente).
+  if (fondoQr) partes.push(`<rect width="${r2(ancho)}" height="${r2(alto)}" fill="${fondoQr}"/>`);
   if (conMarco && d.marco.estilo === "abajo") {
-    const R = 3 * U;
+    const R = 3 * U * k;
     partes.push(`<path d="${rectR(0, 0, ancho, alto, [R, R, R, R])}" fill="${d.marco.color}"/>`);
-    if (fondoQr) partes.push(`<path d="${rectR(grosor, grosor, lado, lado, [R * 0.7, R * 0.7, R * 0.7, R * 0.7])}" fill="${fondoQr}"/>`);
-    else partes.push(`<path d="${rectR(grosor, grosor, lado, lado, [R * 0.7, R * 0.7, R * 0.7, R * 0.7])}" fill="#ffffff"/>`);
-  } else if (fondoQr) {
-    partes.push(`<rect width="${ancho}" height="${conMarco ? lado : alto}" rx="${conMarco ? 2 * U : 0}" fill="${fondoQr}"/>`);
+    // Dentro del marco siempre hay un fondo claro: sin él, el QR quedaría sobre el color del marco.
+    partes.push(`<path d="${rectR(grosor, grosor, lado, lado, [R * 0.7, R * 0.7, R * 0.7, R * 0.7])}" fill="${fondoQr ?? "#ffffff"}"/>`);
   }
 
   // Adornos del borde: dibujos del tema repartidos en la banda exterior, fuera de la zona en blanco.
@@ -294,27 +296,28 @@ export function dibujarSvg(texto: string, d: Diseno, nivel: Nivel = "H"): Dibujo
   partes.push(`<path d="${ojos.map((o) => o.centro).join("")}" fill="${fo.fill}"/>`);
 
   if (hayCentro) {
-    const x = ox + c0 * U, y = oy + c0 * U, w = k * U;
+    const x = ox + c0 * U, y = oy + c0 * U, w = kc * U;
     const pad = 0.35 * U;
     if (d.logo) {
       partes.push(`<path d="${rectR(x + pad, y + pad, w - 2 * pad, w - 2 * pad, [U, U, U, U])}" fill="${fondoQr ?? "#ffffff"}"/>`);
       partes.push(`<image href="${esc(d.logo)}" x="${r2(x + 2 * pad)}" y="${r2(y + 2 * pad)}" width="${r2(w - 4 * pad)}" height="${r2(w - 4 * pad)}" preserveAspectRatio="xMidYMid meet"/>`);
     } else if (t) {
       const cx = x + w / 2, cy = y + w / 2;
-      partes.push(`<circle cx="${r2(cx)}" cy="${r2(cy)}" r="${r2(w / 2 - pad)}" fill="${t.color}"/>`);
-      const tamI = (w - 2 * pad) * 0.62;
-      partes.push(`<g color="#ffffff" transform="translate(${r2(cx - tamI / 2)} ${r2(cy - tamI / 2)}) scale(${r2(tamI / 24)})">${t.icono}</g>`);
+      const r = w / 2 - pad;
+      partes.push(`<circle cx="${r2(cx)}" cy="${r2(cy)}" r="${r2(r - 0.3 * U)}" fill="${fondoQr ?? "#ffffff"}" stroke="${t.color}" stroke-width="${r2(0.6 * U)}"/>`);
+      const tamI = (w - 2 * pad) * 0.6;
+      partes.push(`<g color="${t.color}" transform="translate(${r2(cx - tamI / 2)} ${r2(cy - tamI / 2)}) scale(${r2(tamI / 24)})">${t.icono}</g>`);
     }
   }
 
   if (conMarco) {
     const texto = esc(d.marco.texto.trim().slice(0, 40));
-    const tamLetra = Math.min(3.4 * U, (ancho * 1.6) / Math.max(texto.length, 6));
+    const tamLetra = Math.min(3.4 * U * k, (ancho * 1.6) / Math.max(texto.length, 6));
     if (d.marco.estilo === "abajo") {
       partes.push(`<text x="${r2(ancho / 2)}" y="${r2(lado + 1.5 * grosor + altoTexto / 2)}" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, Arial, Helvetica, sans-serif" font-weight="700" font-size="${r2(tamLetra)}" fill="#ffffff">${texto}</text>`);
     } else {
-      const by = lado + 1.5 * U, bh = altoTexto - 0.5 * U, bx = U * 2, bw = ancho - 4 * U;
-      partes.push(`<path d="${rectR(bx, by, bw, bh, [bh / 2, bh / 2, bh / 2, bh / 2])}M${r2(ancho / 2 - U)} ${r2(by + 0.5)}L${r2(ancho / 2)} ${r2(by - 1.3 * U)}L${r2(ancho / 2 + U)} ${r2(by + 0.5)}Z" fill="${d.marco.color}"/>`);
+      const by = lado + 1.5 * U * k, bh = altoTexto - 0.5 * U * k, bx = 2 * U * k, bw = ancho - 4 * U * k;
+      partes.push(`<path d="${rectR(bx, by, bw, bh, [bh / 2, bh / 2, bh / 2, bh / 2])}M${r2(ancho / 2 - U * k)} ${r2(by + 0.5)}L${r2(ancho / 2)} ${r2(by - 1.3 * U * k)}L${r2(ancho / 2 + U * k)} ${r2(by + 0.5)}Z" fill="${d.marco.color}"/>`);
       partes.push(`<text x="${r2(ancho / 2)}" y="${r2(by + bh / 2)}" text-anchor="middle" dominant-baseline="central" font-family="Hanken Grotesk, Arial, Helvetica, sans-serif" font-weight="700" font-size="${r2(tamLetra)}" fill="#ffffff">${texto}</text>`);
     }
   }
