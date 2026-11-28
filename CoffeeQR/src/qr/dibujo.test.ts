@@ -1,17 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Resvg } from "@resvg/resvg-js";
-import jsQR from "jsqr";
+import { leeChico, leer } from "./leerNode";
 import { CENTROS_POR_MARCO, CENTRO_MAXIMO, DISENO_BASE, FORMAS, OJOS_MARCO, centroValido, dibujarSvg, ladoCentro, type Diseno, type FormaCentro } from "./dibujo";
 import { matriz, LARGO_MAXIMO } from "./matriz";
 import { TEMAS } from "./adornos";
-
-/** Rasteriza el SVG sobre blanco y lo lee con jsQR (lo que haría un celular). */
-export function leer(svg: string, px = 600): string | null {
-  const r = new Resvg(svg, { fitTo: { mode: "width", value: px }, background: "white", font: { loadSystemFonts: false } }).render();
-  const datos = new Uint8ClampedArray(r.pixels.buffer, r.pixels.byteOffset, r.pixels.length);
-  return jsQR(datos, r.width, r.height)?.data ?? null;
-}
 
 const TEXTO = "https://vivero-verde.co/menú?mesa=ñ12";
 const con = (p: Partial<Diseno>): Diseno => ({ ...DISENO_BASE, ...p, marco: { ...DISENO_BASE.marco, ...(p.marco ?? {}) } });
@@ -33,8 +26,10 @@ test("cada forma × ojos × sólido/degradado se lee (grande y chico)", () => {
     for (const om of OJOS_MARCO) {
       for (const oc of Object.keys(CENTROS_POR_MARCO[om.id]) as FormaCentro[]) {
         const color = colores[i++ % colores.length];
-        const { svg } = dibujarSvg(TEXTO, con({ modulo: f.id, ojoMarco: om.id, ojoCentro: oc, color }));
-        for (const px of [600, 180]) if (leer(svg, px) !== TEXTO) fallos.push(`${f.id}/${om.id}/${oc}/${typeof color === "string" ? "sólido" : color.tipo}@${px}`);
+        const dib = dibujarSvg(TEXTO, con({ modulo: f.id, ojoMarco: om.id, ojoCentro: oc, color }));
+        const nombre = `${f.id}/${om.id}/${oc}/${typeof color === "string" ? "sólido" : color.tipo}`;
+        if (leer(dib.svg, 600) !== TEXTO) fallos.push(`${nombre} grande`);
+        if (!leeChico(dib, TEXTO)) fallos.push(`${nombre} chico`);
       }
     }
   }

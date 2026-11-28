@@ -216,6 +216,15 @@ export function ladoCentro(n: number, parte = CENTRO_PREDETERMINADO): number {
 
 export interface Dibujo { svg: string; ancho: number; alto: number }
 
+/**
+ * Prueba «chica» (como una foto de un QR impreso pequeño): anchos a los que cada módulo mide 4, 5 y
+ * 6 píxeles. A esos tamaños la lectura depende de cómo caen los píxeles, así que se pide que lea en
+ * al menos dos de los tres (`LECTURAS_CHICAS`).
+ */
+export const PX_MODULO_CHICO = [4, 5, 6];
+export const LECTURAS_CHICAS = 2;
+export const anchosChicos = (d: Dibujo) => PX_MODULO_CHICO.map((k) => Math.round((d.ancho / U) * k));
+
 export function dibujarSvg(texto: string, d: Diseno, nivel: Nivel = "H"): Dibujo {
   const m = matriz(texto, nivel);
   const n = m.n;
