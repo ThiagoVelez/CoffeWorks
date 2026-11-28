@@ -29,6 +29,7 @@ members = [
   "CoffeeConvert/src-tauri",
   "CoffeeDrawTeam/src-tauri",
   "CoffeeLatex/src-tauri",
+  "CoffeeQR/src-tauri",
   "CoffeePuppet/src-tauri",
 ]
 
