@@ -6,7 +6,8 @@ import { tema } from "./adornos";
 import type { Diseno, Forma, FormaCentro, FormaOjo, Relleno } from "./diseno";
 
 export type { Forma, FormaOjo, FormaCentro, EstiloMarco, Relleno, Diseno } from "./diseno";
-export { DISENO_BASE } from "./diseno";
+export { DISENO_BASE, limpiarDiseno } from "./diseno";
+import { limpiarDiseno } from "./diseno";
 
 export const FORMAS: { id: Forma; nombre: string }[] = [
   { id: "cuadrado", nombre: "Cuadrado" },
@@ -188,6 +189,7 @@ export const LECTURAS_CHICAS = 2;
 export const anchosChicos = (d: Dibujo) => PX_MODULO_CHICO.map((k) => Math.round((d.ancho / U) * k));
 
 export function dibujarSvg(texto: string, d: Diseno, nivel: Nivel = "H"): Dibujo {
+  d = limpiarDiseno(d as Diseno & Record<string, unknown>);
   const m = matriz(texto, nivel);
   const n = m.n;
   const t = tema(d.tema);

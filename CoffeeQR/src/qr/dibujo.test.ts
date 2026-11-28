@@ -82,3 +82,18 @@ test("marco con texto (abajo y burbuja) y sin fondo se lee", () => {
   assert.ok(!sin.svg.includes("<rect"));
   assert.equal(leer(sin.svg), TEXTO);
 });
+
+test("un .cqr manipulado no mete código en el SVG", () => {
+  const malo = '"/><img src=x onerror=alert(1)>';
+  const d = con({
+    color: { tipo: "lineal", colores: [malo, "#000"], angulo: 0 },
+    fondo: malo,
+    colorOjos: malo,
+    logo: 'javascript:alert(1)" onload="alert(2)',
+    marco: { texto: "<b>hola</b>", color: malo, estilo: "abajo" },
+  });
+  const { svg } = dibujarSvg(TEXTO, d);
+  assert.ok(!/<img|onerror|onload|javascript:/i.test(svg), svg.slice(0, 300));
+  assert.ok(!svg.includes("<b>"));
+  assert.equal(leer(svg), TEXTO);
+});

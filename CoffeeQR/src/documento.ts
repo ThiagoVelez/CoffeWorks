@@ -1,7 +1,7 @@
 // Documento .cqr: el contenido del QR y su diseño, en JSON. Se guarda en la Bóveda como las demás apps.
 import { createDocStore } from "./studio/docStore";
 import { vacio, type Contenido } from "./qr/contenido";
-import { DISENO_BASE, type Diseno } from "./qr/dibujo";
+import { DISENO_BASE, limpiarDiseno, type Diseno } from "./qr/dibujo";
 
 export const APP_ID = "coffeeqr";
 export const ACENTO = "#5f3dc4";
@@ -27,7 +27,7 @@ export const docNuevo = (contenido: Contenido = vacio("enlace"), diseno: Diseno 
 export function leerDoc(texto: string): DocQR {
   const j = JSON.parse(texto) as Partial<DocQR>;
   const contenido = j.contenido && typeof j.contenido === "object" && "tipo" in j.contenido ? { ...vacio(j.contenido.tipo), ...j.contenido } as Contenido : vacio("enlace");
-  const diseno = { ...DISENO_BASE, ...(j.diseno ?? {}), marco: { ...DISENO_BASE.marco, ...(j.diseno?.marco ?? {}) } };
+  const diseno = limpiarDiseno({ ...(j.diseno ?? {}) } as Diseno & Record<string, unknown>);
   return { version: 1, contenido, diseno, descarga: { ...DESCARGA_BASE, ...(j.descarga ?? {}) } };
 }
 
